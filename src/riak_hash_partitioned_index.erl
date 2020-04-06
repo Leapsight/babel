@@ -75,6 +75,7 @@
 %% BEHAVIOUR CALLBACKS
 -export([init/2]).
 -export([number_of_partitions/1]).
+-export([partition_size/2]).
 -export([partition_identifier/2]).
 -export([partition_identifiers/2]).
 -export([update_partition/3]).
@@ -170,6 +171,20 @@ partition_identifier(Config, Data) ->
 partition_identifiers(Config, Order) ->
     Default = sort_ordering(Config),
     maybe_reverse(Default, Order, partition_identifiers(Config)).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec partition_size(
+    Config :: riak_kv_index:config(),
+    Partition :: riak_kv_index:partition()
+    ) -> non_neg_integer().
+
+partition_size(_, Partition) ->
+    Data = riakc_map:fetch({<<"data">>, map}, Partition),
+    riakc_map:size(Data).
 
 
 %% -----------------------------------------------------------------------------
