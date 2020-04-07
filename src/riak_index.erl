@@ -417,5 +417,5 @@ actions_by_partition_id(Mod, Config, List) ->
     ],
 
     %% We generate the list [ {partition_id(), [{action(), data()}]} ].
-    Proj = {1, {function, collection, [2]}},
+    Proj = {1, {function, collect, [2]}},
     leap_tuples:summarize(Tuples, Proj, #{}).
