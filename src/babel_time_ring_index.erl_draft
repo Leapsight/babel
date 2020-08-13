@@ -1,0 +1,300 @@
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-module(babel_time_ring_index).
+-behaviour(babel_index).
+
+
+-define(SPEC, #{
+    sort_ordering => #{
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        default => <<"desc">>,
+        datatype => [atom, binary],
+        validator => fun
+            (X) when is_atom(X) -> atom_to_binary(X, utf8);
+            (X) when is_binary(X) -> true;
+            (_) -> false
+        end
+    },
+    number_of_partitions => #{
+        description => <<
+            "The number of partitions for this index. "
+            "It should be a power of 2."
+        >>,
+        required => true,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => pos_integer,
+        validator => fun
+            (N) when N =< 0 ->
+                false;
+            (N) ->
+                %% It should be a power of 2
+                N band (N - 1) == 0
+        end
+    },
+    timestamp_field => #{
+        required => true,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => binary
+    },
+    time_unit => #{
+        required => true,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => {enum, [
+            day, week, month, year,
+            <<"day">>, <<"week">>, <<"month">>, <<"year">>
+        ]},
+        validator => fun
+            (X) when is_atom(X) -> {ok, atom_to_binary(X, utf8)};
+            (X) when is_binary(X) -> true;
+            (_) -> false
+        end
+    }
+}).
+
+
+-type time_unit() :: day | week | month | year.
+
+-export_type([time_unit/0]).
+
+
+%% API
+-export([sort_ordering/1]).
+-export([time_unit/1]).
+-export([timestamp_field/1]).
+
+
+%% BEHAVIOUR CALLBACKS
+-export([init/2]).
+-export([number_of_partitions/1]).
+-export([partition_identifier/2]).
+-export([partition_identifiers/2]).
+-export([update_partition/3]).
+
+
+
+%% =============================================================================
+%% API
+%% =============================================================================
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the sort ordering configured for this index. The result can be
+%% the atoms `asc' or `desc'.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec sort_ordering(babel_index:config()) -> asc | desc.
+
+sort_ordering(Config) ->
+    binary_to_existing_atom(
+        riakc_map:fetch({<<"sort_ordering">>, set}, Config),
+        utf8
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the time unit configured for this index.
+%%
+%% @end
+%% -----------------------------------------------------------------------------
+-spec time_unit(babel_index:config()) -> time_unit().
+
+time_unit(Config) ->
+    binary_to_existing_atom(
+        riakc_map:fetch({<<"time_unit">>, register}, Config),
+        utf8
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the field in the suject to be used as the timestamp.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec timestamp_field(babel_index:config()) -> binary().
+
+timestamp_field(Config) ->
+    binary_to_existing_atom(
+        riakc_map:fetch({<<"timestamp_field">>, register}, Config),
+        utf8
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the partition indentifiers of this index.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec partition_identifiers(babel_index:config()) -> [binary()].
+
+partition_identifiers(Config) ->
+    binary_to_term(
+        riakc_map:fetch({<<"partition_identifiers">>, register}, Config)
+    ).
+
+
+%% =============================================================================
+%% BEHAVIOUR CALLBACKS
+%% =============================================================================
+
+
+
+-spec init(Index :: babel:t(), Spec :: map()) ->
+    {ok, babel_index:config(), [babel:partition()]}
+    | {error, any()}.
+
+init(Index, Spec0) ->
+    #{
+        number_of_partitions := N,
+        time_unit := TimeUnit,
+        timestamp_field := TimestampField
+    } = maps_utils:validate(Spec0, ?SPEC),
+
+    {Identifiers, Partitions} = init_partitions(Index, N),
+
+    Ctxt = undefined,
+    Values = [
+        babel_crdt_utils:map_entry(
+            register, <<"partition_identifiers">>, term_to_binary(Identifiers)),
+        babel_crdt_utils:map_entry(
+            register, <<"number_of_partitions">>, integer_to_binary(N)),
+        babel_crdt_utils:map_entry(
+            register, <<"time_unit">>, TimeUnit),
+        babel_crdt_utils:map_entry(
+            register, <<"timestamp_field">>, TimestampField)
+
+    ],
+    {ok, riakc_map:new(Values, Ctxt), Partitions}.
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec number_of_partitions(riak_kv_index:config()) -> pos_integer().
+
+number_of_partitions(Config) ->
+    binary_to_integer(
+        riakc_map:fetch({<<"number_of_partitions">>, register}, Config)
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec partition_identifiers(riak_kv_index:config(), asc | desc) ->
+    [babel:partition_id()].
+
+partition_identifiers(Config, Order) ->
+    Default = sort_ordering(Config),
+    maybe_reverse(Default, Order, partition_identifiers(Config)).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec partition_identifier(riak_kv_index:config(), riak_kv_index:data()) ->
+    riak_kv_index:partition_id().
+
+partition_identifier(Config, Data) ->
+    N = number_of_partitions(Config),
+    Algo = partition_algorithm(Config),
+    Prefix = partition_identifier_prefix(Config),
+
+    PKey = collect(Config, Data, partition_by(Config)),
+    Hash = hash:Algo(PKey),
+    gen_identifier(Prefix, Hash rem N).
+
+
+
+
+%% =============================================================================
+%% PRIVATE
+%% =============================================================================
+
+
+
+%% @private
+init_partitions(Prefix, N) ->
+    Identifiers = [gen_identifier(Prefix, X) || X <- lists:seq(0, N - 1)],
+    Partitions = [
+        {Id, babel_index_partition:new(Id)} || Id <- Identifiers
+    ],
+    {Identifiers, Partitions}.
+
+
+%% @private
+gen_identifier(Prefix, N) ->
+    <<Prefix/binary, $_, (integer_to_binary(N))/binary>>.
+
+
+%% @private
+maybe_reverse(Order, Order, L) ->
+    L;
+maybe_reverse(_, _, L) ->
+    lists:reverse(L).
+
+
+
+time_ring_partition(day, Timestamp, TimeUnit, N) ->
+    ok = validate_units(day, Timestamp, N),
+    Seconds = erlang:convert_time_unit(Timestamp, TimeUnit, second),
+    trunc(Seconds / 86400) rem N;
+
+time_ring_partition(week, Timestamp, TimeUnit, N) ->
+    {Date, _} = Time0 = calendar:system_time_to_local_time(Timestamp, TimeUnit),
+    Now = erlang:system_time(TimeUnit),
+    Time1 = calendar:system_time_to_local_time(Now, TimeUnit),
+    {Days, _} = calendar:time_difference(Time0, Time1),
+    Weeks = trunc(Days / 7),
+    %% W0 = calendar:iso_week_number(Time0),
+    Week0 = calendar:iso_week_number(Date),
+    Week1 = calendar:iso_week_number(),
+    io:format(
+        "Weeks: ~p Week0: ~p Week1:~p~n", [Weeks, Week0, Week1]
+    ),
+
+    week_ring_partition(Week0, Week1, N, Weeks).
+
+
+week_ring_partition({Year, WeekNum}, {Year, ThisWeekNum}, N, _)
+when ThisWeekNum - WeekNum =< N - 1 ->
+    WeekNum rem N;
+
+week_ring_partition({Year0, WeekNum}, {Year1, _ThisWeekNum}, N, Weeks)
+when Year0 < Year1 andalso Weeks < N ->
+    WeekNum rem N;
+
+week_ring_partition(_, _, _, _) ->
+    out_of_bounds.
+
+
+validate_units(day, Timestamp, N)
+when is_integer(Timestamp) andalso Timestamp >= 0
+andalso N >= 1 andalso N =< 366 ->
+    ok;
+
+validate_units(day, _, _) ->
+    error(badarg).
+
+
+test() ->
+    L = [
+        calendar:rfc3339_to_system_time("2019-06-18T00:00:00+00:00"),
+        calendar:rfc3339_to_system_time("2019-12-18T00:00:00+00:00"),
+        calendar:rfc3339_to_system_time("2019-12-28T00:00:00+00:00"),
+        calendar:rfc3339_to_system_time("2020-01-01T00:00:00+00:00"),
+        calendar:rfc3339_to_system_time("2020-03-01T00:00:00+00:00"),
+        calendar:rfc3339_to_system_time("2020-03-05T00:00:00+00:00"),
+        calendar:rfc3339_to_system_time("2020-03-10T00:00:00+00:00"),
+        calendar:rfc3339_to_system_time("2020-03-15T00:00:00+00:00"),
+        calendar:rfc3339_to_system_time("2020-03-18T00:00:00+00:00")
+    ],
+    [time_ring_partition(week, X, second, 13) || X <- L].

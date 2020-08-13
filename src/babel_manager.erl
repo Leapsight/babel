@@ -2,8 +2,9 @@
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--module(riak_index_manager).
+-module(babel_manager).
 -behaviour(gen_server).
+-include_lib("kernel/include/logger.hrl").
 
 -define(RIAK_TIMEOUT, 5000).
 
@@ -293,8 +294,8 @@ init_info(Opts) ->
     Ts = erlang:system_time(millisecond),
     {Type, Bucket0} = things_thing:bucket_and_type(),
     Bucket = maps:get(bucket, Opts, Bucket0),
-    {ok, Host} = riak_utils_config:get(riak_host),
-    {ok, Port} = riak_utils_config:get(riak_port),
+    {ok, Host} = babel_config:get(riak_host),
+    {ok, Port} = babel_config:get(riak_port),
     #{
         connection => #{
             host => Host,

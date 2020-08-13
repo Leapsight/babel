@@ -2,25 +2,28 @@
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--module(riak_index_partition).
--include("riak_index.hrl").
+-module(babel_index_partition).
+-include("babel.hrl").
 -include_lib("riakc/include/riakc.hrl").
 
 -type t()   ::  riakc_map:crdt_map().
 
 -export_type([t/0]).
 
--export([new/0]).
--export([new/2]).
--export([new/3]).
-%% -export([meta/1]).
-%% -export([data/1]).
-%% -export([size/1]).
--export([update/4]).
+-export([created_ts/1]).
+-export([data/1]).
+-export([delete/4]).
 -export([fetch/3]).
 -export([fetch/4]).
+-export([id/1]).
+-export([last_updated_ts/1]).
 -export([lookup/4]).
--export([delete/4]).
+-export([new/1]).
+-export([new/2]).
+-export([size/1]).
+-export([update_data/2]).
+-export([store/4]).
+-export([to_work_item/3]).
 
 
 
@@ -34,54 +37,128 @@
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec new() -> t().
+-spec new(Id :: binary()) -> t().
 
-new() ->
-    Ctxt = undefined,
-    Meta = riakc_map:new([{{<<"size">>, counter}, riakc_counter:new()}], Ctxt),
-    Data = riakc_map:new(Ctxt),
-    new(Meta, Data, Ctxt).
+new(Id) ->
+    new(Id, []).
 
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec new(Meta :: riakc_map:crdt_map(), Data :: riakc_map:crdt_map()) -> t().
+-spec new(Id :: binary(), Data :: list()) -> t().
 
-new(Meta, Data) ->
-    new(Meta, Data, undefined).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec new(
-    Meta :: riakc_map:crdt_map(),
-    Data :: riakc_map:crdt_map(),
-    Ctxt :: riakc_datatype:context()) -> t().
-
-new(Meta, Data, Ctxt) ->
+new(Id, Data) ->
+    Ts = integer_to_binary(erlang:system_time(millisecond)),
     Values = [
-        {{<<"meta">>, map}, Meta},
-        {{<<"data">>, map}, Data}
+        babel_crdt_utils:map_entry(register, <<"id">>, Id),
+        babel_crdt_utils:map_entry(register, <<"created_ts">>, Ts),
+        babel_crdt_utils:map_entry(register, <<"last_updated_ts">>, Ts),
+        babel_crdt_utils:map_entry(map, <<"data">>, Data)
     ],
-    riakc_map:new(Values, Ctxt).
+    riakc_map:new(Values, undefined).
 
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec update(
+-spec id(Partition :: t()) -> binary() | no_return().
+
+id(Partition) ->
+    riakc_register:value(riakc_map:fetch({<<"id">>, register}, Partition)).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec size(Partition :: t()) -> non_neg_integer().
+
+size(Partition) ->
+    riakc_map:size(data(Partition)).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec created_ts(Partition :: t()) -> non_neg_integer() | no_return().
+
+created_ts(Partition) ->
+    binary_to_integer(
+        riakc_register:value(
+            riakc_map:fetch({<<"created_ts">>, register}, Partition)
+        )
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec last_updated_ts(Partition :: t()) -> non_neg_integer() | no_return().
+
+last_updated_ts(Partition) ->
+    binary_to_integer(
+        riakc_register:value(
+            riakc_map:fetch({<<"last_updated_ts">>, register}, Partition)
+        )
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec data(Partition :: t()) -> riakc_map:crdt_map() | no_return().
+
+data(Partition) ->
+    riakc_map:fetch({<<"data">>, map}, Partition).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec update_data(riakc_map:update_fun(), t()) -> t().
+
+update_data(Fun, Partition0) ->
+    Ts = integer_to_binary(erlang:system_time(millisecond)),
+    Partition1 = riakc_map:update({<<"data">>, map}, Fun, Partition0),
+
+    riakc_map:update(
+        {<<"last_updated_ts">>, register},
+        fun(R) -> riakc_register:set(Ts, R) end,
+        Partition1
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns
+%% @end
+%% -----------------------------------------------------------------------------
+-spec to_work_item(TypeBucket :: tuple(), Key :: binary(), Partition :: t()) ->
+    reliable_storage_backend:work_item().
+
+to_work_item(TypeBucket, Key, Partition) ->
+    Args = [TypeBucket,  Key,  riakc_map:to_op(Partition)],
+    {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec store(
     Conn :: pid(),
     TypeBucket :: type_bucket(),
     Key :: binary(),
     Partition :: t()) ->
     ok | {error, any()}.
 
-update(Conn, TypeBucket, Key, Partition) ->
+store(Conn, TypeBucket, Key, Partition) ->
     Opts = #{
         r => quorum,
         pr => quorum,
@@ -184,7 +261,8 @@ delete(Conn, TypeBucket, Key, ReqOpts) ->
 
 
 
-%% -----------------------------------------------------------------------------
+
+%%-----------------------------------------------------------------------------
 %% @private
 %% @doc Validates and returns the options in proplist format as expected by
 %% Riak KV.

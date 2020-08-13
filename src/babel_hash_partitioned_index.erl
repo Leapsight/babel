@@ -1,5 +1,6 @@
--module(riak_hash_partitioned_index).
--behaviour(riak_index).
+-module(babel_hash_partitioned_index).
+-behaviour(babel_index).
+
 
 -define(SPEC, #{
     sort_ordering => #{
@@ -9,47 +10,34 @@
         default => <<"asc">>,
         datatype => [atom, binary],
         validator => fun
-            (X) when is_atom(X) -> atom_to_binary(X, utf8);
+            (X) when is_atom(X) -> {ok, atom_to_binary(X, utf8)};
             (X) when is_binary(X) -> true;
             (_) -> false
         end
     },
     number_of_partitions => #{
-        description => <<
-            "The number of partitions for this index. "
-            "It should be a power of 2."
-        >>,
+        description => <<"The number of partitions for this index.">>,
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => pos_integer,
-        validator => fun
-            (N) when N =< 0 ->
-                false;
-            (N) ->
-                %% It should be a power of 2
-                N band (N - 1) == 0
-        end
+        datatype => pos_integer
     },
     partition_algorithm => #{
         required => true,
-        default => fnv32a,
-        datatype => {in, [
-            random, hash, fnv32, fnv32a, fnv32m,
-            fnv64, fnv64a, fnv128, fnv128a
-        ]}
+        default => jch,
+        datatype => {in, [jch]}
     },
     partition_by => #{
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, binary}
+        datatype => {list, [binary, tuple, list]}
     },
     index_by => #{
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, binary},
+        datatype => {list, [binary, tuple, list]},
         validator => fun
             ([]) -> false;
             (_) -> true
@@ -59,26 +47,21 @@
         required => false,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, binary}
+        datatype => {list, [binary, tuple, list]}
     },
     covered_fields => #{
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, binary}
+        datatype => {list, [binary, tuple, list]}
     }
 }).
 
 
 -type action()      ::  {riak_kv_index:action(), riak_kv_index:data()}.
 
-%% BEHAVIOUR CALLBACKS
--export([init/2]).
--export([number_of_partitions/1]).
--export([partition_size/2]).
--export([partition_identifier/2]).
--export([partition_identifiers/2]).
--export([update_partition/3]).
+-export_type([action/0]).
+
 
 %% API
 -export([aggregate_by/1]).
@@ -88,6 +71,133 @@
 -export([partition_by/1]).
 -export([partition_identifier_prefix/1]).
 -export([sort_ordering/1]).
+
+
+%% BEHAVIOUR CALLBACKS
+-export([init/2]).
+-export([init_partitions/1]).
+-export([number_of_partitions/1]).
+-export([partition_size/2]).
+-export([partition_identifier/2]).
+-export([partition_identifiers/2]).
+-export([update_partition/3]).
+
+
+
+%% =============================================================================
+%% API
+%% =============================================================================
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the sort ordering configured for this index. The result can be
+%% the atoms `asc' or `desc'.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec sort_ordering(babel_index:config()) -> asc | desc.
+
+sort_ordering(Config) ->
+    binary_to_existing_atom(
+        riakc_register:value(
+            riakc_map:fetch({<<"sort_ordering">>, register}, Config)
+        ),
+        utf8
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the partition algorithm name configured for this index.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec partition_algorithm(babel_index:config()) -> atom().
+
+partition_algorithm(Config) ->
+    binary_to_atom(
+        riakc_register:value(
+            riakc_map:fetch({<<"algorithm">>, register}, Config)
+        ),
+        utf8
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec partition_by(babel_index:config()) -> [binary()].
+
+partition_by(Config) ->
+    binary_to_term(
+        riakc_register:value(
+            riakc_map:fetch({<<"partition_by">>, register}, Config)
+        )
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec index_by(babel_index:config()) -> [binary()].
+
+index_by(Config) ->
+    binary_to_term(
+        riakc_register:value(
+            riakc_map:fetch({<<"index_by">>, register}, Config)
+        )
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec aggregate_by(babel_index:config()) -> [binary()].
+
+aggregate_by(Config) ->
+    case riakc_map:find({<<"aggregate_by">>, register}, Config) of
+        {ok, Value} ->
+            binary_to_term(riakc_register:value(Value));
+        error ->
+            []
+    end.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec covered_fields(babel_index:config()) -> [binary()].
+
+covered_fields(Config) ->
+    binary_to_term(
+        riakc_register:value(
+            riakc_map:fetch({<<"covered_fields">>, register}, Config)
+        )
+    ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec partition_identifier_prefix(babel_index:config()) -> binary().
+
+partition_identifier_prefix(Config) ->
+    riakc_map:fetch({<<"partition_identifier_prefix">>, register}, Config).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the partition indentifiers of this index.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec partition_identifiers(babel_index:config()) -> [binary()].
+
+partition_identifiers(Config) ->
+    binary_to_term(
+        riakc_map:fetch({<<"partition_identifiers">>, register}, Config)
+    ).
 
 
 
@@ -101,11 +211,10 @@
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec init(Index :: riak_index:t(), Spec :: map()) ->
-    {ok, riak_index:config(), [riak_index:partition()]}
-    | {error, any()}.
+-spec init(IndexId :: binary(), ConfigData :: map()) ->
+    {ok, babel_index:config()} | {error, any()}.
 
-init(Index, Spec0) ->
+init(IndexId, ConfigData0) ->
     #{
         sort_ordering := Sort,
         number_of_partitions := N,
@@ -113,22 +222,56 @@ init(Index, Spec0) ->
         partition_by := PKeyFields,
         index_by := LKeyFields,
         covered_fields := PayloadFields
-    } = maps_utils:validate(Spec0, ?SPEC),
-    IndexId = riak_index:id(Index),
-    Prefix = <<IndexId/binary, "_partition_">>,
-    {Identifiers, Partitions} = init_partitions(Prefix, N),
+    } = maps_utils:validate(ConfigData0, ?SPEC),
+
+    Prefix = <<IndexId/binary, "_partition">>,
+    Identifiers = gen_partition_identifiers(Prefix, N),
 
     Values = [
-        wrap(register, <<"sort_ordering">>, Sort),
-        wrap(register, <<"number_of_partitions">>, integer_to_binary(N)),
-        wrap(register, <<"partition_algorithm">>, atom_to_binary(Algo, utf8)),
-        wrap(register, <<"partition_identifier_prefix">>, Prefix),
-        wrap(set, <<"partition_by">>, PKeyFields),
-        wrap(set, <<"index_by">>, LKeyFields),
-        wrap(set, <<"covered_fields">>, PayloadFields),
-        wrap(set, <<"partition_identifiers">>, Identifiers)
+        babel_crdt_utils:map_entry(
+            register, <<"sort_ordering">>, Sort),
+        babel_crdt_utils:map_entry(
+            register, <<"number_of_partitions">>, integer_to_binary(N)),
+        babel_crdt_utils:map_entry(
+            register, <<"partition_algorithm">>, atom_to_binary(Algo, utf8)),
+        babel_crdt_utils:map_entry(
+            register, <<"partition_identifier_prefix">>, Prefix),
+        babel_crdt_utils:map_entry(
+            register, <<"partition_by">>, term_to_binary(PKeyFields)),
+        babel_crdt_utils:map_entry(
+            register, <<"index_by">>, term_to_binary(LKeyFields)),
+        babel_crdt_utils:map_entry(
+            register, <<"covered_fields">>, term_to_binary(PayloadFields)),
+        babel_crdt_utils:map_entry(
+            register, <<"partition_identifiers">>, term_to_binary(Identifiers))
     ],
-    {ok, riakc_map:new(Values, undefined), Partitions}.
+
+    Config = riakc_map:new(Values, undefined),
+
+    {ok, Config}.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec init_partitions(babel_index:config()) ->
+    {ok, [babel_index_partition:t()]}
+    | {error, any()}.
+
+init_partitions(Config) ->
+    Identifiers = binary_to_term(
+        riakc_register:value(
+            babel_crdt_utils:dirty_fetch(
+                {<<"partition_identifiers">>, register},
+                Config
+            )
+        )
+    ),
+    Partitions = [
+        {Id, babel_index_partition:new(Id)} || Id <- Identifiers
+    ],
+    {ok, Partitions}.
 
 
 %% -----------------------------------------------------------------------------
@@ -156,8 +299,9 @@ partition_identifier(Config, Data) ->
     Prefix = partition_identifier_prefix(Config),
 
     PKey = collect(Config, Data, partition_by(Config)),
-    Hash = hash:Algo(PKey),
-    gen_identifier(Prefix, Hash rem N).
+
+    Bucket = babel_consistent_hashing:bucket(PKey, N, Algo),
+    gen_identifier(Prefix, Bucket).
 
 
 
@@ -166,11 +310,13 @@ partition_identifier(Config, Data) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec partition_identifiers(riak_kv_index:config(), asc | desc) ->
-    [riak_index:partition_id()].
+    [babel_index:partition_id()].
 
 partition_identifiers(Config, Order) ->
     Default = sort_ordering(Config),
     maybe_reverse(Default, Order, partition_identifiers(Config)).
+
+
 
 
 %% -----------------------------------------------------------------------------
@@ -178,8 +324,8 @@ partition_identifiers(Config, Order) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec partition_size(
-    Config :: riak_kv_index:config(),
-    Partition :: riak_kv_index:partition()
+    Config :: riak_kvindex:config(),
+    Partition :: babel_index_partition:t()
     ) -> non_neg_integer().
 
 partition_size(_, Partition) ->
@@ -193,9 +339,9 @@ partition_size(_, Partition) ->
 %% -----------------------------------------------------------------------------
 -spec update_partition(
     Config :: riak_kv_index:config(),
-    Partition :: riak_kv_index:partition(),
+    Partition :: babel_index_partition:t(),
     ActionData :: action() | [action()]
-    ) -> riak_kv_index:partition() | no_return().
+    ) -> babel_index_partition:t() | no_return().
 
 update_partition(Config, Partition, {insert, Data}) ->
     IndexKey = collect(Config, Data, index_by(Config)),
@@ -230,136 +376,20 @@ update_partition(_, Partition, []) ->
 
 
 %% =============================================================================
-%% API
-%% =============================================================================
-
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec sort_ordering(riak_index:config()) -> asc | desc.
-
-sort_ordering(Config) ->
-    binary_to_existing_atom(
-        riakc_map:fetch({<<"sort_ordering">>, set}, Config),
-        utf8
-    ).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec partition_algorithm(riak_index:config()) -> atom().
-
-partition_algorithm(Config) ->
-    binary_to_atom(
-        riakc_map:fetch({<<"algorithm">>, register}, Config), utf8
-    ).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec partition_identifiers(riak_index:config()) -> [binary()].
-
-partition_identifiers(Config) ->
-    ordsets:to_list(
-        riakc_set:value(
-            riakc_map:fetch({<<"partition_identifiers">>, set}, Config)
-        )
-    ).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec partition_identifier_prefix(riak_index:config()) -> binary().
-
-partition_identifier_prefix(Config) ->
-    riakc_map:fetch({<<"partition_identifier_prefix">>, register}, Config).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec partition_by(riak_index:config()) -> [binary()].
-
-partition_by(Config) ->
-    riakc_set:values(
-        riakc_map:fetch({<<"partition_by">>, set}, Config)
-    ).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec index_by(riak_index:config()) -> [binary()].
-
-index_by(Config) ->
-    riakc_set:values(riakc_map:fetch({<<"index_by">>, set}, Config)).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec aggregate_by(riak_index:config()) -> [binary()].
-
-aggregate_by(Config) ->
-    case riakc_map:find({<<"aggregate_by">>, set}, Config) of
-        {ok, Set} -> riakc_set:values(Set);
-        error -> []
-    end.
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec covered_fields(riak_index:config()) -> [binary()].
-
-covered_fields(Config) ->
-    riakc_set:values(riakc_map:fetch({<<"covered_fields">>, set}, Config)).
-
-
-
-%% =============================================================================
 %% PRIVATE
 %% =============================================================================
 
 
 
 %% @private
-init_partitions(Prefix, N) ->
-    Identifiers = [gen_identifier(Prefix, X) || X <- lists:seq(0, N - 1)],
-    Partitions = [{Id, riak_index_partition:new()}  || Id <- Identifiers],
-    {Identifiers, Partitions}.
+gen_partition_identifiers(Prefix, N) ->
+    [gen_identifier(Prefix, X) || X <- lists:seq(0, N - 1)].
 
 
 %% @private
 gen_identifier(Prefix, N) ->
-    <<Prefix/binary, (integer_to_binary(N))>>.
+    <<Prefix/binary, $_, (integer_to_binary(N))/binary>>.
 
-
-%% @private
-wrap(register, Field, Value) ->
-    {{Field, register}, riakc_register:new(Value, undefined)};
-
-wrap(counter, Field, Value) ->
-    {{Field, counter}, riakc_counter:new(Value, undefined)};
-
-wrap(set, Field, Values) ->
-    {{Field, set}, riakc_set:new(Values, undefined)};
-
-wrap(map, Field, Values) ->
-    {{Field, map}, riakc_map:new(Values, undefined)}.
 
 
 %% @private
@@ -416,14 +446,13 @@ maybe_get_error(Field, error) ->
 
 %% @private
 insert_data(Partition, {AggregateKey, IndexKey}, Value) ->
-    riakc_map:update(
-        {<<"data">>, map},
+    babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
                 {AggregateKey, map},
                 fun(AMap) ->
                     riakc_map:update(
-                        {IndexKey, map},
+                        {IndexKey, register},
                         fun(R) -> riakc_register:set(Value, R) end,
                         AMap
                     )
@@ -435,11 +464,10 @@ insert_data(Partition, {AggregateKey, IndexKey}, Value) ->
     );
 
 insert_data(Partition, IndexKey, Value) ->
-    riakc_map:update(
-        {<<"data">>, map},
+    babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
-                {IndexKey, map},
+                {IndexKey, register},
                 fun(R) -> riakc_register:set(Value, R) end,
                 Data
             )
@@ -450,8 +478,7 @@ insert_data(Partition, IndexKey, Value) ->
 
 %% @private
 delete_data(Partition, {AggregateKey, IndexKey}) ->
-    riakc_map:update(
-        {<<"data">>, map},
+    babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
                 {AggregateKey, map},
@@ -463,8 +490,7 @@ delete_data(Partition, {AggregateKey, IndexKey}) ->
     );
 
 delete_data(Partition, IndexKey) ->
-    riakc_map:update(
-        {<<"data">>, map},
+    babel_index_partition:update_data(
         fun(Data) -> riakc_map:erase({IndexKey, map}, Data) end,
         Partition
     ).
@@ -473,36 +499,7 @@ delete_data(Partition, IndexKey) ->
 %% @private
 maybe_reverse(Order, Order, L) ->
     L;
+
 maybe_reverse(_, _, L) ->
     lists:reverse(L).
-
-
-%% %% @private
-%% increment_size(Partition, N) ->
-%%     riakc_map:update(
-%%         {<<"meta">>, map},
-%%         fun(M) ->
-%%             riakc_map:update(
-%%                 {<<"size">>, counter},
-%%                 fun(C) -> riakc_counter:increment(N, C) end,
-%%                 M
-%%             )
-%%         end,
-%%         Partition
-%%     ).
-
-
-%% %% @private
-%% decrement_size(Partition, N) ->
-%%     riakc_map:update(
-%%         {<<"meta">>, map},
-%%         fun(M) ->
-%%             riakc_map:update(
-%%                 {<<"size">>, counter},
-%%                 fun(C) -> riakc_counter:decrement(N, C) end,
-%%                 M
-%%             )
-%%         end,
-%%         Partition
-%%     ).
 

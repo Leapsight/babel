@@ -1,20 +1,21 @@
 # Users By Email
 
+
 ## Example 1 - Simple case
 
 ```erlang
-Index = #{
+Conf = #{
     id => <<"users_by_email">>,
     bucket_type => <<"map">>,
     bucket => <<"lojack/johndoe/index_data">>,
-    type => riak_hash_partitioned_index,
+    type => babel_hash_partitioned_index,
     config => #{
         sort_ordering => asc,
         number_of_partitions => 8,
-        partition_algorithm => fnv32a,
-        partition_by => [email],
-        index_by => [email],
-        covered_fields => [user_id]
+        partition_algorithm => jch,
+        partition_by => [{<<"email">>, register}],
+        index_by => [{<<"email">>, register}],
+        covered_fields => [{<<"user_id">>, register}]
     }
 }.
 ```
@@ -39,11 +40,11 @@ Index = #{
     id => <<"users_by_email">>,
     bucket_type => <<"map">>,
     bucket => <<"lojack/johndoe/index_data">>,
-    type => riak_hash_partitioned_index,
+    type => babel_hash_partitioned_index,
     config => #{
         sort_ordering => asc,
         number_of_partitions => 8,
-        partition_algorithm => fnv32a,
+        partition_algorithm => jch,
         partition_by => [email],
         index_by => [email],
         covered_fields => [user_id, account_id]
@@ -72,11 +73,11 @@ Index = #{
     id => <<"users_by_email">>,
     bucket_type => <<"map">>,
     bucket => <<"lojack/johndoe/index_data">>,
-    type => riak_hash_partitioned_index,
+    type => babel_hash_partitioned_index,
     config => #{
         sort_ordering => asc,
         number_of_partitions => 8,
-        partition_algorithm => fnv32a,
+        partition_algorithm => jch,
         partition_by => [email],
         aggregate_by => [email],
         index_by => [email],
@@ -109,11 +110,11 @@ Index = #{
     id => <<"users_by_email">>,
     bucket_type => <<"map">>,
     bucket => <<"lojack/johndoe/index_data">>,
-    type => riak_hash_partitioned_index,
+    type => babel_hash_partitioned_index,
     config => #{
         sort_ordering => asc,
         number_of_partitions => 8,
-        partition_algorithm => fnv32a,
+        partition_algorithm => jch,
         partition_by => [email],
         aggregate_by => [email],
         index_by => [email],
@@ -147,11 +148,11 @@ Index = #{
     id => <<"users_by_location">>,
     bucket_type => <<"map">>,
     bucket => <<"lojack/johndoe/index_data">>,
-    type => riak_hash_partitioned_index,
+    type => babel_hash_partitioned_index,
     config => #{
         sort_ordering => asc,
         number_of_partitions => 8,
-        partition_algorithm => fnv32a,
+        partition_algorithm => jch,
         partition_by => [post_code],
         aggregate_by => [post_code, last_name],
         index_by => [post_code, last_name, first_name],

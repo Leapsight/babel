@@ -3,7 +3,7 @@
 %% @end
 %%%-------------------------------------------------------------------
 
--module(riak_utils_app).
+-module(babel_app).
 
 -behaviour(application).
 
@@ -11,9 +11,9 @@
 
 
 start(_StartType, _StartArgs) ->
-    ok = riak_utils_config:init(),
+    ok = babel_config:init(),
 
-    case riak_utils_sup:start_link() of
+    case babel_sup:start_link() of
         {ok, _} = OK ->
             OK;
         Error ->

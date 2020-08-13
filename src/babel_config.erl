@@ -1,4 +1,4 @@
--module(riak_utils_config).
+-module(babel_config).
 -behaviour(app_config).
 
 -define(APP, riak_utils).

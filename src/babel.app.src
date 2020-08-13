@@ -1,0 +1,14 @@
+{application, babel, [
+    {description, "An Erlang application providing a way to define and manage custom indices for Riak KV."},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {babel_app, []}},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["Apache 2.0"]},
+    {links, []}
+]}.

@@ -3,7 +3,7 @@
 %% @end
 %%%-------------------------------------------------------------------
 
--module(riak_utils_sup).
+-module(babel_sup).
 
 -behaviour(supervisor).
 

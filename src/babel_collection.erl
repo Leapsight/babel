@@ -1,10 +1,10 @@
 %% -----------------------------------------------------------------------------
-%% @doc A riak_index_collection is a CRDT map (Riak KV Datatype), that maps
-%% binary keys to {@link riak_index} objects.
+%% @doc A babel_collection is a CRDT map (Riak KV Datatype), that maps
+%% binary keys to {@link babel} objects.
 %% Keys typically represent a resource (or entity) name in your domain model
 %% e.g. accounts, users.
 %%
-%% A riak_index_collection object is store in Riak KV under a bucket_type named
+%% A babel_collection object is store in Riak KV under a bucket_type named
 %% "index_collection" and a bucket name which results from concatenating a
 %% prefix provided as argument in this module functions a key separator and the
 %% suffix "index_collection".
@@ -35,12 +35,10 @@
 %%
 %% @end
 %% -----------------------------------------------------------------------------
--module(riak_index_collection).
--include("riak_index.hrl").
+-module(babel_collection).
+-include("babel.hrl").
 -include_lib("riakc/include/riakc.hrl").
 
--define(BUCKET_TYPE, <<"index_collection">>).
--define(BUCKET(Prefix), <<Prefix/binary, ?KEY_SEPARATOR, "index_collection">>).
 
 -type t()           ::  riakc_map:crdt_map().
 
@@ -49,16 +47,15 @@
 
 
 %% API
--export([bucket/1]).
--export([bucket_type/1]).
--export([create/4]).
--export([create/5]).
+-export([add_index/3]).
+-export([delete_index/2]).
+-export([put/4]).
+-export([put/5]).
 -export([delete/3]).
 -export([delete/4]).
 -export([fetch/3]).
 -export([fetch/4]).
--export([from_list/1]).
--export([from_map/1]).
+-export([new/1]).
 -export([index/2]).
 -export([lookup/3]).
 -export([lookup/4]).
@@ -76,35 +73,59 @@
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Takes a list of pairs mapping a list of binary keys to values of type
-%% `riak_index:t()' and returns an index collection.
+%% @doc Takes a list of pairs (property list) or map of binary keys to values
+%% of type `babel_index:t()' and returns an index collection.
 %% @end
 %% -----------------------------------------------------------------------------
--spec from_list(Indices :: [{binary(), riak_index:t()}]) -> t().
+-spec new(Indices :: [{binary(), babel_index:t()}]) -> t().
 
-from_list(Indices) when is_list(Indices) ->
-    from_map(maps:from_list(Indices)).
+new(Indices) when is_list(Indices) ->
+    Values = [babel_crdt_utils:map_entry(map, K, V) || {K, V} <- Indices],
+    riakc_map:new(Values, undefined);
+
+new(Indices) when is_map(Indices) ->
+    new(maps:to_list(Indices)).
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Takes a map of binary keys to values of type `riak_index:t()' and
-%% returns an index collection.
+%% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec from_map(Indices :: #{binary => riak_index:t()}) -> t().
+-spec size(Collection :: t()) -> non_neg_integer().
 
-from_map(Indices) when is_map(Indices) ->
-    ToCRDT = fun
-        ToCRDT(K, V, Acc) when is_atom(K) ->
-            ToCRDT(atom_to_binary(K, utf8), V, Acc);
-        ToCRDT(K, V, Acc) when is_binary(K) ->
-            [{{K, map}, V}|Acc]
-    end,
-    Values = maps:fold(ToCRDT, [], Indices),
-    Ctxt = undefined,
+size(Collection) ->
+    riakc_map:size(Collection).
 
-    riakc_map:new(Values, Ctxt).
 
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec index(Key :: binary(), Collection :: t()) -> babel_index:t().
+
+index(Key, Collection) when is_binary(Key) ->
+    riakc_map:fetch({Key, map}, Collection).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec add_index(Id :: binary(), Index :: babel_index:t(), Collection :: t()) ->
+    t() | no_return().
+
+add_index(Id, Index, Collection) ->
+    riakc_map:update({Id, map}, fun(_R) -> Index end, Collection).
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec delete_index(Id :: binary(), Collection :: t()) ->
+    t() | no_return().
+
+delete_index(Id, Collection) ->
+    riakc_map:erase({Id, map}, Collection).
 
 
 %% -----------------------------------------------------------------------------
@@ -113,21 +134,17 @@ from_map(Indices) when is_map(Indices) ->
 %% binary <<"index_collection">> using the separator <<"/">>.
 %% @end
 %% -----------------------------------------------------------------------------
--spec create(
-    Conn :: pid(),
-    BucketPrefix :: binary(),
-    Key :: binary(),
-    Term :: t() | [{binary(), riak_index:t()}] | #{binary() => riak_index:t()}
-    ) ->
+-spec put(
+    Conn :: pid(), BucketPrefix :: binary(), Key :: binary(), Term :: t()) ->
     {ok, Index :: t()} | {error, Reason :: any()}.
 
 
-create(Conn, BucketPrefix, Key, Indices) ->
+put(Conn, BucketPrefix, Key, Indices) ->
     ReqOpts = #{
         w => quorum,
         pw => quorum
     },
-    create(Conn, BucketPrefix, Key, Indices, ReqOpts).
+    put(Conn, BucketPrefix, Key, Indices, ReqOpts).
 
 
 %% -----------------------------------------------------------------------------
@@ -136,25 +153,20 @@ create(Conn, BucketPrefix, Key, Indices) ->
 %% binary <<"index_collection">> using the separator <<"/">>.
 %% @end
 %% -----------------------------------------------------------------------------
--spec create(
+-spec put(
     Conn :: pid(),
     BucketPrefix :: binary(),
     Key :: binary(),
-    Term :: t() | [{binary(), riak_index:t()}] | #{binary() => riak_index:t()},
+    Term :: t(),
     Opts :: req_opts()) ->
     {ok, Index :: t()} | {error, Reason :: any()}.
 
-create(Conn, BucketPrefix, Key, Term, ReqOpts) when is_list(Term) ->
-    create(Conn, BucketPrefix, Key, from_list(Term), ReqOpts);
 
-create(Conn, BucketPrefix, Key, Term, ReqOpts) when is_map(Term) ->
-    create(Conn, BucketPrefix, Key, from_map(Term), ReqOpts);
-
-create(Conn, BucketPrefix, Key, IndexCollection, ReqOpts)
+put(Conn, BucketPrefix, Key, Collection, ReqOpts)
 when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
     Opts = validate_req_opts(ReqOpts),
-    TypeBucket = {?BUCKET_TYPE, ?BUCKET(BucketPrefix)},
-    Op = riakc_map:to_op(IndexCollection),
+    TypeBucket = type_bucket(BucketPrefix),
+    Op = riakc_map:to_op(Collection),
 
     case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, Opts) of
         {error, _} = Error ->
@@ -232,7 +244,7 @@ lookup(Conn, BucketPrefix, Key) ->
 lookup(Conn, BucketPrefix, Key, ReqOpts)
 when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
     Opts = validate_req_opts(ReqOpts),
-    TypeBucket = {?BUCKET_TYPE, ?BUCKET(BucketPrefix)},
+    TypeBucket = type_bucket(BucketPrefix),
 
     case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, Opts) of
         {ok, _} = OK -> OK;
@@ -275,7 +287,7 @@ delete(Conn, BucketPrefix, Key) ->
 delete(Conn, BucketPrefix, Key, ReqOpts)
 when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
     Opts = validate_req_opts(ReqOpts),
-    TypeBucket = {?BUCKET_TYPE, ?BUCKET(BucketPrefix)},
+    TypeBucket = type_bucket(BucketPrefix),
 
     case riakc_pb_socket:delete(Conn, TypeBucket, Key, Opts) of
         ok -> ok;
@@ -284,63 +296,24 @@ when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
     end.
 
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec bucket(IndexCollection :: t()) -> binary().
-
-bucket(IndexCollection) ->
-    riakc_map:fetch({<<"bucket">>, register}, IndexCollection).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec bucket_type(IndexCollection :: t()) -> binary().
-
-bucket_type(IndexCollection) ->
-    riakc_map:fetch({<<"bucket_type">>, register}, IndexCollection).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec index(IndexCollection :: t(), Key :: binary()) -> riak_index:t().
-
-index(IndexCollection, Key) when is_binary(Key) ->
-    riakc_map:fetch({Key, map}, IndexCollection).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec size(IndexCollection :: t()) -> non_neg_integer().
-
-size(IndexCollection) ->
-    riakc_map:size(IndexCollection).
-
-
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns an erlang map representation of the index collection.
 %% The values are also represented as erlang maps by calling {@link
-%% riak_index:to_map/1}.
+%% babel:to_map/1}.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec to_map(t()) -> map().
 
-to_map(IndexCollection) ->
+to_map(Collection) ->
     riakc_map:fold(
         fun({K, map}, V, Acc) ->
-            maps:put(K, riak_index:to_map(V), Acc)
+            maps:put(K, babel:to_map(V), Acc)
         end,
         #{},
-        IndexCollection
+        Collection
     ).
+
 
 
 %% =============================================================================
@@ -357,3 +330,10 @@ to_map(IndexCollection) ->
 %% -----------------------------------------------------------------------------
 validate_req_opts(Opts) ->
     maps:to_list(maps:validate(Opts, ?REQ_OPTS_SPEC)).
+
+
+%% @private
+type_bucket(Prefix) ->
+    Type = babel_config:get(index_collection_bucket_type),
+    Bucket = <<Prefix/binary, ?KEY_SEPARATOR, "index_collection">>,
+    {Type, Bucket}.

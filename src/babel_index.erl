@@ -7,13 +7,13 @@
 %% maps.
 %%
 %% An index is persisted as part of an index collection {@link
-%% riak_index_collection}. An index collection aggregates all indices
+%% babel_collection}. An index collection aggregates all indices
 %% for a topic e.g. domain model entity.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
--module(riak_index).
--include("riak_index.hrl").
+-module(babel_index).
+-include("babel.hrl").
 -include_lib("riakc/include/riakc.hrl").
 -include_lib("kernel/include/logger.hrl").
 
@@ -35,7 +35,7 @@ end).
     },
     bucket_type => #{
         description => <<
-            "The bucket type used to store the index_partition() objects. "
+            "The bucket type used to store the babel_index_partition:t() objects. "
             "This bucket type should have a datatype of `map`."
         >>,
         required => true,
@@ -45,7 +45,7 @@ end).
     },
     bucket => #{
         description => <<
-            "The bucket name used to store the index_partition() objects"
+            "The bucket name used to store the babel_index_partition:t() objects"
             " of this index. Typically the name of an entity in plural form"
             " e.g. 'accounts'."
         >>,
@@ -70,7 +70,7 @@ end).
     }
 }).
 
--record(riak_index_partition_iter, {
+-record(babel_index_partition_iter, {
     partition_identifiers   ::  [partition_id()],
     current_id              ::  partition_id(),
     bucket_type             ::  bucket_type(),
@@ -78,7 +78,7 @@ end).
     done = false            ::  boolean()
 }).
 
--record(riak_index_element_iter, {
+-record(babel_element_iter, {
     partition_iter          ::  partition_iterator(),
     key                     ::  binary(),
     bucket_type             ::  bucket_type(),
@@ -89,7 +89,6 @@ end).
 
 -type t()                       ::  riakc_map:crdt_map().
 -type config()                  ::  riakc_map:crdt_map().
--type partition()               ::  riakc_map:crdt_map().
 -type partition_id()            ::  binary().
 -type partition_key()           ::  binary().
 -type local_key()               ::  binary().
@@ -97,12 +96,11 @@ end).
 -type data()                    ::  riakc_map:crdt_map()
                                     | proplists:proplist()
                                     | map().
--type partition_iterator()      ::  #riak_index_partition_iter{}.
--type element_iterator()        ::  #riak_index_element_iter{}.
+-type partition_iterator()      ::  #babel_index_partition_iter{}.
+-type element_iterator()        ::  #babel_element_iter{}.
 
 -export_type([t/0]).
 -export_type([config/0]).
--export_type([partition/0]).
 -export_type([partition_id/0]).
 -export_type([partition_key/0]).
 -export_type([local_key/0]).
@@ -117,6 +115,7 @@ end).
 -export([bucket_type/1]).
 -export([config/1]).
 -export([new/1]).
+-export([create_partitions/1]).
 -export([partition_identifiers/1]).
 -export([partition_identifiers/2]).
 -export([type/1]).
@@ -136,8 +135,12 @@ end).
 
 
 
--callback init(t(), map()) ->
-    {ok, config(), [{key(), partition()}]}
+-callback init(IndexId :: binary(), ConfigData :: map()) ->
+    {ok, Config :: config()}
+    | {error, any()}.
+
+-callback init_partitions(config()) ->
+    {ok, [babel_index_partition:t()]}
     | {error, any()}.
 
 -callback number_of_partitions(config()) -> pos_integer().
@@ -146,10 +149,9 @@ end).
 
 -callback partition_identifiers(config(), asc | desc) -> [partition_id()].
 
--callback partition_size(config(), partition()) -> non_neg_integer().
-
--callback update_partition(config(), partition(), {action(), data()}) ->
-    partition().
+-callback update_partition(
+    config(), babel_index_partition:t(), {action(), data()}) ->
+    babel_index_partition:t().
 
 
 
@@ -169,10 +171,11 @@ end).
 %%
 %% **id** :: binary() – a unique name for this index.
 %% **bucket_type** :: binary() | atom() – the bucket type used to store the
-%% index_partition() objects. This bucket type should have a datatype of `map`.
+%% babel_index_partition:t() objects. This bucket type should have a datatype
+%% of `map`.
 %% **bucket** :: binary() | atom() – the bucket name used to store the
-%% index_partition() objects of this index. Typically the name of an entity in
-%% plural form e.g. 'accounts'.
+%% babel_index_partition:t() objects of this index. Typically the name of an
+%% entity in plural form e.g. 'accounts'.
 %% **type** :: atom() – the index type (Erlang module) used by this index.
 %% config :: map() – the configuration data for the index type used by this
 %% index.
@@ -183,14 +186,30 @@ end).
 
 new(Spec0) ->
     Spec1 = maps_utils:validate(Spec0, ?SPEC),
-    #{type := Type, config := ConfigSpec} = Spec1,
+    #{id := IndexId, type := Type, config := ConfigSpec} = Spec1,
 
-    case Type:init(ConfigSpec) of
+    case Type:init(IndexId, ConfigSpec) of
         {ok, ConfigCRDT} ->
-            spec_to_crdt(Spec1#{config => ConfigCRDT});
+            Index = spec_to_crdt(Spec1#{config => ConfigCRDT}),
+            {ok, Index};
         {error, _} = Error ->
             Error
     end.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+create_partitions(Index) ->
+    Type = binary_to_atom(
+        riakc_register:value(
+            babel_crdt_utils:dirty_fetch({<<"type">>, register}, Index)
+        ),
+        utf8
+    ),
+    Config = babel_crdt_utils:dirty_fetch({<<"config">>, map}, Index),
+    Type:init_partitions(Config).
 
 
 %% -----------------------------------------------------------------------------
@@ -215,7 +234,7 @@ bucket_type(Index) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns the type of this index. A type is a module name implementing
-%% the riak_index behaviour.
+%% the babel behaviour.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec type(t()) -> maybe_error(module()).
@@ -229,7 +248,7 @@ type(Index) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns the configuration associated with this index.
-%% The configuration depends on the index type {@link riak_index:type/1}.
+%% The configuration depends on the index type {@link babel:type/1}.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec config(t()) -> maybe_error(riakc_map:crdt_map()).
@@ -252,10 +271,10 @@ update(Conn, Index, {_, Data} = Action) ->
     TypeBucket = {bucket_type(Index), bucket(Index)},
 
     Key = Mod:partition_identifier(Config, Data),
-    Part0 = riak_index_partition:fetch(Conn, TypeBucket, Key),
+    Part0 = babel_index_partition:fetch(Conn, TypeBucket, Key),
     Part1 = Mod:update_partition(Config, Part0, Action),
 
-    case riak_index_partition:update(Conn, TypeBucket, Key, Part1) of
+    case babel_index_partition:put(Conn, TypeBucket, Key, Part1) of
         ok ->
             ok;
         {error, Reason} ->
@@ -274,10 +293,10 @@ update(Conn, Index, List) when is_list(List) ->
     TypeBucket = {bucket_type(Index), bucket(Index)},
 
     Update = fun({Key, Actions}) when is_list(Actions) ->
-        Part0 = riak_index_partition:fetch(Conn, TypeBucket, Key),
+        Part0 = babel_index_partition:fetch(Conn, TypeBucket, Key),
         Part1 = Mod:update_partition(Config, Part0, Actions),
 
-        case riak_index_partition:update(Conn, TypeBucket, Key, Part1) of
+        case babel_index_partition:put(Conn, TypeBucket, Key, Part1) of
             ok ->
                 ok;
             {error, Reason} ->
@@ -392,20 +411,15 @@ spec_to_crdt(Spec) ->
         config := Config
     } = Spec,
 
-    Ctxt = undefined,
-
     Values = [
-        {{<<"id">>, register}, riakc_register:new(Id, Ctxt)},
-        {{<<"bucket_type">>, register}, riakc_register:new(BucketType, Ctxt)},
-        {{<<"bucket">>, register}, riakc_register:new(Bucket, Ctxt)},
-        {
-            {<<"type">>, register},
-            riakc_register:new(atom_to_binary(Type, utf8), Ctxt)
-        },
+        babel_crdt_utils:map_entry(register, <<"id">>, Id),
+        babel_crdt_utils:map_entry(register, <<"bucket_type">>, BucketType),
+        babel_crdt_utils:map_entry(register, <<"bucket">>, Bucket),
+        babel_crdt_utils:map_entry(
+            register, <<"type">>, atom_to_binary(Type, utf8)),
         {{<<"config">>, map}, Config}
     ],
-
-    riakc_map:new(Values, Ctxt).
+    riakc_map:new(Values, undefined).
 
 
 %% @private
@@ -416,6 +430,7 @@ actions_by_partition_id(Mod, Config, List) ->
         || {_, Data} = X <- List
     ],
 
-    %% We generate the list [ {partition_id(), [{action(), data()}]} ].
+    %% We generate the list [ {partition_id(), [{action(), data()}]} ]
+    %% by grouping by the 1st element and collecting the 2nd element
     Proj = {1, {function, collect, [2]}},
     leap_tuples:summarize(Tuples, Proj, #{}).

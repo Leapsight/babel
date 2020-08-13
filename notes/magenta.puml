@@ -1,0 +1,567 @@
+@startuml
+' !include ../../styles/uml_theme.puml
+
+left to right direction
+
+skinparam stateArrowColor	black
+skinparam stateArrowFontColor	black
+skinparam stateArrowFontName 	Avenir Next
+skinparam stateArrowFontSize	13
+skinparam stateArrowFontStyle	plain
+skinparam stateAttributeFontColor	black
+skinparam stateAttributeFontName 	Avenir Next
+skinparam stateAttributeFontSize	13
+skinparam stateAttributeFontStyle	plain
+skinparam stateBackgroundColor	#FEFECE
+skinparam stateBorderColor	#DD5A25
+skinparam stateEndColor	black
+skinparam stateFontColor	black
+skinparam stateFontName 	Avenir Next
+skinparam stateFontSize	13
+skinparam stateFontStyle	plain
+skinparam stateStartColor	black
+
+skinparam state {
+  BackgroundColor<<IndexBucket>> LightGray
+  BackgroundColor<<DataBucket>> Magenta
+}
+
+' hide empty description
+
+state "<b>{map, :tenant_id/index_collection}" as bt0 <<IndexBucket>> {
+
+    state "<b>accounts" as accounts_meta {
+
+        state "<b>accounts_idx" as accounts_idx_meta
+        accounts_idx_meta : name = accounts_idx
+        accounts_idx_meta : bucket_type = map
+        accounts_idx_meta : bucket = ":tenant_id/index_data"
+        accounts_idx_meta : type = riak_hash_partitioned_index
+        accounts_idx_meta : config.number_of_partitions = 128
+        accounts_idx_meta : config.hash_by = [account_id :: binary()]
+        accounts_idx_meta : config.algorithm = fnv32a
+
+        state "<b>accounts_by_email_idx" as accounts_by_email_idx_meta
+        accounts_by_email_idx_meta : name
+        accounts_by_email_idx_meta : description = "Given a user email\nfind the corresponding account IDs"
+        accounts_by_email_idx_meta : tenant_id
+        accounts_by_email_idx_meta : account_id
+        accounts_by_email_idx_meta : bucket_type = map
+        accounts_by_email_idx_meta : bucket = "accounts_by_email_idx"
+        accounts_by_email_idx_meta : type = riak_hash_partitioned_index
+        accounts_by_email_idx_meta : config.number_of_partitions = 128
+        accounts_by_email_idx_meta : config.hash_by = .email
+        accounts_by_email_idx_meta : config.algorithm = fnv32a
+    }
+
+
+}
+
+note left of bt0
+A Riak bucket containing metadata
+about indices. There is an index_collection()
+object per entity e.g. for the Account
+entity we have an index_collection() store
+under the `accounts` key.
+end note
+
+note left of accounts_meta
+An index_collection() object, a Riak Map
+where keys are the names of the
+indices and the value their
+specification.
+The Erlang representation would be:
+
+&#35;{
+    accounts_idx => index(),
+    accounts_by_email_idx => index()
+}
+
+As they never/seldom change, these
+objects should be cached to avoid an
+additional operation per query.
+end note
+
+note left of accounts_idx_meta
+An index() object defines the type (kind)
+of index and its configuration, including
+the location {type, bucket/key} of its
+index_partition() objects.
+
+The Erlang representation would be:
+&#35;{
+    name => "accounts_idx",
+    description => "An index to allow listing
+    all accounts for a tenant_id",
+    bucket_type = map
+    bucket = "users_idx"
+    type = riak_hash_partitioned_index
+    config => &#35;{
+        number_of_partitions = 1,
+        algorithm => fnv32a,
+        hash_by = [user_id]
+    }
+}
+
+Eash index_partition() will be stored in bucket
+{:bucket_type, :bucket}
+under a key derived using the expresion
+`:name ++ _partition_ ++ :partition_number`.
+
+---
+
+<i>Notice that "partition" in this context
+<i>refers to the way an index is split into
+<i>a number of index_partition() objects,
+<i>so do not confuse this concept with
+<i>Riak's ring partitions.
+<i>We use "partition" in the same way RDBMS
+<i>use for the same concept.
+end note
+
+
+state "<b>{map, :tenant_id/index_data}" as bt1 <<IndexBucket>> {
+    state "<b>accounts_idx_part_1" as accounts_idx_1
+    accounts_idx_1 : meta => map()
+    accounts_idx_1 : data => set(account_id)
+
+    state "<b>accounts_idx_part_N" as accounts_idx_N
+    accounts_idx_N : meta => map()
+    accounts_idx_N : data => set(account_id)
+
+    state "<b>accounts_by_email_idx_part_1" as accounts_by_email_idx_1
+    accounts_by_email_idx_1 : meta => map()
+    accounts_by_email_idx_1 : data => map(email => set(account_id))
+
+    state "<b>accounts_by_email_idx_part_N" as accounts_by_email_idx_N
+    accounts_by_email_idx_N : meta => map()
+    accounts_by_email_idx_N : data => map(email => set(account_id))
+}
+
+note right of accounts_idx_1
+An index_partition() object contains a
+subset of the index data.
+
+The object is a Riak map with two fields:
+
+* meta: Riak Map containing arbitrary
+information depending on the index() type.
+* data: Riak Map or Set containing
+ the actual index entries
+
+end note
+
+
+state "<b>{map, :tenant_id/:account_id/index_collection}" as b0 <<IndexBucket>> {
+    state "<b>users" as user_indices {
+        state "<b>users_idx" as users_idx_meta
+        users_idx_meta : name
+        users_idx_meta : tenant_id
+        users_idx_meta : account_id
+        users_idx_meta : bucket_type = map
+        users_idx_meta : bucket = "users_idx"
+        users_idx_meta : type = riak_hash_partitioned_index
+        users_idx_meta : config.number_of_partitions = 1
+        users_idx_meta : config.hash_by = .user_id
+    }
+
+    state "<b>things" as thing_indices {
+        state "<b>things_idx" as things_idx_meta
+        things_idx_meta : name
+        things_idx_meta : tenant_id
+        things_idx_meta : account_id
+        things_idx_meta : bucket_type = map
+        things_idx_meta : bucket = "things_idx"
+        things_idx_meta : type = riak_hash_partitioned_index
+        things_idx_meta : config.number_of_partitions = 2
+        things_idx_meta : config.hash_by = .thing_id
+    }
+
+    state "<b>trips" as trip_indices {
+        state "<b>trips_idx" as trips_idx_meta
+        trips_idx_meta : name
+        trips_idx_meta : description = "A ring of tumbling \n windows of weekly width"
+        trips_idx_meta : tenant_id
+        trips_idx_meta : account_id
+        trips_idx_meta : bucket_type = map
+        trips_idx_meta : bucket = "trips_idx"
+        trips_idx_meta : type = riak_time_ring_index(week)
+        trips_idx_meta : config.number_of_partitions = 12 % weeks
+        trips_idx_meta : config.hash_by = .start_timestamp
+    }
+
+    state "<b>thing_tasks" as thing_task_indices {
+        state "<b>thing_tasks_idx" as thing_tasks_idx_meta
+        thing_tasks_idx_meta : name
+        thing_tasks_idx_meta : tenant_id
+        thing_tasks_idx_meta : account_id
+        thing_tasks_idx_meta : bucket_type = map
+        thing_tasks_idx_meta : bucket = "thing_tasks_idx"
+        thing_tasks_idx_meta : type = riak_hash_partitioned_index
+        thing_tasks_idx_meta : config.number_of_partitions = 8
+    }
+
+    state "<b>thing_reminders" as thing_reminders_indices {
+        state "<b>thing_reminders_idx" as thing_reminders_idx_meta
+        thing_reminders_idx_meta : name
+        thing_reminders_idx_meta : tenant_id
+        thing_reminders_idx_meta : account_id
+        thing_reminders_idx_meta : bucket_type = map
+        thing_reminders_idx_meta : bucket = "thing_reminders_idx"
+        thing_reminders_idx_meta : type = riak_hash_partitioned_index
+        thing_reminders_idx_meta : config.number_of_partitions = 8
+    }
+
+    state "<b>thing_action_executions" as thing_action_executions_indices {
+        state "<b>thing_action_executions_idx" as thing_action_executions_idx_meta
+        thing_action_executions_idx_meta : name
+        thing_action_executions_idx_meta : description = "A ring of tumbling \n windows of weekly width"
+        thing_action_executions_idx_meta : tenant_id
+        thing_action_executions_idx_meta : account_id
+        thing_action_executions_idx_meta : bucket_type = map
+        thing_action_executions_idx_meta : bucket = "thing_action_executions_idx"
+        thing_action_executions_idx_meta : type = riak_time_ring_index(week)
+        thing_action_executions_idx_meta : config.number_of_partitions = 12 % weeks
+    }
+}
+
+note right of users_idx_meta
+    This is actually the index for
+    all users within an account.
+    Instead of building a global
+    users_by_account index partitioning
+    by account_id, we use the account
+    namespace (bucket), so every account
+    has its own index.
+    This facilitates data removal (GDPR).
+end note
+
+state "<b>{map, :tenant_id/:account_id/index_data}" as taui <<IndexBucket>> {
+    state "<b>users_idx_part_1" as users_idx_1
+    users_idx_1 : meta => map()
+    users_idx_1 : data => set(user_id)
+
+    state "<b>users_idx_part_N" as users_idx_N
+    users_idx_N : meta => map()
+    users_idx_N : data => set(user_id)
+
+    state "<b>things_idx_part_1" as things_idx_1
+    things_idx_1 : meta => map()
+    things_idx_1 : data => set(thing_id)
+
+    state "<b>things_idx_part_N" as things_idx_N
+    things_idx_N : meta => map()
+    things_idx_N : data => set(thing_id)
+
+    state "<b>trips_idx_part_1" as trips_idx_1
+    trips_idx_1 : meta => map()
+    trips_idx_1 : data => set(trip_id)
+
+    state "<b>trips_idx_part_N" as trips_idx_N
+    trips_idx_N : meta => map()
+    trips_idx_N : data => set(trip_id)
+
+    state "<b>thing_tasks_idx_part_1" as thing_tasks_idx_1
+    thing_tasks_idx_1 : meta => map()
+    thing_tasks_idx_1 : data => set(task_id)
+
+    state "<b>thing_tasks_idx_part_N" as thing_tasks_idx_N
+    thing_tasks_idx_N : meta => map()
+    thing_tasks_idx_N : data => set(task_id)
+
+    state "<b>thing_reminders_idx_part_1" as thing_reminders_idx_1
+    thing_reminders_idx_1 : meta => map()
+    thing_reminders_idx_1 : data => set(reminder_id)
+
+    state "<b>thing_reminders_idx_part_N" as thing_reminders_idx_N
+    thing_reminders_idx_N : meta => map()
+    thing_reminders_idx_N : data => set(reminder_id)
+
+    state "<b>thing_action_executions_idx_part_1" as thing_action_executions_idx_1
+    thing_action_executions_idx_1 : meta => map()
+    thing_action_executions_idx_1 : data => set(neg_timestamp ++ thing_action_execution_id)
+
+    state "<b>thing_action_executions_idx_part_N" as thing_action_executions_idx_N
+    thing_action_executions_idx_N : meta => map()
+    thing_action_executions_idx_N : data => set(neg_timestamp ++ thing_action_execution_id)
+
+}
+
+state "<b>{map, :tenant_id/:account_id/users}" as tau <<DataBucket>> {
+    state "<b>:user_id" as user
+    user : username
+    user : ...
+}
+
+state "<b>{map, :tenant_id/accounts}" as ta <<DataBucket>> {
+    state "<b>:account_id" as account
+    account : ...
+}
+
+
+state "<b>{map, :tenant_id/:account_id/things}" as tat <<DataBucket>> {
+    state "<b>:thing_id" as thing
+    thing : ...
+}
+
+state "<b>{map, :tenant_id/:account_id/thing_tasks}" as tatask <<DataBucket>> {
+    state "<b>:thing_task_id" as thing_task
+    thing_task : ...
+}
+
+state "<b>{map, :tenant_id/:account_id/thing_reminders}" as taremind <<DataBucket>> {
+    state "<b>:thing_reminder_id" as thing_reminder
+    thing_reminder : ...
+}
+
+state "<b>{map, :tenant_id/:account_id/trips}" as tatrip <<DataBucket>> {
+    state "<b>:trip_id" as trip
+    trip : ...
+}
+
+state "<b>{map, :tenant_id/:account_id/thing_action_executions}" as tae <<DataBucket>> {
+    state "<b>:thing_action_id" as thing_action
+    thing_action : ...
+}
+
+state "<b>{map, :tenant_id/:account_id/:user_id/index_collection}" as bu0 <<IndexBucket>> {
+    state "<b>notifications" as notifications_indices{
+        state "<b>notifications_idx" as notifications_idx_meta
+        notifications_idx_meta : name
+        notifications_idx_meta : description = "A ring of tumbling \n windows of weekly width"
+        notifications_idx_meta : tenant_id
+        notifications_idx_meta : account_id
+        notifications_idx_meta : bucket_type = map
+        notifications_idx_meta : bucket = "notifications_idx"
+        notifications_idx_meta : %% Weeks
+        notifications_idx_meta : number_of_partitions = 12
+        notifications_idx_meta : type = riak_time_ring_index(week)
+    }
+
+    state "<b>agents" as agents_indices {
+        state "<b>agents_idx" as agents_idx_meta
+        agents_idx_meta : name
+        agents_idx_meta : description = ""
+        agents_idx_meta : tenant_id
+        agents_idx_meta : account_id
+        agents_idx_meta : bucket_type = map
+        agents_idx_meta : bucket = "agents_idx"
+        agents_idx_meta : number_of_partitions = 1
+        agents_idx_meta : type = riak_hash_partitioned_index
+    }
+
+    state "<b>geofences" as geofences_indices {
+        state "<b>geofences_idx" as geofences_idx_meta
+        geofences_idx_meta : name
+        geofences_idx_meta : description = ""
+        geofences_idx_meta : tenant_id
+        geofences_idx_meta : account_id
+        geofences_idx_meta : bucket_type = map
+        geofences_idx_meta : bucket = "geofences_idx"
+        geofences_idx_meta : number_of_partitions = 1
+        geofences_idx_meta : type = riak_hash_partitioned_index
+    }
+    state "<b>places" as places_indices {
+        state "<b>places_idx" as places_idx_meta
+        places_idx_meta : name
+        places_idx_meta : description = ""
+        places_idx_meta : tenant_id
+        places_idx_meta : account_id
+        places_idx_meta : bucket_type = map
+        places_idx_meta : bucket = "places_idx"
+        places_idx_meta : number_of_partitions = 1
+        places_idx_meta : type = riak_hash_partitioned_index
+    }
+}
+
+state "<b>{set, :tenant_id/:account_id/:user_id/index_data}" as bua <<IndexBucket>> {
+
+
+    state "<b>notifications_idx_part_1" as notifications_idx_1
+    notifications_idx_1 : meta => map()
+    notifications_idx_1 : data => set(neg_timestamp ++ notification_id)
+
+    state "<b>notifications_idx_part_N" as notifications_idx_N
+    notifications_idx_N : meta => map()
+    notifications_idx_N : data => set(neg_timestamp ++ notification_id)
+
+    state "<b>agents_partition_1" as agents_idx_1
+    agents_idx_1 : meta => map()
+    agents_idx_1 : data => set(agent_id)
+
+    state "<b>agents_partition_N" as agents_idx_N
+    agents_idx_N : meta => map()
+    agents_idx_N : data => set(agent_id)
+
+    state "<b>geofences_idx_part_1" as geofences_idx_1
+    geofences_idx_1 : meta => map()
+    geofences_idx_1 : data => set(geofence_id)
+
+    state "<b>geofences_idx_part_N" as geofences_idx_N
+    geofences_idx_N : meta => map()
+    geofences_idx_N : data => set(geofence_id)
+
+    state "<b>places_idx_part_1" as places_idx_1
+    places_idx_1 : meta => map()
+    places_idx_1 : data => set(place_id)
+
+    state "<b>places_idx_part_N" as places_idx_N
+    places_idx_N : meta => map()
+    places_idx_N : data => set(place_id)
+
+}
+
+state "<b>{map, :tenant_id/:account_id/:user_id/agents}" as agents <<DataBucket>> {
+    state "<b>:agent_id" as agent
+    agent : ...
+}
+
+state "<b>{map, :tenant_id/:account_id/:user_id/geofences}" as geofences <<DataBucket>> {
+    state "<b>:geofence_id" as geofence
+    geofence : ...
+}
+
+state "<b>{map, :tenant_id/:account_id/:user_id/places}" as places <<DataBucket>> {
+    state "<b>:place_id" as place
+    place : ...
+}
+
+state "<b>{map, :tenant_id/:account_id/:user_id/notifications}" as notif <<DataBucket>> {
+    state "<b>:notification_id" as notification
+    notification : ...
+}
+
+state fork_state <<fork>>
+[*] --> fork_state
+
+fork_state --> accounts_idx_meta: Q1.0
+accounts_idx_meta --> accounts_idx_1: Q1.1
+accounts_idx_meta --> accounts_idx_N: Q1.1
+accounts_idx_1 --> account: Q1.2
+accounts_idx_N --> account: Q1.2
+
+
+fork_state --> users_idx_meta: Q2.0
+users_idx_meta --> users_idx_1: Q2.1
+users_idx_meta --> users_idx_N: Q2.1
+users_idx_1 --> user: Q2.2
+users_idx_N --> user: Q2.2
+
+fork_state --> things_idx_meta: Q3.0
+things_idx_meta --> things_idx_1: Q3.1
+things_idx_meta --> things_idx_N: Q3.1
+things_idx_1 --> thing: Q3.2
+things_idx_N --> thing: Q3.2
+
+fork_state --> thing_tasks_idx_meta: Q4.0
+thing_tasks_idx_meta --> thing_tasks_idx_1: Q4.1
+thing_tasks_idx_meta --> thing_tasks_idx_N: Q4.1
+thing_tasks_idx_1 --> thing_task: Q4.2
+thing_tasks_idx_N --> thing_task: Q4.2
+
+fork_state --> thing_action_executions_idx_meta: Q5.0
+thing_action_executions_idx_meta --> thing_action_executions_idx_1: Q5.1
+thing_action_executions_idx_meta --> thing_action_executions_idx_N: Q5.1
+thing_action_executions_idx_1 --> thing_action: Q5.2
+thing_action_executions_idx_N --> thing_action: Q5.2
+
+fork_state --> thing_reminders_idx_meta: Q6.0
+thing_reminders_idx_meta --> thing_reminders_idx_1: Q6.1
+thing_reminders_idx_meta --> thing_reminders_idx_N: Q6.1
+thing_reminders_idx_1 --> thing_reminder: Q6.2
+thing_reminders_idx_N --> thing_reminder: Q6.2
+
+fork_state --> trips_idx_meta: Q7.0
+trips_idx_meta --> trips_idx_1: Q7.1
+trips_idx_meta --> trips_idx_N: Q7.1
+trips_idx_1 --> trip: Q7.2
+trips_idx_N --> trip: Q7.2
+
+fork_state --> agents_idx_meta: Q8.0
+agents_idx_meta --> agents_idx_1: Q8.1
+agents_idx_meta --> agents_idx_N: Q8.1
+agents_idx_1 --> agent: Q8.2
+agents_idx_N --> agent: Q8.2
+
+
+fork_state --> geofences_idx_meta: Q9.0
+geofences_idx_meta --> geofences_idx_1: Q9.1
+geofences_idx_meta --> geofences_idx_N: Q9.1
+geofences_idx_1 --> geofence: Q9.2
+geofences_idx_N --> geofence: Q9.2
+
+fork_state --> places_idx_meta: Q10.0
+places_idx_meta --> places_idx_1: Q10.1
+places_idx_meta --> places_idx_N: Q10.1
+places_idx_1 --> place: Q10.2
+places_idx_N --> place: Q10.2
+
+fork_state --> notifications_idx_meta: Q11.0
+notifications_idx_meta --> notifications_idx_1: Q11.1
+notifications_idx_meta --> notifications_idx_N: Q11.1
+notifications_idx_1 --> notification: Q11.2
+notifications_idx_N --> notification: Q11.2
+
+fork_state --> accounts_by_email_idx_meta: Q12.0
+accounts_by_email_idx_meta --> accounts_by_email_idx_1: Q12.1
+accounts_by_email_idx_meta --> accounts_by_email_idx_N: Q12.1
+accounts_by_email_idx_1 --> account: Q12.2
+accounts_by_email_idx_N --> account: Q12.2
+
+
+' Legends
+state "<b>Diagram Keys" as diagram_keys {
+    state "<b>{BucketType, IndexBucket}" as indexbucket <<IndexBucket>> {
+        state "<b>Key" as obj {
+            state "<b>Field" as kv
+            kv: Value
+        }
+    }
+
+    state "<b>{BucketType, DataBucket}" as databucket <<DataBucket>> {
+        state "<b>Key" as data {
+            data: Value
+        }
+    }
+}
+
+legend left
+    Q1.0) Find all accounts
+        Q1.1) Fetch partitions for tenant ID
+        Q1.3) Fetch account by ID
+    Q2.0) Find all users for account ID
+        Q2.1) Fetch partitions for account ID
+        Q2.2) Fetch user by ID
+    Q3.0) Find all things for account ID
+        Q3.1) Fetch partitions for things
+        Q3.2) Fetch thing by ID
+    Q4.0) Find all thing tasks for account ID
+        Q4.1) Fetch partitions for tasks
+        Q4.2) Fetch task by ID
+    Q5.0) Find all thing action executions for account ID
+        Q5.1) Fetch partitions for thing action executions
+        Q5.2) Fetch thing action execution by ID
+    Q7.0) Find all thing reminders for account ID
+        Q7.1) Fetch partitions for thing reminders
+        Q7.2) Fetch thing reminder by ID
+    Q7.0) Find all trips for account ID
+        Q7.1) Fetch partitions for trips
+        Q7.2) Fetch trip by ID
+    Q8.0) Find all agents for user ID
+        Q8.1) Fetch agents for trips
+        Q8.2) Fetch agent by ID
+    Q9.0) Find all geofences for user ID
+        Q9.1) Fetch geofences for trips
+        Q9.2) Fetch geofence by ID
+    Q10.0) Find all places for user ID
+        Q10.1) Fetch places for trips
+        Q10.2) Fetch place by ID
+    Q11.0) Find all notifications for user ID
+        Q11.1) Fetch notifications for trips
+        Q11.2) Fetch notification by ID
+    Q12.0) Find all accounts by email
+        Q12.1) Fetch account ID for email
+        Q12.2) Fetch notification by ID
+endlegend
+
+@enduml
