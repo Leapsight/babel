@@ -159,12 +159,12 @@ end).
 
 -callback number_of_partitions(config()) -> pos_integer().
 
--callback partition_identifier(config(), data()) -> partition_id().
+-callback partition_identifier(data(), config()) -> partition_id().
 
--callback partition_identifiers(config(), asc | desc) -> [partition_id()].
+-callback partition_identifiers(asc | desc, config()) -> [partition_id()].
 
 -callback update_partition(
-    config(), babel_index_partition:t(), {action(), data()}) ->
+    {action(), data()}, babel_index_partition:t(), config()) ->
     babel_index_partition:t().
 
 

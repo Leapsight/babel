@@ -176,7 +176,7 @@ init(Index, Spec0) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec number_of_partitions(riak_kv_index:config()) -> pos_integer().
+-spec number_of_partitions(babel_index:config()) -> pos_integer().
 
 number_of_partitions(Config) ->
     binary_to_integer(
@@ -188,10 +188,10 @@ number_of_partitions(Config) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_identifiers(riak_kv_index:config(), asc | desc) ->
+-spec partition_identifiers(asc | desc, babel_index:config()) ->
     [babel:partition_id()].
 
-partition_identifiers(Config, Order) ->
+partition_identifiers(Order, Config) ->
     Default = sort_ordering(Config),
     maybe_reverse(Default, Order, partition_identifiers(Config)).
 
@@ -200,10 +200,10 @@ partition_identifiers(Config, Order) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_identifier(riak_kv_index:config(), riak_kv_index:data()) ->
-    riak_kv_index:partition_id().
+-spec partition_identifier(babel_index:data(), babel_index:config()) ->
+    babel_index:partition_id().
 
-partition_identifier(Config, Data) ->
+partition_identifier(Data, Config) ->
     N = number_of_partitions(Config),
     Algo = partition_algorithm(Config),
     Prefix = partition_identifier_prefix(Config),

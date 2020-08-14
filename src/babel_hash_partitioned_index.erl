@@ -55,8 +55,19 @@
     }
 }).
 
+-type t()           ::  #{
+    sort_ordering := asc | desc,
+    number_of_partitions := pos_integer(),
+    partition_algorithm := atom(),
+    partition_by := binary(),
+    partition_identifier_prefix := binary(),
+    partition_identifiers := [binary()],
+    index_by := [riakc_map:key() | [riakc_map:key()]],
+    aggregate_by := [riakc_map:key() | [riakc_map:key()]],
+    covered_fields := [riakc_map:key() | [riakc_map:key()]]
+}.
 
--type action()      ::  {riak_kv_index:action(), riak_kv_index:data()}.
+-type action()      ::  {babel_index:action(), babel_index:data()}.
 
 -export_type([action/0]).
 
@@ -95,7 +106,7 @@
 %% the atoms `asc' or `desc'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec sort_ordering(babel_index:config()) -> asc | desc.
+-spec sort_ordering(t()) -> asc | desc.
 
 sort_ordering(#{sort_ordering := Value}) -> Value.
 
@@ -104,7 +115,7 @@ sort_ordering(#{sort_ordering := Value}) -> Value.
 %% @doc Returns the partition algorithm name configured for this index.
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_algorithm(babel_index:config()) -> atom().
+-spec partition_algorithm(t()) -> atom().
 
 partition_algorithm(#{partition_algorithm := Value}) -> Value.
 
@@ -114,7 +125,7 @@ partition_algorithm(#{partition_algorithm := Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_by(babel_index:config()) -> [binary()].
+-spec partition_by(t()) -> [binary()].
 
 partition_by(#{partition_by := Value}) -> Value.
 
@@ -123,7 +134,7 @@ partition_by(#{partition_by := Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec index_by(babel_index:config()) -> [binary()].
+-spec index_by(t()) -> [binary()].
 
 index_by(#{index_by := Value}) -> Value.
 
@@ -132,7 +143,7 @@ index_by(#{index_by := Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec aggregate_by(babel_index:config()) -> [binary()].
+-spec aggregate_by(t()) -> [binary()].
 
 aggregate_by(#{aggregate_by := Value}) -> Value.
 
@@ -141,7 +152,7 @@ aggregate_by(#{aggregate_by := Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec covered_fields(babel_index:config()) -> [binary()].
+-spec covered_fields(t()) -> [binary()].
 
 covered_fields(#{covered_fields := Value}) -> Value.
 
@@ -150,7 +161,7 @@ covered_fields(#{covered_fields := Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_identifier_prefix(babel_index:config()) -> binary().
+-spec partition_identifier_prefix(t()) -> binary().
 
 partition_identifier_prefix(#{partition_identifier_prefix := Value}) -> Value.
 
@@ -159,7 +170,7 @@ partition_identifier_prefix(#{partition_identifier_prefix := Value}) -> Value.
 %% @doc Returns the partition indentifiers of this index.
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_identifiers(babel_index:config()) -> [binary()].
+-spec partition_identifiers(t()) -> [binary()].
 
 partition_identifiers(#{partition_identifiers := Value}) -> Value.
 
@@ -176,7 +187,7 @@ partition_identifiers(#{partition_identifiers := Value}) -> Value.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec init(IndexId :: binary(), ConfigData :: map()) ->
-    {ok, babel_index:config()} | {error, any()}.
+    {ok, t()} | {error, any()}.
 
 init(IndexId, ConfigData0) ->
     Config0 = maps_utils:validate(ConfigData0, ?SPEC),
@@ -193,7 +204,7 @@ init(IndexId, ConfigData0) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec from_crdt(Object :: babel_index:config_crdt()) ->
-    Config :: babel_index:config().
+    Config :: t().
 
 from_crdt(Object) ->
     Sort = babel_crdt:register_to_existing_atom(
@@ -260,7 +271,7 @@ from_crdt(Object) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_crdt(Config :: babel_index:config()) ->
+-spec to_crdt(Config :: t()) ->
     ConfigCRDT :: babel_index:config_crdt().
 
 to_crdt(Config) ->
@@ -304,7 +315,7 @@ to_crdt(Config) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec init_partitions(babel_index:config()) ->
+-spec init_partitions(t()) ->
     {ok, [babel_index_partition:t()]}
     | {error, any()}.
 
@@ -317,7 +328,7 @@ init_partitions(#{partition_identifiers := Identifiers}) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec number_of_partitions(riak_kv_index:config()) -> pos_integer().
+-spec number_of_partitions(t()) -> pos_integer().
 
 number_of_partitions(#{number_of_partitions := Value}) -> Value.
 
@@ -326,10 +337,10 @@ number_of_partitions(#{number_of_partitions := Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_identifier(riak_kv_index:config(), riak_kv_index:data()) ->
-    riak_kv_index:partition_id().
+-spec partition_identifier(babel_index:data(), t()) ->
+    babel_index:partition_id().
 
-partition_identifier(Config, Data) ->
+partition_identifier(Data, Config) ->
     N = number_of_partitions(Config),
     Algo = partition_algorithm(Config),
     Prefix = partition_identifier_prefix(Config),
@@ -340,29 +351,24 @@ partition_identifier(Config, Data) ->
     gen_identifier(Prefix, Bucket).
 
 
-
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_identifiers(riak_kv_index:config(), asc | desc) ->
+-spec partition_identifiers(asc | desc, t()) ->
     [babel_index:partition_id()].
 
-partition_identifiers(Config, Order) ->
+partition_identifiers(Order, Config) ->
     Default = sort_ordering(Config),
     maybe_reverse(Default, Order, partition_identifiers(Config)).
 
 
-
-
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_size(
-    Config :: riak_kvindex:config(),
-    Partition :: babel_index_partition:t()
-    ) -> non_neg_integer().
+-spec partition_size(Partition :: babel_index_partition:t(), Config :: t()) ->
+    non_neg_integer().
 
 partition_size(_, Partition) ->
     Data = riakc_map:fetch({<<"data">>, map}, Partition),
@@ -374,12 +380,12 @@ partition_size(_, Partition) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update_partition(
-    Config :: riak_kv_index:config(),
+    ActionData :: action() | [action()],
     Partition :: babel_index_partition:t(),
-    ActionData :: action() | [action()]
+    Config :: t()
     ) -> babel_index_partition:t() | no_return().
 
-update_partition(Config, Partition, {insert, Data}) ->
+update_partition({insert, Data}, Partition, Config) ->
     IndexKey = gen_index_key(index_by(Config), Data),
     Value = gen_index_key(covered_fields(Config), Data),
 
@@ -391,7 +397,7 @@ update_partition(Config, Partition, {insert, Data}) ->
             insert_data(Partition, {AggregateKey, IndexKey}, Value)
     end;
 
-update_partition(Config, Partition, {delete, Data}) ->
+update_partition({delete, Data}, Partition, Config) ->
     IndexKey = gen_index_key(index_by(Config), Data),
 
     case aggregate_by(Config) of
@@ -402,9 +408,9 @@ update_partition(Config, Partition, {delete, Data}) ->
             delete_data(Partition, {AggregateKey, IndexKey})
     end;
 
-update_partition(Config, Partition0, [H|T]) ->
+update_partition([H|T], Partition0, Config) ->
     Partition1 = update_partition(Config, Partition0, H),
-    update_partition(Config, Partition1, T);
+    update_partition(T, Partition1, Config);
 
 update_partition(_, Partition, []) ->
     Partition.
