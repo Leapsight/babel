@@ -391,10 +391,10 @@ update_partition({insert, Data}, Partition, Config) ->
 
     case aggregate_by(Config) of
         [] ->
-            insert_data(Partition, IndexKey, Value);
+            insert_data(IndexKey, Value, Partition);
         Fields ->
             AggregateKey = gen_index_key(Fields, Data),
-            insert_data(Partition, {AggregateKey, IndexKey}, Value)
+            insert_data({AggregateKey, IndexKey}, Value, Partition)
     end;
 
 update_partition({delete, Data}, Partition, Config) ->
@@ -402,10 +402,10 @@ update_partition({delete, Data}, Partition, Config) ->
 
     case aggregate_by(Config) of
         [] ->
-            delete_data(Partition, IndexKey);
+            delete_data(IndexKey, Partition);
         Fields ->
             AggregateKey = gen_index_key(Fields, Data),
-            delete_data(Partition, {AggregateKey, IndexKey})
+            delete_data({AggregateKey, IndexKey}, Partition)
     end;
 
 update_partition([H|T], Partition0, Config) ->
@@ -435,11 +435,11 @@ gen_identifier(Prefix, N) ->
 
 %% @private
 gen_index_key(Keys, Data) ->
-    string:join(babel_key_value:collect(Keys, Data), $\31).
+    binary_utils:join(babel_key_value:collect(Keys, Data)).
 
 
 %% @private
-insert_data(Partition, {AggregateKey, IndexKey}, Value) ->
+insert_data({AggregateKey, IndexKey}, Value, Partition) ->
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -457,7 +457,7 @@ insert_data(Partition, {AggregateKey, IndexKey}, Value) ->
         Partition
     );
 
-insert_data(Partition, IndexKey, Value) ->
+insert_data(IndexKey, Value, Partition) ->
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -471,7 +471,7 @@ insert_data(Partition, IndexKey, Value) ->
 
 
 %% @private
-delete_data(Partition, {AggregateKey, IndexKey}) ->
+delete_data({AggregateKey, IndexKey}, Partition) ->
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -483,7 +483,7 @@ delete_data(Partition, {AggregateKey, IndexKey}) ->
         Partition
     );
 
-delete_data(Partition, IndexKey) ->
+delete_data(IndexKey, Partition) ->
     babel_index_partition:update_data(
         fun(Data) -> riakc_map:erase({IndexKey, map}, Data) end,
         Partition
