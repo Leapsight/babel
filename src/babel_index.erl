@@ -196,7 +196,7 @@ end).
 %%
 %% @end
 %% -----------------------------------------------------------------------------
--spec new(IndexData :: map()) -> maybe_error(t()).
+-spec new(IndexData :: map()) -> maybe_error({ok, t()}).
 
 new(IndexData) ->
     Index = maps_utils:validate(IndexData, ?SPEC),
@@ -341,7 +341,7 @@ update(Conn, Index, {_, Data} = Action) ->
     Part0 = babel_index_partition:fetch(Conn, TypeBucket, Key),
     Part1 = Mod:update_partition(Config, Part0, Action),
 
-    case babel_index_partition:put(Conn, TypeBucket, Key, Part1) of
+    case babel_index_partition:store(Conn, TypeBucket, Key, Part1) of
         ok ->
             ok;
         {error, Reason} ->
@@ -363,7 +363,7 @@ update(Conn, Index, List) when is_list(List) ->
         Part0 = babel_index_partition:fetch(Conn, TypeBucket, Key),
         Part1 = Mod:update_partition(Config, Part0, Actions),
 
-        case babel_index_partition:put(Conn, TypeBucket, Key, Part1) of
+        case babel_index_partition:store(Conn, TypeBucket, Key, Part1) of
             ok ->
                 ok;
             {error, Reason} ->

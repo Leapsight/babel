@@ -15,7 +15,7 @@
 
 
 
--define(RIAK_EC_TYPE, [non_neg_integer | {enum, [one, all, quorum, default]}]).
+-define(RIAK_EC_TYPE, [non_neg_integer , {enum, [one, all, quorum, default]}]).
 -define(REQ_OPTS_SPEC, #{
     r => #{
         alias => <<"r">>,

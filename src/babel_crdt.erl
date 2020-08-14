@@ -128,7 +128,9 @@ dirty_fetch(Key, {map, _, Updates, Removes, _} = Map) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec map_entry(
-    Type :: riakc_datatype:typename(), Field :: binary(), Value :: binary()) ->
+    Type :: riakc_datatype:typename(),
+    Field :: binary(),
+    Value :: binary() | list()) ->
     riakc_map:raw_entry().
 
 map_entry(register, Field, Value) ->
@@ -137,8 +139,8 @@ map_entry(register, Field, Value) ->
 map_entry(counter, Field, Value) ->
     {{Field, counter}, riakc_counter:new(Value, undefined)};
 
-map_entry(set, Field, Values) ->
+map_entry(set, Field, Values) when is_list(Values) ->
     {{Field, set}, riakc_set:new(Values, undefined)};
 
-map_entry(map, Field, Values) ->
+map_entry(map, Field, Values) when is_list(Values) ->
     {{Field, map}, riakc_map:new(Values, undefined)}.

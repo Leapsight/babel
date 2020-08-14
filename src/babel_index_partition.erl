@@ -207,8 +207,7 @@ fetch(Conn, TypeBucket, Key) ->
     {ok, t()} | no_return().
 
 fetch(Conn, TypeBucket, Key, ReqOpts) ->
-    Opts = validate_req_opts(ReqOpts),
-    case lookup(Conn, TypeBucket, Key, Opts) of
+    case lookup(Conn, TypeBucket, Key, ReqOpts) of
         {ok, Value} -> Value;
         {error, Reason} -> error(Reason)
     end.
@@ -261,7 +260,6 @@ delete(Conn, TypeBucket, Key, ReqOpts) ->
 
 
 
-
 %%-----------------------------------------------------------------------------
 %% @private
 %% @doc Validates and returns the options in proplist format as expected by
@@ -269,4 +267,4 @@ delete(Conn, TypeBucket, Key, ReqOpts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 validate_req_opts(Opts) ->
-    maps:to_list(maps:validate(Opts, ?REQ_OPTS_SPEC)).
+    maps:to_list(maps_utils:validate(Opts, ?REQ_OPTS_SPEC)).

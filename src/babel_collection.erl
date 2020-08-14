@@ -46,7 +46,7 @@
 
 -define(COLLECTION_SUFFIX, "babel_collection").
 
--type t()           ::  map().
+-type t()           ::  riakc_map:crdt_map().
 
 -export_type([t/0]).
 -export_type([req_opts/0]).
@@ -171,7 +171,7 @@ store(Conn, BucketPrefix, Key, Collection) ->
     BucketPrefix :: binary(),
     Key :: binary(),
     Collection :: t(),
-    Opts :: req_opts()) ->
+    ReqOpts :: req_opts()) ->
     {ok, Index :: t()} | {error, Reason :: any()}.
 
 
@@ -323,7 +323,7 @@ when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
 %% @end
 %% -----------------------------------------------------------------------------
 validate_req_opts(Opts) ->
-    maps:to_list(maps:validate(Opts, ?REQ_OPTS_SPEC)).
+    maps:to_list(maps_utils:validate(Opts, ?REQ_OPTS_SPEC)).
 
 
 %% @private

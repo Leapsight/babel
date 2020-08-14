@@ -103,7 +103,7 @@ get([H|T], KVTerm, Default) when is_map(KVTerm) ->
     case maps:find(H, KVTerm) of
         {ok, Child} ->
             get(T, Child, Default);
-        false ->
+        error ->
             maybe_badkey(Default)
     end;
 
@@ -114,7 +114,7 @@ get([{_, _} = H|T], KVTerm, Default) ->
     case riakc_map:find(H, KVTerm) of
         {ok, Child} ->
             get(T, Child, Default);
-        false ->
+        error ->
             maybe_badkey(Default)
     end;
 
@@ -176,7 +176,7 @@ collect(Keys, KVTerm, Default) when is_list(Keys) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec set(Key :: key(), Value :: any(), KVTerm :: t()) -> ok.
+-spec set(Key :: key(), Value :: any(), KVTerm :: t()) -> t().
 
 set([H|[]], Value, KVTerm) ->
     set(H, Value, KVTerm);
@@ -191,6 +191,10 @@ when (is_atom(H) orelse is_binary(H)) andalso is_map(KVTerm)->
     InnerTerm = set(T, Value, get(H, KVTerm, [])),
     maps:put(H, InnerTerm, KVTerm);
 
+set([H|T], Value, KVTerm) ->
+    InnerTerm = set(T, Value, get(H, KVTerm, [])),
+    riakc_map:update(H, fun(_) -> InnerTerm end, KVTerm);
+
 set([], _, _)  ->
     error(badkey);
 
@@ -201,6 +205,10 @@ when (is_atom(Key) orelse is_binary(Key)) andalso is_list(KVTerm) ->
 set(Key, Value, KVTerm)
 when (is_atom(Key) orelse is_binary(Key)) andalso is_map(KVTerm) ->
     maps:put(Key, Value, KVTerm);
+
+set({Key, Type}, Value, KVTerm) ->
+    riakc_map:is_type(KVTerm) orelse error(badarg),
+    riakc_map:update(Key, crdt_update_fun(Type, Value), KVTerm);
 
 set(_, _, _) ->
     error(badarg).
@@ -232,3 +240,30 @@ collect([H|T], KVTerm, Default, Acc) ->
 
 collect([], _, _, Acc) ->
     lists:reverse(Acc).
+
+
+
+%% @private
+crdt_update_fun(register, Value) ->
+    fun(Object) -> riakc_register:set(Value, Object) end;
+
+crdt_update_fun(flag, true) ->
+    fun(Object) -> riakc_flag:enable(Object) end;
+
+crdt_update_fun(flag, false) ->
+    fun(Object) -> riakc_flag:disable(Object) end;
+
+crdt_update_fun(counter, N) ->
+    fun(Object) ->
+        case N - riakc_counter:value(Object) of
+            0 ->
+                Object;
+            Diff when Diff > 0 ->
+                riakc_counter:increment(Diff, Object);
+            Diff when Diff < 0 ->
+                riakc_counter:decrement(abs(Diff), Object)
+        end
+    end;
+
+crdt_update_fun(Type, _) ->
+    error({unsupported_type, Type}).

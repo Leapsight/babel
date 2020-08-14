@@ -57,11 +57,11 @@
 
 -type t()           ::  #{
     sort_ordering := asc | desc,
-    number_of_partitions := pos_integer(),
+    number_of_partitions := integer(),
     partition_algorithm := atom(),
-    partition_by := binary(),
     partition_identifier_prefix := binary(),
     partition_identifiers := [binary()],
+    partition_by := [riakc_map:key() | [riakc_map:key()]],
     index_by := [riakc_map:key() | [riakc_map:key()]],
     aggregate_by := [riakc_map:key() | [riakc_map:key()]],
     covered_fields := [riakc_map:key() | [riakc_map:key()]]
@@ -409,7 +409,7 @@ update_partition({delete, Data}, Partition, Config) ->
     end;
 
 update_partition([H|T], Partition0, Config) ->
-    Partition1 = update_partition(Config, Partition0, H),
+    Partition1 = update_partition(H, Partition0, Config),
     update_partition(T, Partition1, Config);
 
 update_partition(_, Partition, []) ->
