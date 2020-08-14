@@ -39,6 +39,7 @@
 
 
 -export([collect/2]).
+-export([collect/3]).
 -export([get/2]).
 -export([get/3]).
 -export([set/3]).
@@ -149,11 +150,26 @@ get(_, _, _) ->
 %% -----------------------------------------------------------------------------
 -spec collect([key()], KVTerm :: t()) -> [any()].
 
-collect([Key], KVTerm) ->
-    get(Key, KVTerm);
+collect(Keys, KVTerm) ->
+    collect(Keys, KVTerm, ?BADKEY).
 
-collect(Keys, KVTerm) when is_list(Keys) ->
-    collect(Keys, KVTerm, []).
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec collect([key()], KVTerm :: t(), Default :: any()) -> [any()].
+
+collect([Key], KVTerm, Default) ->
+    try
+        get(Key, KVTerm, Default)
+    catch
+        error:badkey ->
+            error({badkey, Key})
+    end;
+
+collect(Keys, KVTerm, Default) when is_list(Keys) ->
+    collect(Keys, KVTerm, Default, []).
 
 
 %% -----------------------------------------------------------------------------
@@ -206,8 +222,13 @@ maybe_badkey(Term) ->
 
 
 %% @private
-collect([H|T], KVTerm, Acc) ->
-    collect(T, KVTerm, [get(H, KVTerm)|Acc]);
+collect([H|T], KVTerm, Default, Acc) ->
+    try
+        collect(T, KVTerm, Default, [get(H, KVTerm, Default)|Acc])
+    catch
+        error:badkey ->
+            error({badkey, H})
+    end;
 
-collect([], _,  Acc) ->
+collect([], _, _, Acc) ->
     lists:reverse(Acc).
