@@ -8,6 +8,7 @@
   {git,"https://github.com/basho/hamcrest-erlang.git",
        {ref,"ad3dbab419762fc2d5821abb88b989da006b85c6"}},
   2},
+ {<<"jsx">>,{pkg,<<"jsx">>,<<"2.10.0">>},0},
  {<<"leap">>,
   {git,"https://gitlab.com/leapsight/leap.git",
        {ref,"b7cc3d3b6cd18cd185309dc6f1ce06e816c34ff1"}},
@@ -26,5 +27,6 @@
   0}]}.
 [
 {pkg_hash,[
- {<<"cache">>, <<"1E585CD9777C1F71E9038D61059D07438643C0022FDC6E2F7C2899B4A45C593E">>}]}
+ {<<"cache">>, <<"1E585CD9777C1F71E9038D61059D07438643C0022FDC6E2F7C2899B4A45C593E">>},
+ {<<"jsx">>, <<"77760560D6AC2B8C51FD4C980E9E19B784016AA70BE354CE746472C33BEB0B1C">>}]}
 ].

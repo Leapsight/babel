@@ -52,10 +52,10 @@ new(Id) ->
 new(Id, Data) ->
     Ts = integer_to_binary(erlang:system_time(millisecond)),
     Values = [
-        babel_crdt_utils:map_entry(register, <<"id">>, Id),
-        babel_crdt_utils:map_entry(register, <<"created_ts">>, Ts),
-        babel_crdt_utils:map_entry(register, <<"last_updated_ts">>, Ts),
-        babel_crdt_utils:map_entry(map, <<"data">>, Data)
+        babel_crdt:map_entry(register, <<"id">>, Id),
+        babel_crdt:map_entry(register, <<"created_ts">>, Ts),
+        babel_crdt:map_entry(register, <<"last_updated_ts">>, Ts),
+        babel_crdt:map_entry(map, <<"data">>, Data)
     ],
     riakc_map:new(Values, undefined).
 

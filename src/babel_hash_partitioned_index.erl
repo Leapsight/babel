@@ -1,5 +1,7 @@
 -module(babel_hash_partitioned_index).
 -behaviour(babel_index).
+-include("babel.hrl").
+-include_lib("riakc/include/riakc.hrl").
 
 
 -define(SPEC, #{
@@ -7,13 +9,8 @@
         required => false,
         allow_null => false,
         allow_undefined => false,
-        default => <<"asc">>,
-        datatype => [atom, binary],
-        validator => fun
-            (X) when is_atom(X) -> {ok, atom_to_binary(X, utf8)};
-            (X) when is_binary(X) -> true;
-            (_) -> false
-        end
+        default => asc,
+        datatype => {in, [asc, desc]}
     },
     number_of_partitions => #{
         description => <<"The number of partitions for this index.">>,
@@ -31,29 +28,30 @@
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, [binary, tuple, list]}
+        datatype => {list, tuple}
     },
     index_by => #{
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, [binary, tuple, list]},
+        datatype => {list, tuple},
         validator => fun
             ([]) -> false;
             (_) -> true
         end
     },
     aggregate_by => #{
-        required => false,
+        required => true,
+        default => [],
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, [binary, tuple, list]}
+        datatype => {list, tuple}
     },
     covered_fields => #{
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, [binary, tuple, list]}
+        datatype => {list, tuple}
     }
 }).
 
@@ -74,12 +72,14 @@
 
 
 %% BEHAVIOUR CALLBACKS
+-export([from_crdt/1]).
 -export([init/2]).
 -export([init_partitions/1]).
 -export([number_of_partitions/1]).
--export([partition_size/2]).
 -export([partition_identifier/2]).
 -export([partition_identifiers/2]).
+-export([partition_size/2]).
+-export([to_crdt/1]).
 -export([update_partition/3]).
 
 
@@ -97,13 +97,7 @@
 %% -----------------------------------------------------------------------------
 -spec sort_ordering(babel_index:config()) -> asc | desc.
 
-sort_ordering(Config) ->
-    binary_to_existing_atom(
-        riakc_register:value(
-            riakc_map:fetch({<<"sort_ordering">>, register}, Config)
-        ),
-        utf8
-    ).
+sort_ordering(#{sort_ordering := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -112,13 +106,8 @@ sort_ordering(Config) ->
 %% -----------------------------------------------------------------------------
 -spec partition_algorithm(babel_index:config()) -> atom().
 
-partition_algorithm(Config) ->
-    binary_to_atom(
-        riakc_register:value(
-            riakc_map:fetch({<<"algorithm">>, register}, Config)
-        ),
-        utf8
-    ).
+partition_algorithm(#{partition_algorithm := Value}) -> Value.
+
 
 
 %% -----------------------------------------------------------------------------
@@ -127,12 +116,7 @@ partition_algorithm(Config) ->
 %% -----------------------------------------------------------------------------
 -spec partition_by(babel_index:config()) -> [binary()].
 
-partition_by(Config) ->
-    binary_to_term(
-        riakc_register:value(
-            riakc_map:fetch({<<"partition_by">>, register}, Config)
-        )
-    ).
+partition_by(#{partition_by := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -141,12 +125,7 @@ partition_by(Config) ->
 %% -----------------------------------------------------------------------------
 -spec index_by(babel_index:config()) -> [binary()].
 
-index_by(Config) ->
-    binary_to_term(
-        riakc_register:value(
-            riakc_map:fetch({<<"index_by">>, register}, Config)
-        )
-    ).
+index_by(#{index_by := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -155,13 +134,7 @@ index_by(Config) ->
 %% -----------------------------------------------------------------------------
 -spec aggregate_by(babel_index:config()) -> [binary()].
 
-aggregate_by(Config) ->
-    case riakc_map:find({<<"aggregate_by">>, register}, Config) of
-        {ok, Value} ->
-            binary_to_term(riakc_register:value(Value));
-        error ->
-            []
-    end.
+aggregate_by(#{aggregate_by := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -170,12 +143,7 @@ aggregate_by(Config) ->
 %% -----------------------------------------------------------------------------
 -spec covered_fields(babel_index:config()) -> [binary()].
 
-covered_fields(Config) ->
-    binary_to_term(
-        riakc_register:value(
-            riakc_map:fetch({<<"covered_fields">>, register}, Config)
-        )
-    ).
+covered_fields(#{covered_fields := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -184,8 +152,7 @@ covered_fields(Config) ->
 %% -----------------------------------------------------------------------------
 -spec partition_identifier_prefix(babel_index:config()) -> binary().
 
-partition_identifier_prefix(Config) ->
-    riakc_map:fetch({<<"partition_identifier_prefix">>, register}, Config).
+partition_identifier_prefix(#{partition_identifier_prefix := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -194,10 +161,7 @@ partition_identifier_prefix(Config) ->
 %% -----------------------------------------------------------------------------
 -spec partition_identifiers(babel_index:config()) -> [binary()].
 
-partition_identifiers(Config) ->
-    binary_to_term(
-        riakc_map:fetch({<<"partition_identifiers">>, register}, Config)
-    ).
+partition_identifiers(#{partition_identifiers := Value}) -> Value.
 
 
 
@@ -215,40 +179,125 @@ partition_identifiers(Config) ->
     {ok, babel_index:config()} | {error, any()}.
 
 init(IndexId, ConfigData0) ->
+    Config0 = maps_utils:validate(ConfigData0, ?SPEC),
+    N = maps:get(number_of_partitions, Config0),
+    Prefix = <<IndexId/binary, "_partition">>,
+    Identifiers = gen_partition_identifiers(Prefix, N),
+    Config1 = maps:put(partition_identifier_prefix, Prefix, Config0),
+    Config2 = maps:put(partition_identifiers, Identifiers, Config1),
+    {ok, Config2}.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec from_crdt(Object :: babel_index:config_crdt()) ->
+    Config :: babel_index:config().
+
+from_crdt(Object) ->
+    Sort = babel_crdt:register_to_existing_atom(
+        riakc_map:fetch({<<"sort_ordering">>, register}, Object),
+        utf8
+    ),
+    N = babel_crdt:register_to_integer(
+        riakc_map:fetch({<<"number_of_partitions">>, register}, Object)
+    ),
+
+    Algo = babel_crdt:register_to_existing_atom(
+        riakc_map:fetch({<<"partition_algorithm">>, register}, Object),
+        utf8
+    ),
+
+    Prefix = babel_crdt:register_to_binary(
+        riakc_map:fetch({<<"partition_identifier_prefix">>, register}, Object)
+    ),
+
+    PartitionBy = decode_proplist(
+        babel_crdt:register_to_binary(
+            riakc_map:fetch({<<"partition_by">>, register}, Object)
+        )
+    ),
+
+    Identifiers = decode_list(
+        babel_crdt:register_to_binary(
+            riakc_map:fetch({<<"partition_identifiers">>, register}, Object)
+        )
+    ),
+
+    IndexBy = decode_proplist(
+        babel_crdt:register_to_binary(
+            riakc_map:fetch({<<"index_by">>, register}, Object)
+        )
+    ),
+
+    AggregateBy = decode_proplist(
+        babel_crdt:register_to_binary(
+            riakc_map:fetch({<<"aggregate_by">>, register}, Object)
+        )
+    ),
+
+    CoveredFields = decode_proplist(
+        babel_crdt:register_to_binary(
+            riakc_map:fetch({<<"covered_fields">>, register}, Object)
+        )
+    ),
+
+    #{
+        sort_ordering => Sort,
+        number_of_partitions => N,
+        partition_algorithm => Algo,
+        partition_by => PartitionBy,
+        partition_identifier_prefix => Prefix,
+        partition_identifiers => Identifiers,
+        index_by => IndexBy,
+        aggregate_by => AggregateBy,
+        covered_fields => CoveredFields
+    }.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec to_crdt(Config :: babel_index:config()) ->
+    ConfigCRDT :: babel_index:config_crdt().
+
+to_crdt(Config) ->
     #{
         sort_ordering := Sort,
         number_of_partitions := N,
         partition_algorithm := Algo,
-        partition_by := PKeyFields,
-        index_by := LKeyFields,
-        covered_fields := PayloadFields
-    } = maps_utils:validate(ConfigData0, ?SPEC),
-
-    Prefix = <<IndexId/binary, "_partition">>,
-    Identifiers = gen_partition_identifiers(Prefix, N),
+        partition_by := PartitionBy,
+        partition_identifier_prefix := Prefix,
+        partition_identifiers := Identifiers,
+        index_by := IndexBy,
+        aggregate_by := AggregateBy,
+        covered_fields := CoveredFields
+    } = Config,
 
     Values = [
-        babel_crdt_utils:map_entry(
-            register, <<"sort_ordering">>, Sort),
-        babel_crdt_utils:map_entry(
+        babel_crdt:map_entry(
+            register, <<"sort_ordering">>, atom_to_binary(Sort, utf8)),
+        babel_crdt:map_entry(
             register, <<"number_of_partitions">>, integer_to_binary(N)),
-        babel_crdt_utils:map_entry(
+        babel_crdt:map_entry(
             register, <<"partition_algorithm">>, atom_to_binary(Algo, utf8)),
-        babel_crdt_utils:map_entry(
+        babel_crdt:map_entry(
             register, <<"partition_identifier_prefix">>, Prefix),
-        babel_crdt_utils:map_entry(
-            register, <<"partition_by">>, term_to_binary(PKeyFields)),
-        babel_crdt_utils:map_entry(
-            register, <<"index_by">>, term_to_binary(LKeyFields)),
-        babel_crdt_utils:map_entry(
-            register, <<"covered_fields">>, term_to_binary(PayloadFields)),
-        babel_crdt_utils:map_entry(
-            register, <<"partition_identifiers">>, term_to_binary(Identifiers))
+        babel_crdt:map_entry(
+            register, <<"partition_identifiers">>, encode_list(Identifiers)),
+        babel_crdt:map_entry(
+            register, <<"partition_by">>, encode_proplist(PartitionBy)),
+        babel_crdt:map_entry(
+            register, <<"index_by">>, encode_proplist(IndexBy)),
+        babel_crdt:map_entry(
+            register, <<"aggregate_by">>, encode_proplist(AggregateBy)),
+        babel_crdt:map_entry(
+            register, <<"covered_fields">>, encode_proplist(CoveredFields))
     ],
 
-    Config = riakc_map:new(Values, undefined),
-
-    {ok, Config}.
+    riakc_map:new(Values, undefined).
 
 
 %% -----------------------------------------------------------------------------
@@ -259,18 +308,8 @@ init(IndexId, ConfigData0) ->
     {ok, [babel_index_partition:t()]}
     | {error, any()}.
 
-init_partitions(Config) ->
-    Identifiers = binary_to_term(
-        riakc_register:value(
-            babel_crdt_utils:dirty_fetch(
-                {<<"partition_identifiers">>, register},
-                Config
-            )
-        )
-    ),
-    Partitions = [
-        {Id, babel_index_partition:new(Id)} || Id <- Identifiers
-    ],
+init_partitions(#{partition_identifiers := Identifiers}) ->
+    Partitions = [babel_index_partition:new(Id) || Id <- Identifiers],
     {ok, Partitions}.
 
 
@@ -280,10 +319,7 @@ init_partitions(Config) ->
 %% -----------------------------------------------------------------------------
 -spec number_of_partitions(riak_kv_index:config()) -> pos_integer().
 
-number_of_partitions(Config) ->
-    binary_to_integer(
-        riakc_map:fetch({<<"number_of_partitions">>, register}, Config)
-    ).
+number_of_partitions(#{number_of_partitions := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -298,7 +334,7 @@ partition_identifier(Config, Data) ->
     Algo = partition_algorithm(Config),
     Prefix = partition_identifier_prefix(Config),
 
-    PKey = collect(Config, Data, partition_by(Config)),
+    PKey = gen_index_key(partition_by(Config), Data),
 
     Bucket = babel_consistent_hashing:bucket(PKey, N, Algo),
     gen_identifier(Prefix, Bucket).
@@ -344,25 +380,25 @@ partition_size(_, Partition) ->
     ) -> babel_index_partition:t() | no_return().
 
 update_partition(Config, Partition, {insert, Data}) ->
-    IndexKey = collect(Config, Data, index_by(Config)),
-    Value = collect(Config, Data, covered_fields(Config)),
+    IndexKey = gen_index_key(index_by(Config), Data),
+    Value = gen_index_key(covered_fields(Config), Data),
 
     case aggregate_by(Config) of
         [] ->
             insert_data(Partition, IndexKey, Value);
         Fields ->
-            AggregateKey = collect(Config, Data, Fields),
+            AggregateKey = gen_index_key(Fields, Data),
             insert_data(Partition, {AggregateKey, IndexKey}, Value)
     end;
 
 update_partition(Config, Partition, {delete, Data}) ->
-    IndexKey = collect(Config, Data, index_by(Config)),
+    IndexKey = gen_index_key(index_by(Config), Data),
 
     case aggregate_by(Config) of
         [] ->
             delete_data(Partition, IndexKey);
         Fields ->
-            AggregateKey = collect(Config, Data, Fields),
+            AggregateKey = gen_index_key(Fields, Data),
             delete_data(Partition, {AggregateKey, IndexKey})
     end;
 
@@ -391,57 +427,9 @@ gen_identifier(Prefix, N) ->
     <<Prefix/binary, $_, (integer_to_binary(N))/binary>>.
 
 
-
 %% @private
-collect(_, Data, [Field]) ->
-    get_value(Data, Field);
-
-collect(Config, Data, Fields) ->
-    collect(Config, Data, Fields, []).
-
-
-%% @private
-collect(Config, Data, [H|T], Acc) ->
-    Value = get_value(Data, H),
-    collect(Config, Data, T, [Value|Acc]);
-
-collect(_, _, [], Acc) ->
-    string:join(lists:reverse(Acc), $\31).
-
-
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc Gets the value for the field from a struct (riakc_map, map or property
-%% list)
-%% @end
-%% -----------------------------------------------------------------------------
-get_value(Field, Object) when is_map(Object) ->
-    maybe_get_error(Field, maps:find(Field, Object));
-
-get_value(Field, Object) when is_list(Object) ->
-    maybe_get_error(Field, lists:keyfind(Field, 1, Object));
-
-get_value(Field, Object) ->
-    case riakc_map:is_type(Object) of
-        true ->
-            maybe_get_error(Field, riakc_map:find({Field, register}, Object));
-        false ->
-            error({badobject, Object})
-    end.
-
-
-%% @private
-maybe_get_error(_, {ok, Value}) when is_binary(Value) ->
-    Value;
-
-maybe_get_error(Field, {Field, Value}) when is_binary(Value) ->
-    Value;
-
-maybe_get_error(Field, {_, Value}) ->
-    error({badvalue, {Field, Value}});
-
-maybe_get_error(Field, error) ->
-    error({badfield, Field}).
+gen_index_key(Keys, Data) ->
+    string:join(babel_key_value:collect(Keys, Data), $\31).
 
 
 %% @private
@@ -503,3 +491,25 @@ maybe_reverse(Order, Order, L) ->
 maybe_reverse(_, _, L) ->
     lists:reverse(L).
 
+
+%% @private
+encode_list(List) ->
+    jsx:encode(List).
+
+
+%% @private
+decode_list(Data) ->
+    jsx:decode(Data).
+
+
+%% @private
+encode_proplist(List) ->
+    jsx:encode(List).
+
+
+%% @private
+decode_proplist(Data) ->
+    [
+        {Key, binary_to_existing_atom(Type,  utf8)}
+        || {Key, Type} <- jsx:decode(Data)
+    ].

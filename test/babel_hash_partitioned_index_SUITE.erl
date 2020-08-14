@@ -1,4 +1,4 @@
--module(babel_index_SUITE).
+-module(babel_hash_partitioned_index_SUITE).
 -include_lib("eunit/include/eunit.hrl").
 -compile(export_all).
 
@@ -20,6 +20,10 @@ hash_partitioned_index_1_test() ->
         }
     },
     {ok, Index} = babel_index:new(Conf),
+
+    CRDT = babel_index:to_crdt(Index),
+    ?assertEqual(Index, babel_index:from_crdt(CRDT)),
+
     {ok, Partitions} = babel_index:create_partitions(Index),
     ?assertEqual(8, length(Partitions)).
 

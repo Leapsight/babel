@@ -158,13 +158,13 @@ init(Index, Spec0) ->
 
     Ctxt = undefined,
     Values = [
-        babel_crdt_utils:map_entry(
+        babel_crdt:map_entry(
             register, <<"partition_identifiers">>, term_to_binary(Identifiers)),
-        babel_crdt_utils:map_entry(
+        babel_crdt:map_entry(
             register, <<"number_of_partitions">>, integer_to_binary(N)),
-        babel_crdt_utils:map_entry(
+        babel_crdt:map_entry(
             register, <<"time_unit">>, TimeUnit),
-        babel_crdt_utils:map_entry(
+        babel_crdt:map_entry(
             register, <<"timestamp_field">>, TimestampField)
 
     ],

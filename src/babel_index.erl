@@ -6,9 +6,13 @@
 %% Every index has one or more partition objects which are modelled as Riak KV
 %% maps.
 %%
-%% An index is persisted as part of an index collection {@link
-%% babel_collection}. An index collection aggregates all indices
+%% An index is persisted as a read-only CRDT Map as part of an index collection
+%% {@linkbabel_collection}. An index collection aggregates all indices
 %% for a topic e.g. domain model entity.
+%%
+%% As this object is read-only we turn it into an Erlang map as soon as we read
+%% it from the collection for enhanced performance. So loosing its CRDT context
+%% it not an issue.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
@@ -87,8 +91,10 @@ end).
 }).
 
 
--type t()                       ::  riakc_map:crdt_map().
--type config()                  ::  riakc_map:crdt_map().
+-type t()                       ::  map().
+-type t_crdt()                  ::  riakc_map:crdt_map().
+-type config()                  ::  map().
+-type config_crdt()             ::  riakc_map:crdt_map().
 -type partition_id()            ::  binary().
 -type partition_key()           ::  binary().
 -type local_key()               ::  binary().
@@ -100,7 +106,9 @@ end).
 -type element_iterator()        ::  #babel_element_iter{}.
 
 -export_type([t/0]).
+-export_type([t_crdt/0]).
 -export_type([config/0]).
+-export_type([config_crdt/0]).
 -export_type([partition_id/0]).
 -export_type([partition_key/0]).
 -export_type([local_key/0]).
@@ -114,10 +122,12 @@ end).
 -export([bucket/1]).
 -export([bucket_type/1]).
 -export([config/1]).
--export([new/1]).
 -export([create_partitions/1]).
+-export([from_crdt/1]).
+-export([new/1]).
 -export([partition_identifiers/1]).
 -export([partition_identifiers/2]).
+-export([to_crdt/1]).
 -export([type/1]).
 -export([update/3]).
 %% -export([get/4]).
@@ -142,6 +152,10 @@ end).
 -callback init_partitions(config()) ->
     {ok, [babel_index_partition:t()]}
     | {error, any()}.
+
+-callback from_crdt(ConfigCRDT :: config_crdt()) -> Config :: config().
+
+-callback to_crdt(Config :: config()) -> ConfigCRDT :: config_crdt().
 
 -callback number_of_partitions(config()) -> pos_integer().
 
@@ -182,16 +196,15 @@ end).
 %%
 %% @end
 %% -----------------------------------------------------------------------------
--spec new(Spec :: map()) -> maybe_error(t()).
+-spec new(IndexData :: map()) -> maybe_error(t()).
 
-new(Spec0) ->
-    Spec1 = maps_utils:validate(Spec0, ?SPEC),
-    #{id := IndexId, type := Type, config := ConfigSpec} = Spec1,
+new(IndexData) ->
+    Index = maps_utils:validate(IndexData, ?SPEC),
+    #{id := IndexId, type := Type, config := ConfigSpec} = Index,
 
     case Type:init(IndexId, ConfigSpec) of
-        {ok, ConfigCRDT} ->
-            Index = spec_to_crdt(Spec1#{config => ConfigCRDT}),
-            {ok, Index};
+        {ok, Config} ->
+            {ok, Index#{config => Config}};
         {error, _} = Error ->
             Error
     end.
@@ -201,14 +214,68 @@ new(Spec0) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-create_partitions(Index) ->
-    Type = binary_to_atom(
-        riakc_register:value(
-            babel_crdt_utils:dirty_fetch({<<"type">>, register}, Index)
-        ),
+-spec from_crdt(ConfigCRDT :: t_crdt()) -> Index :: t().
+
+from_crdt(Index) ->
+    Id = babel_crdt:register_to_binary(
+        riakc_map:fetch({<<"id">>, register}, Index)
+    ),
+    BucketType = babel_crdt:register_to_binary(
+        riakc_map:fetch({<<"bucket_type">>, register}, Index)
+    ),
+    Bucket = babel_crdt:register_to_binary(
+        riakc_map:fetch({<<"bucket">>, register}, Index)
+    ),
+    Type = babel_crdt:register_to_existing_atom(
+        riakc_map:fetch({<<"type">>, register}, Index),
         utf8
     ),
-    Config = babel_crdt_utils:dirty_fetch({<<"config">>, map}, Index),
+    Config = Type:from_crdt(
+        riakc_map:fetch({<<"config">>, map}, Index)
+    ),
+
+    #{
+        id => Id,
+        bucket_type => BucketType,
+        bucket => Bucket,
+        type => Type,
+        config => Config
+    }.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec to_crdt(Index :: t()) -> IndexCRDT :: t_crdt().
+
+to_crdt(Index) ->
+    #{
+        id := Id,
+        bucket_type := BucketType,
+        bucket := Bucket,
+        type := Type,
+        config := Config
+    } = Index,
+
+    ConfigCRDT =  Type:to_crdt(Config),
+
+    Values = [
+        babel_crdt:map_entry(register, <<"id">>, Id),
+        babel_crdt:map_entry(register, <<"bucket_type">>, BucketType),
+        babel_crdt:map_entry(register, <<"bucket">>, Bucket),
+        babel_crdt:map_entry(
+            register, <<"type">>, atom_to_binary(Type, utf8)),
+        {{<<"config">>, map}, ConfigCRDT}
+    ],
+    riakc_map:new(Values, undefined).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+create_partitions(#{type := Type, config := Config}) ->
     Type:init_partitions(Config).
 
 
@@ -399,27 +466,6 @@ partition_identifiers(Index, Order) ->
 %% PRIVATE
 %% =============================================================================
 
-
-
-%% @private
-spec_to_crdt(Spec) ->
-    #{
-        id := Id,
-        bucket_type := BucketType,
-        bucket := Bucket,
-        type := Type,
-        config := Config
-    } = Spec,
-
-    Values = [
-        babel_crdt_utils:map_entry(register, <<"id">>, Id),
-        babel_crdt_utils:map_entry(register, <<"bucket_type">>, BucketType),
-        babel_crdt_utils:map_entry(register, <<"bucket">>, Bucket),
-        babel_crdt_utils:map_entry(
-            register, <<"type">>, atom_to_binary(Type, utf8)),
-        {{<<"config">>, map}, Config}
-    ],
-    riakc_map:new(Values, undefined).
 
 
 %% @private

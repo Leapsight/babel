@@ -1,36 +1,41 @@
 %% -----------------------------------------------------------------------------
-%% @doc A babel_collection is a CRDT map (Riak KV Datatype), that maps
-%% binary keys to {@link babel} objects.
+%% @doc A babel_collection is a Riak Map, that maps
+%% binary keys to {@link babel_index} objects (also a Riak Map).
+%%
 %% Keys typically represent a resource (or entity) name in your domain model
 %% e.g. accounts, users.
 %%
-%% A babel_collection object is store in Riak KV under a bucket_type named
-%% "index_collection" and a bucket name which results from concatenating a
-%% prefix provided as argument in this module functions a key separator and the
-%% suffix "index_collection".
+%% A babel collection object is stored in Riak KV under a bucket_type that
+%% should be defined through configuration using the
+%% `index_collection_bucket_type' configuration option; and a bucket name which
+%% results from concatenating a prefix provided as argument in this module
+%% functions a key separator and the suffix "_index_collection".
 %%
-%% ## Configuring the "index_collection" bucket type
+%% ## Configuring the bucket type
 %%
-%% The "index_collection" bucket type needs to be configured and activated
+%% The bucket type needs to be configured and activated
 %% in Riak KV before using this module. The `datatype' property of the bucket
 %% type should be configured to `map'.
 %%
 %% The following example shows how to configure and activate the
-%% index_collection bucket type with the recommeded default replication
-%% properties:
+%% bucket type with the recommeded default replication
+%% properties, for the example we asume the application property
+%% `index_collection_bucket_type' maps to "my_index_collection" bucket type
+%% name.
 %%
 %% ```shell
-%% riak-admin bucket-type create index_data '{"props":{"datatype":"map",
+%% riak-admin bucket-type create my_index_collection '{"props":
+%% {"datatype":"map",
 %% "n_val":3, "pw":"quorum", "pr":"quorum", "notfound_ok":false,
 %% "basic_quorum":true}}'
-%% riak-admin bucket-type activate index_data
+%% riak-admin bucket-type activate my_index_collection
 %% ```
 %%
 %% ## Default replication properties
 %%
 %% All functions in this module resulting in reading or writing to Riak KV
-%% allow an optional map with Riak KV's replication properties, but it we
-%% recommend the use of the functions which provide the default replication
+%% allow an optional map with Riak KV's replication properties, but we
+%% recommend to use of the functions which provide the default replication
 %% properties.
 %%
 %% @end
@@ -40,7 +45,7 @@
 -include_lib("riakc/include/riakc.hrl").
 
 
--type t()           ::  riakc_map:crdt_map().
+-type t()           ::  map().
 
 -export_type([t/0]).
 -export_type([req_opts/0]).
@@ -60,7 +65,6 @@
 -export([lookup/3]).
 -export([lookup/4]).
 -export([size/1]).
--export([to_map/1]).
 
 
 
@@ -80,15 +84,16 @@
 -spec new(Indices :: [{binary(), babel_index:t()}]) -> t().
 
 new(Indices) when is_list(Indices) ->
-    Values = [babel_crdt_utils:map_entry(map, K, V) || {K, V} <- Indices],
+    Values = [babel_crdt:map_entry(map, K, V) || {K, V} <- Indices],
     riakc_map:new(Values, undefined);
 
 new(Indices) when is_map(Indices) ->
     new(maps:to_list(Indices)).
 
 
+
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns the number of elements in the collection `Collection'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec size(Collection :: t()) -> non_neg_integer().
@@ -98,13 +103,15 @@ size(Collection) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns the babel index associated with key `Key' in collection
+%% `Collection'. This function assumes that the key is present in the
+%% collection. An exception is generated if the key is not in the collection.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec index(Key :: binary(), Collection :: t()) -> babel_index:t().
 
 index(Key, Collection) when is_binary(Key) ->
-    riakc_map:fetch({Key, map}, Collection).
+    babel_crdt:dirty_fetch({Key, map}, Collection).
 
 
 %% -----------------------------------------------------------------------------
@@ -115,7 +122,9 @@ index(Key, Collection) when is_binary(Key) ->
     t() | no_return().
 
 add_index(Id, Index, Collection) ->
-    riakc_map:update({Id, map}, fun(_R) -> Index end, Collection).
+    RiakMap = babel_index:to_crdt(Index),
+    riakc_map:update({Id, map}, fun(_) -> RiakMap end, Collection).
+
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -294,25 +303,6 @@ when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
         {error, {notfound, _}} -> {error, not_found};
         {error, _} = Error -> Error
     end.
-
-
-
-%% -----------------------------------------------------------------------------
-%% @doc Returns an erlang map representation of the index collection.
-%% The values are also represented as erlang maps by calling {@link
-%% babel:to_map/1}.
-%% @end
-%% -----------------------------------------------------------------------------
--spec to_map(t()) -> map().
-
-to_map(Collection) ->
-    riakc_map:fold(
-        fun({K, map}, V, Acc) ->
-            maps:put(K, babel:to_map(V), Acc)
-        end,
-        #{},
-        Collection
-    ).
 
 
 

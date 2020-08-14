@@ -91,14 +91,14 @@ crdt_get_1_test() ->
     ]),
 
     L = [
-        babel_crdt_utils:map_entry(map, <<"info">>, [
-            babel_crdt_utils:map_entry(
+        babel_crdt:map_entry(map, <<"info">>, [
+            babel_crdt:map_entry(
                 register, <<"x">>, <<"value_of_x">>)
         ]),
-        babel_crdt_utils:map_entry(
+        babel_crdt:map_entry(
             register, <<"a">>, <<"value_of_a">>
         ),
-        babel_crdt_utils:map_entry(
+        babel_crdt:map_entry(
             register, <<"index_by">>, Bin
         )
     ],
