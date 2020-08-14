@@ -3,7 +3,7 @@
 -define(DEFAULT_REQ_DEADLINE, 5 * 60 * 1000).
 %% We use the ASCII unit separator ($\31) which was designed to separate
 %% fields of a record.
--define(KEY_SEPARATOR, $/).
+-define(PATH_SEPARATOR, $/).
 -define(KEY(Bucket), <<Bucket/binary, "_idx">>).
 
 

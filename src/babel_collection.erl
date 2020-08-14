@@ -44,6 +44,7 @@
 -include("babel.hrl").
 -include_lib("riakc/include/riakc.hrl").
 
+-define(COLLECTION_SUFFIX, "babel_collection").
 
 -type t()           ::  map().
 
@@ -54,8 +55,8 @@
 %% API
 -export([add_index/3]).
 -export([delete_index/2]).
--export([put/4]).
--export([put/5]).
+-export([store/4]).
+-export([store/5]).
 -export([delete/3]).
 -export([delete/4]).
 -export([fetch/3]).
@@ -138,40 +139,43 @@ delete_index(Id, Collection) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Creates and stores an index collection in Riak KV under the bucket_type
-%% `map' and bucket resulting from joining the BucketPrefix with the
-%% binary <<"index_collection">> using the separator <<"/">>.
+%% @doc Stores an index collection in Riak KV under a bucket name which results
+%% from contenating the prefix `BucketPrefix' to suffix "/index_collection" and
+%% key `Key'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec put(
-    Conn :: pid(), BucketPrefix :: binary(), Key :: binary(), Term :: t()) ->
+-spec store(
+    Conn :: pid(),
+    BucketPrefix :: binary(),
+    Key :: binary(),
+    Collection :: t()) ->
     {ok, Index :: t()} | {error, Reason :: any()}.
 
 
-put(Conn, BucketPrefix, Key, Indices) ->
+store(Conn, BucketPrefix, Key, Collection) ->
     ReqOpts = #{
         w => quorum,
         pw => quorum
     },
-    put(Conn, BucketPrefix, Key, Indices, ReqOpts).
+    store(Conn, BucketPrefix, Key, Collection, ReqOpts).
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Creates and stores an index collection in Riak KV under the bucket_type
-%% `map' and bucket resulting from joining the BucketPrefix with the
-%% binary <<"index_collection">> using the separator <<"/">>.
+%% @doc Stores an index collection in Riak KV under a bucket name which results
+%% from contenating the prefix `BucketPrefix' to suffix "/index_collection" and
+%% key `Key'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec put(
+-spec store(
     Conn :: pid(),
     BucketPrefix :: binary(),
     Key :: binary(),
-    Term :: t(),
+    Collection :: t(),
     Opts :: req_opts()) ->
     {ok, Index :: t()} | {error, Reason :: any()}.
 
 
-put(Conn, BucketPrefix, Key, Collection, ReqOpts)
+store(Conn, BucketPrefix, Key, Collection, ReqOpts)
 when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
     Opts = validate_req_opts(ReqOpts),
     TypeBucket = type_bucket(BucketPrefix),
@@ -325,5 +329,5 @@ validate_req_opts(Opts) ->
 %% @private
 type_bucket(Prefix) ->
     Type = babel_config:get(index_collection_bucket_type),
-    Bucket = <<Prefix/binary, ?KEY_SEPARATOR, "index_collection">>,
+    Bucket = <<Prefix/binary, ?PATH_SEPARATOR, ?COLLECTION_SUFFIX>>,
     {Type, Bucket}.
