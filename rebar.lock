@@ -23,7 +23,7 @@
   0},
  {<<"utils">>,
   {git,"https://gitlab.com/leapsight/utils.git",
-       {ref,"b7f156d8425206ad83d2ebcd1be191d21d1687c2"}},
+       {ref,"316ec5acfdbd5af5fb2a2a42f1210b1bfe645505"}},
   0}]}.
 [
 {pkg_hash,[
