@@ -4,7 +4,29 @@
 
 
 
-hash_partitioned_index_1_test() ->
+all() ->
+    [
+        index_1_test,
+        index_2_test,
+        index_3_test,
+        index_4_test
+    ].
+
+
+init_per_suite(Config) ->
+    ok = babel_config:set(
+        [bucket_types, index_collection], <<"index_collection">>),
+    ok = babel_config:set(
+        [bucket_types, index_data], <<"index_data">>),
+
+    Config.
+
+end_per_suite(Config) ->
+    {save_config, Config}.
+
+
+
+index_1_test(_) ->
     Conf = #{
         id => <<"users_by_email">>,
         bucket_type => <<"map">>,
@@ -25,10 +47,11 @@ hash_partitioned_index_1_test() ->
     ?assertEqual(Index, babel_index:from_crdt(CRDT)),
 
     {ok, Partitions} = babel_index:create_partitions(Index),
-    ?assertEqual(8, length(Partitions)).
+    ?assertEqual(8, length(Partitions)),
+    ok.
 
 
-hash_partitioned_index_2_test() ->
+index_2_test(_) ->
     Conf = #{
         id => <<"users_by_email">>,
         bucket_type => <<"map">>,
@@ -48,9 +71,11 @@ hash_partitioned_index_2_test() ->
     },
     {ok, Index} = babel_index:new(Conf),
     {ok, Partitions} = babel_index:create_partitions(Index),
-    ?assertEqual(8, length(Partitions)).
+    ?assertEqual(8, length(Partitions)),
+    ok.
 
-hash_partitioned_index_3_test() ->
+
+index_3_test(_) ->
     Conf = #{
         id => <<"users_by_email">>,
         bucket_type => <<"map">>,
@@ -68,10 +93,11 @@ hash_partitioned_index_3_test() ->
     },
     {ok, Index} = babel_index:new(Conf),
     {ok, Partitions} = babel_index:create_partitions(Index),
-    ?assertEqual(8, length(Partitions)).
+    ?assertEqual(8, length(Partitions)),
+    ok.
 
 
-hash_partitioned_index_4_test() ->
+index_4_test(_) ->
     Conf = #{
         id => <<"users_by_email">>,
         bucket_type => <<"map">>,
@@ -95,4 +121,5 @@ hash_partitioned_index_4_test() ->
     },
     {ok, Index} = babel_index:new(Conf),
     {ok, Partitions} = babel_index:create_partitions(Index),
-    ?assertEqual(8, length(Partitions)).
+    ?assertEqual(8, length(Partitions)),
+    ok.

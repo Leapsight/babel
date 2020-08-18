@@ -3,30 +3,45 @@
 -compile(export_all).
 
 
+all() ->
+    [
+        get_empty_key_test,
+        set_empty_key_test,
+        get_empty_test,
+        set_empty_test,
+        get_empty_default_test,
+        set_empty_default_test,
+        badarg_get_test,
+        badarg_set_test,
+        get_1_test,
+        set_1_test,
+        crdt_get_1_test
+    ].
 
-get_empty_key_test() ->
+
+get_empty_key_test(_) ->
     KVC = [{a, 1}],
     ?assertError(badkey, key_value:get([], KVC)).
 
-set_empty_key_test() ->
+set_empty_key_test(_) ->
     KVC = [{a, 1}],
     ?assertError(badkey, key_value:set([], 1, KVC)).
 
-get_empty_test() ->
+get_empty_test(_) ->
     ?assertError(badkey, key_value:get([], [])),
     ?assertError(badkey, key_value:get([], #{})).
 
-set_empty_test() ->
+set_empty_test(_) ->
     ?assertError(badkey, key_value:set([], 1, [])),
     ?assertError(badkey, key_value:set([], 1, #{})).
 
-get_empty_default_test() ->
+get_empty_default_test(_) ->
     ?assertEqual(1, key_value:get(a, [], 1)),
     ?assertEqual(1, key_value:get([a], [], 1)),
     ?assertEqual(1, key_value:get(a, #{}, 1)),
     ?assertEqual(1, key_value:get([a], #{}, 1)).
 
-set_empty_default_test() ->
+set_empty_default_test(_) ->
     ?assertEqual([{a, 1}], key_value:set(a, 1, [])),
     ?assertEqual([{a, 1}], key_value:set([a], 1, [])),
     ?assertEqual(#{a => 1}, key_value:set(a, 1, #{})),
@@ -34,7 +49,7 @@ set_empty_default_test() ->
     ?assertError(badkey, key_value:set([], 1, [])),
     ?assertError(badkey, key_value:set([], 1, #{})).
 
-badarg_get_test() ->
+badarg_get_test(_) ->
     ?assertError(badkey, key_value:get([], 1)),
     ?assertError(badkey, key_value:get([], 1, 2)),
     ?assertError(badarg, key_value:get(a, 1)),
@@ -44,14 +59,14 @@ badarg_get_test() ->
     ?assertError(badkey, key_value:get([b], [{a, 1}])).
 
 
-badarg_set_test() ->
+badarg_set_test(_) ->
     ?assertError(badkey, key_value:set([], 1, #{a => 1})),
     ?assertError(badarg, key_value:set(a, 1, true)),
     ?assertError(badarg, key_value:set([a, b], 1, [{a , 1}])),
     ?assertError(badarg, key_value:set([a, b], 1, #{a => 1})).
 
 
-get_1_test() ->
+get_1_test(_) ->
     D = #{e => 1},
     C = [{d, D}],
     B = #{c => C},
@@ -70,7 +85,7 @@ get_1_test() ->
     ?assertEqual(D, key_value:get([a, b, c, d], KVC)),
     ?assertEqual(1, key_value:get([a, b, c, d, e], KVC)).
 
-set_1_test() ->
+set_1_test(_) ->
     D = #{e => 1},
     C = [{d, D}],
     B = #{c => C},
@@ -84,7 +99,7 @@ set_1_test() ->
     ?assertEqual(KVC, key_value:set(a, A, [])).
 
 
-crdt_get_1_test() ->
+crdt_get_1_test(_) ->
     Bin = term_to_binary([
         [{<<"info">>, map}, {<<"x">>, register}],
         {<<"a">>, register}
