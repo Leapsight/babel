@@ -348,7 +348,10 @@ partition_identifier(Data, Config) ->
     PKey = gen_index_key(partition_by(Config), Data),
 
     Bucket = babel_consistent_hashing:bucket(PKey, N, Algo),
-    gen_identifier(Prefix, Bucket).
+    % gen_identifier(Prefix, Bucket).
+    %% N is zero-based
+    lists:nth(N - 1, partition_identifiers(Config)).
+
 
 
 %% -----------------------------------------------------------------------------

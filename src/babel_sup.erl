@@ -4,32 +4,71 @@
 %%%-------------------------------------------------------------------
 
 -module(babel_sup).
-
 -behaviour(supervisor).
 
+-define(SUPERVISOR(Id, Args, Restart, Timeout), #{
+    id => Id,
+    start => {Id, start_link, Args},
+    restart => Restart,
+    shutdown => Timeout,
+    type => supervisor,
+    modules => [Id]
+}).
+
+-define(WORKER(Id, Args, Restart, Timeout), #{
+    id => Id,
+    start => {Id, start_link, Args},
+    restart => Restart,
+    shutdown => Timeout,
+    type => worker,
+    modules => [Id]
+}).
+
+-define(EVENT_MANAGER(Id, Restart, Timeout), #{
+    id => Id,
+    start => {gen_event, start_link, [{local, Id}]},
+    restart => Restart,
+    shutdown => Timeout,
+    type => worker,
+    modules => [dynamic]
+}).
+
+%% API
 -export([start_link/0]).
 
+%% SUPERVISOR CALLBACKS
 -export([init/1]).
 
--define(SERVER, ?MODULE).
+
+
+%% =============================================================================
+%% API
+%% =============================================================================
+
+
 
 start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-%% sup_flags() = #{strategy => strategy(),         % optional
-%%                 intensity => non_neg_integer(), % optional
-%%                 period => pos_integer()}        % optional
-%% child_spec() = #{id => child_id(),       % mandatory
-%%                  start => mfargs(),      % mandatory
-%%                  restart => restart(),   % optional
-%%                  shutdown => shutdown(), % optional
-%%                  type => worker(),       % optional
-%%                  modules => modules()}   % optional
+
+
+%% =============================================================================
+%% SUPERVISOR CALLBACKS
+%% =============================================================================
+
+
+
 init([]) ->
-    SupFlags = #{strategy => one_for_all,
-                 intensity => 0,
-                 period => 1},
-    ChildSpecs = [],
-    {ok, {SupFlags, ChildSpecs}}.
+    Children = [
+        %% babel_config_manager should be first process to be started
+        ?WORKER(babel_config_manager, [], permanent, 30000),
+        cache()
+    ],
+    {ok, {{one_for_one, 1, 5}, Children}}.
 
-%% internal functions
+
+cache() ->
+    TTL = babel_config:get(cache_ttl_secs, 60),
+    Args = [babel_index_collection, [{n, 10}, {ttl, TTL}]],
+
+    ?WORKER(cache, Args, permanent, 5000).

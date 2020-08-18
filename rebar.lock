@@ -4,14 +4,20 @@
   {git,"git://github.com/seancribbs/eunit_formatters",
        {ref,"6818dc14fe5d90d2561b1fa8ab8aea523a900128"}},
   1},
+ {<<"goldrush">>,{pkg,<<"goldrush">>,<<"0.1.9">>},2},
  {<<"hamcrest">>,
   {git,"https://github.com/basho/hamcrest-erlang.git",
        {ref,"ad3dbab419762fc2d5821abb88b989da006b85c6"}},
   2},
  {<<"jsx">>,{pkg,<<"jsx">>,<<"2.10.0">>},0},
+ {<<"lager">>,{pkg,<<"lager">>,<<"3.8.0">>},1},
  {<<"leap">>,
   {git,"https://gitlab.com/leapsight/leap.git",
        {ref,"b7cc3d3b6cd18cd185309dc6f1ce06e816c34ff1"}},
+  0},
+ {<<"reliable">>,
+  {git,"https://gitlab.com/leapsight-magenta/reliable.git",
+       {ref,"540e10cb14cb363f85dd42bb7e3b96291cfb6df1"}},
   0},
  {<<"riak_pb">>,
   {git,"https://github.com/basho/riak_pb",
@@ -28,5 +34,7 @@
 [
 {pkg_hash,[
  {<<"cache">>, <<"1E585CD9777C1F71E9038D61059D07438643C0022FDC6E2F7C2899B4A45C593E">>},
- {<<"jsx">>, <<"77760560D6AC2B8C51FD4C980E9E19B784016AA70BE354CE746472C33BEB0B1C">>}]}
+ {<<"goldrush">>, <<"F06E5D5F1277DA5C413E84D5A2924174182FB108DABB39D5EC548B27424CD106">>},
+ {<<"jsx">>, <<"77760560D6AC2B8C51FD4C980E9E19B784016AA70BE354CE746472C33BEB0B1C">>},
+ {<<"lager">>, <<"3402B9A7E473680CA179FC2F1D827CAB88DD37DD1E6113090C6F45EF05228A1C">>}]}
 ].

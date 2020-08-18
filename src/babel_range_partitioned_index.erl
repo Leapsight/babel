@@ -1,0 +1,4 @@
+-module(babel_range_partitioned_index).
+-behaviour(babel_index).
+-include("babel.hrl").
+-include_lib("riakc/include/riakc.hrl").

@@ -1,0 +1,216 @@
+@startuml
+' !include ../../styles/uml_theme.puml
+
+left to right direction
+
+skinparam stateArrowColor	black
+skinparam stateArrowFontColor	black
+skinparam stateArrowFontName 	Avenir Next
+skinparam stateArrowFontSize	13
+skinparam stateArrowFontStyle	plain
+skinparam stateAttributeFontColor	black
+skinparam stateAttributeFontName 	Avenir Next
+skinparam stateAttributeFontSize	13
+skinparam stateAttributeFontStyle	plain
+skinparam stateBackgroundColor	#FEFECE
+skinparam stateBorderColor	#DD5A25
+skinparam stateEndColor	black
+skinparam stateFontColor	black
+skinparam stateFontName 	Avenir Next
+skinparam stateFontSize	13
+skinparam stateFontStyle	plain
+skinparam stateStartColor	black
+
+skinparam state {
+  BackgroundColor<<IndexBucket>> LightGray
+  BackgroundColor<<DataBucket>> Magenta
+}
+
+' hide empty description
+
+state "<b>{index_collection, :tenant_id/index_collection}" as bt0 <<IndexBucket>> {
+
+    state "<b>accounts" as accounts_meta {
+
+        state "<b>accounts_by_name" as accounts_by_name
+        accounts_by_name : name = accounts_idx
+        accounts_by_name : bucket_type = map
+        accounts_by_name : bucket = ":tenant_id/index_data"
+        accounts_by_name : type = riak_hash_partitioned_index
+        accounts_by_name : config.number_of_partitions = 128
+        accounts_by_name : config.hash_by = [account_id :: binary()]
+        accounts_by_name : config.algorithm = jch
+
+        state "<b>accounts_by_email" as accounts_by_email
+        accounts_by_email : name
+        accounts_by_email : description = "Given a user email\nfind the corresponding account IDs"
+        accounts_by_email : tenant_id
+        accounts_by_email : account_id
+        accounts_by_email : bucket_type = map
+        accounts_by_email : bucket = "accounts_by_email_idx"
+        accounts_by_email : type = riak_hash_partitioned_index
+        accounts_by_email : config.number_of_partitions = 128
+        accounts_by_email : config.hash_by = .email
+        accounts_by_email : config.algorithm = jch
+    }
+
+
+}
+
+
+state "<b>{index_data, :tenant_id/index_data}" as bt1 <<IndexBucket>> {
+    state "<b>accounts_by_name_part_1" as accounts_idx_1
+    accounts_idx_1 : meta => map()
+    accounts_idx_1 : data => set(account_id)
+
+    state "<b>accounts_by_name_part_N" as accounts_idx_N
+    accounts_idx_N : meta => map()
+    accounts_idx_N : data => set(account_id)
+
+    state "<b>accounts_by_email_part_1" as accounts_by_email_idx_1
+    accounts_by_email_idx_1 : meta => map()
+    accounts_by_email_idx_1 : data => map(email => set(account_id))
+
+    state "<b>accounts_by_email_part_N" as accounts_by_email_idx_N
+    accounts_by_email_idx_N : meta => map()
+    accounts_by_email_idx_N : data => map(email => set(account_id))
+}
+
+
+
+state "<b>{index_collection, :tenant_id/:account_id/index_collection}" as b0 <<IndexBucket>> {
+    state "<b>users" as user_indices {
+        state "<b>users_idx" as users_idx_meta
+        users_idx_meta : name
+        users_idx_meta : tenant_id
+        users_idx_meta : account_id
+        users_idx_meta : bucket_type = map
+        users_idx_meta : bucket = "users_idx"
+        users_idx_meta : type = riak_hash_partitioned_index
+        users_idx_meta : config.number_of_partitions = 1
+        users_idx_meta : config.hash_by = .user_id
+    }
+
+}
+
+
+state "<b>{index_data, :tenant_id/:account_id/index_data}" as taui <<IndexBucket>> {
+    state "<b>users_idx_part_1" as users_idx_1
+    users_idx_1 : meta => map()
+    users_idx_1 : data => set(user_id)
+
+    state "<b>users_idx_part_N" as users_idx_N
+    users_idx_N : meta => map()
+    users_idx_N : data => set(user_id)
+
+}
+
+state "<b>{map, :tenant_id/:account_id/users}" as tau <<DataBucket>> {
+    state "<b>:user_id" as user
+    user : username
+    user : ...
+}
+
+state "<b>{map, :tenant_id/accounts}" as ta <<DataBucket>> {
+    state "<b>:account_id" as account
+    account : ...
+}
+
+
+
+state "<b>{index_collection, :tenant_id/:account_id/:user_id/index_collection}" as bu0 <<IndexBucket>> {
+
+    state "<b>places" as places_indices {
+        state "<b>places_idx" as places_idx_meta
+        places_idx_meta : name
+        places_idx_meta : description = ""
+        places_idx_meta : tenant_id
+        places_idx_meta : account_id
+        places_idx_meta : bucket_type = map
+        places_idx_meta : bucket = "places_idx"
+        places_idx_meta : number_of_partitions = 1
+        places_idx_meta : type = riak_hash_partitioned_index
+    }
+}
+
+state "<b>{index_data, :tenant_id/:account_id/:user_id/index_data}" as bua <<IndexBucket>> {
+
+    state "<b>places_idx_part_1" as places_idx_1
+    places_idx_1 : meta => map()
+    places_idx_1 : data => set(place_id)
+
+    state "<b>places_idx_part_N" as places_idx_N
+    places_idx_N : meta => map()
+    places_idx_N : data => set(place_id)
+
+}
+
+state "<b>{map, :tenant_id/:account_id/:user_id/places}" as places <<DataBucket>> {
+    state "<b>:place_id" as place
+    place : ...
+}
+
+state fork_state <<fork>>
+[*] --> fork_state
+
+fork_state --> accounts_by_name: Q1.0
+accounts_by_name --> accounts_idx_1: Q1.1
+accounts_by_name --> accounts_idx_N: Q1.1
+accounts_idx_1 --> account: Q1.2
+accounts_idx_N --> account: Q1.2
+
+
+fork_state --> users_idx_meta: Q2.0
+users_idx_meta --> users_idx_1: Q2.1
+users_idx_meta --> users_idx_N: Q2.1
+users_idx_1 --> user: Q2.2
+users_idx_N --> user: Q2.2
+
+
+
+fork_state --> places_idx_meta: Q10.0
+places_idx_meta --> places_idx_1: Q10.1
+places_idx_meta --> places_idx_N: Q10.1
+places_idx_1 --> place: Q10.2
+places_idx_N --> place: Q10.2
+
+
+fork_state --> accounts_by_email: Q12.0
+accounts_by_email --> accounts_by_email_idx_1: Q12.1
+accounts_by_email --> accounts_by_email_idx_N: Q12.1
+accounts_by_email_idx_1 --> account: Q12.2
+accounts_by_email_idx_N --> account: Q12.2
+
+
+' Legends
+state "<b>Diagram Keys" as diagram_keys {
+    state "<b>{BucketType, IndexBucket}" as indexbucket <<IndexBucket>> {
+        state "<b>Key" as obj {
+            state "<b>Field" as kv
+            kv: Value
+        }
+    }
+
+    state "<b>{BucketType, DataBucket}" as databucket <<DataBucket>> {
+        state "<b>Key" as data {
+            data: Value
+        }
+    }
+}
+
+legend left
+    Q1.0) Find all accounts
+        Q1.1) Fetch partitions for tenant ID
+        Q1.3) Fetch account by ID
+    Q2.0) Find all users for account ID
+        Q2.1) Fetch partitions for account ID
+        Q2.2) Fetch user by ID
+    Q10.0) Find all places for user ID
+        Q10.1) Fetch places for trips
+        Q10.2) Fetch place by ID
+    Q12.0) Find all accounts by email
+        Q12.1) Fetch account ID for email
+        Q12.2) Fetch notification by ID
+endlegend
+
+@enduml

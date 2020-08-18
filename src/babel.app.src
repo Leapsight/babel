@@ -5,7 +5,10 @@
     {mod, {babel_app, []}},
     {applications, [
         kernel,
-        stdlib
+        stdlib,
+        cache,
+        riakc,
+        reliable
     ]},
     {env, []},
     {modules, []},

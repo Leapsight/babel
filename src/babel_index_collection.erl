@@ -1,5 +1,5 @@
 %% -----------------------------------------------------------------------------
-%% @doc A babel_collection is a Riak Map, that maps
+%% @doc A babel_index_collection is a Riak Map, that maps
 %% binary keys to {@link babel_index} objects (also a Riak Map).
 %%
 %% Keys typically represent a resource (or entity) name in your domain model
@@ -40,11 +40,11 @@
 %%
 %% @end
 %% -----------------------------------------------------------------------------
--module(babel_collection).
+-module(babel_index_collection).
 -include("babel.hrl").
 -include_lib("riakc/include/riakc.hrl").
 
--define(COLLECTION_SUFFIX, "babel_collection").
+-define(BUCKET_SUFFIX, "index_collection").
 
 -type t()           ::  riakc_map:crdt_map().
 
@@ -76,6 +76,7 @@
 
 
 
+% create_index()
 
 %% -----------------------------------------------------------------------------
 %% @doc Takes a list of pairs (property list) or map of binary keys to values
@@ -90,7 +91,6 @@ new(Indices) when is_list(Indices) ->
 
 new(Indices) when is_map(Indices) ->
     new(maps:to_list(Indices)).
-
 
 
 %% -----------------------------------------------------------------------------
@@ -328,6 +328,6 @@ validate_req_opts(Opts) ->
 
 %% @private
 type_bucket(Prefix) ->
-    Type = babel_config:get(index_collection_bucket_type),
-    Bucket = <<Prefix/binary, ?PATH_SEPARATOR, ?COLLECTION_SUFFIX>>,
+    Type = babel_config:get([bucket_types, index_collection]),
+    Bucket = <<Prefix/binary, ?PATH_SEPARATOR, ?BUCKET_SUFFIX>>,
     {Type, Bucket}.

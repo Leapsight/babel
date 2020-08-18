@@ -1,7 +1,7 @@
 -module(babel_config).
 -behaviour(app_config).
 
--define(APP, riak_utils).
+-define(APP, babel).
 
 
 -export([init/0]).

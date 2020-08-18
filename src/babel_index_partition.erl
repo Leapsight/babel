@@ -6,24 +6,27 @@
 -include("babel.hrl").
 -include_lib("riakc/include/riakc.hrl").
 
+-define(BUCKET_SUFFIX, "index_data").
+
+
 -type t()   ::  riakc_map:crdt_map().
 
 -export_type([t/0]).
 
 -export([created_ts/1]).
 -export([data/1]).
--export([delete/4]).
--export([fetch/3]).
+-export([delete/5]).
 -export([fetch/4]).
+-export([fetch/5]).
 -export([id/1]).
 -export([last_updated_ts/1]).
--export([lookup/4]).
+-export([lookup/5]).
 -export([new/1]).
 -export([new/2]).
 -export([size/1]).
 -export([update_data/2]).
--export([store/4]).
--export([to_work_item/3]).
+-export([store/5]).
+-export([to_work_item/4]).
 
 
 
@@ -139,11 +142,16 @@ update_data(Fun, Partition0) ->
 %% @doc Returns
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_work_item(TypeBucket :: tuple(), Key :: binary(), Partition :: t()) ->
+-spec to_work_item(
+    BucketType :: binary(),
+    BucketPrefix :: binary(),
+    Key :: binary(),
+    Partition :: t()) ->
     reliable_storage_backend:work_item().
 
-to_work_item(TypeBucket, Key, Partition) ->
-    Args = [TypeBucket,  Key,  riakc_map:to_op(Partition)],
+to_work_item(BucketType, BucketPrefix, Key, Partition) ->
+    TypeBucket = type_bucket(BucketType, BucketPrefix),
+    Args = [TypeBucket, Key, riakc_map:to_op(Partition)],
     {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
 
 
@@ -153,12 +161,13 @@ to_work_item(TypeBucket, Key, Partition) ->
 %% -----------------------------------------------------------------------------
 -spec store(
     Conn :: pid(),
-    TypeBucket :: type_bucket(),
+    BucketType :: binary(),
+    BucketPrefix :: binary(),
     Key :: binary(),
     Partition :: t()) ->
     ok | {error, any()}.
 
-store(Conn, TypeBucket, Key, Partition) ->
+store(Conn, BucketType, BucketPrefix, Key, Partition) ->
     Opts = #{
         r => quorum,
         pr => quorum,
@@ -166,6 +175,8 @@ store(Conn, TypeBucket, Key, Partition) ->
         basic_quorum => true
     },
     Op = riakc_map:to_op(Partition),
+
+    TypeBucket = type_bucket(BucketType, BucketPrefix),
 
     case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, Opts) of
         {error, _} = Error ->
@@ -181,18 +192,19 @@ store(Conn, TypeBucket, Key, Partition) ->
 %% -----------------------------------------------------------------------------
 -spec fetch(
     Conn :: pid(),
-    TypeBucket :: type_bucket(),
+    BucketType :: binary(),
+    BucketPrefix :: binary(),
     Key :: binary()) ->
-    {ok, t()} | no_return().
+    t() | no_return().
 
-fetch(Conn, TypeBucket, Key) ->
+fetch(Conn, BucketType, BucketPrefix, Key) ->
     Opts = #{
         r => quorum,
         pr => quorum,
         notfound_ok => false,
         basic_quorum => true
     },
-    fetch(Conn, TypeBucket, Key, Opts).
+    fetch(Conn, BucketType, BucketPrefix, Key, Opts).
 
 
 %% -----------------------------------------------------------------------------
@@ -201,13 +213,14 @@ fetch(Conn, TypeBucket, Key) ->
 %% -----------------------------------------------------------------------------
 -spec fetch(
     Conn :: pid(),
-    TypeBucket :: type_bucket(),
+    BucketType :: binary(),
+    BucketPrefix :: binary(),
     Key :: binary(),
     Opts :: req_opts()) ->
-    {ok, t()} | no_return().
+    t() | no_return().
 
-fetch(Conn, TypeBucket, Key, ReqOpts) ->
-    case lookup(Conn, TypeBucket, Key, ReqOpts) of
+fetch(Conn, BucketType, BucketPrefix, Key, ReqOpts) ->
+    case lookup(Conn, BucketType, BucketPrefix, Key, ReqOpts) of
         {ok, Value} -> Value;
         {error, Reason} -> error(Reason)
     end.
@@ -219,13 +232,15 @@ fetch(Conn, TypeBucket, Key, ReqOpts) ->
 %% -----------------------------------------------------------------------------
 -spec lookup(
     Conn :: pid(),
-    TypeBucket :: type_bucket(),
+    BucketType :: binary(),
+    BucketPrefix :: binary(),
     Key :: binary(),
     Opts :: req_opts()) ->
     {ok, t()} | {error, not_found | term()}.
 
-lookup(Conn, TypeBucket, Key, ReqOpts) ->
+lookup(Conn, BucketType, BucketPrefix, Key, ReqOpts) ->
     Opts = validate_req_opts(ReqOpts),
+    TypeBucket = type_bucket(BucketType, BucketPrefix),
     case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, Opts) of
         {ok, _} = OK -> OK;
         {error, {notfound, _}} -> {error, not_found};
@@ -239,13 +254,15 @@ lookup(Conn, TypeBucket, Key, ReqOpts) ->
 %% -----------------------------------------------------------------------------
 -spec delete(
     Conn :: pid(),
-    TypeBucket :: type_bucket(),
+    BucketType :: binary(),
+    BucketPrefix :: binary(),
     Key :: binary(),
     Opts :: req_opts()) ->
     ok | {error, not_found | term()}.
 
-delete(Conn, TypeBucket, Key, ReqOpts) ->
+delete(Conn, BucketType, BucketPrefix, Key, ReqOpts) ->
     Opts = validate_req_opts(ReqOpts),
+    TypeBucket = type_bucket(BucketType, BucketPrefix),
     case riakc_pb_socket:delete(Conn, TypeBucket, Key, Opts) of
         ok -> ok;
         {error, {notfound, _}} -> {error, not_found};
@@ -268,3 +285,9 @@ delete(Conn, TypeBucket, Key, ReqOpts) ->
 %% -----------------------------------------------------------------------------
 validate_req_opts(Opts) ->
     maps:to_list(maps_utils:validate(Opts, ?REQ_OPTS_SPEC)).
+
+
+%% @private
+type_bucket(Type, Prefix) ->
+    Bucket = <<Prefix/binary, ?PATH_SEPARATOR, ?BUCKET_SUFFIX>>,
+    {Type, Bucket}.

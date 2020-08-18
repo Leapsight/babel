@@ -245,7 +245,7 @@ handle_info({ok, Info0, Pid}, #state{worker = Pid} = State) ->
     Info2 = maps:put(status, finished, Info1),
     Elapsed = elapsed(Info2),
 
-    _ = lager:info(
+    _ = ?LOG_INFO(
         "Finished rebuilding indices; elapsed_time_secs=~p, info=~p",
         [Elapsed, Info2]
     ),
@@ -258,7 +258,7 @@ handle_info({error, Reason, Info0, Pid}, #state{worker = Pid} = State) ->
     Info2 = maps:put(status, failed, Info1),
     Elapsed = elapsed(Info2),
 
-    _ = lager:error(
+    _ = ?LOG_ERROR(
         "Error while rebuilding indices; reason=~p, elapsed_time_secs=~p, info=~p",
         [Reason, Elapsed, Info2]
     ),
@@ -270,7 +270,7 @@ handle_info({update, Info, Pid}, #state{worker = Pid} = State) ->
     {noreply, State#state{info = Info}};
 
 handle_info(Info, State) ->
-    _ = lager:debug("Unexpected message, message=~p", [Info]),
+    _ = ?LOG_DEBUG("Unexpected message, message=~p", [Info]),
     {noreply, State}.
 
 
@@ -346,7 +346,7 @@ async_rebuild_indices(Opts , State0) ->
                 throw(Reason)
         catch
             _:EReason:Stacktrace ->
-                _ = lager:error(
+                _ = ?LOG_ERROR(
                     "Error rebuilding Riak KV indices; "
                     "reason=~p, stacktrace=~p",
                     [EReason, Stacktrace]
@@ -361,7 +361,7 @@ async_rebuild_indices(Opts , State0) ->
 
 %% @private
 do_rebuild_indices(Manager, Info) ->
-    _ = lager:info("Rebuilding Riak KV indices; info=~p", [Info]),
+    _ = ?LOG_INFO("Rebuilding Riak KV indices; info=~p", [Info]),
 
     #{host := Host, port := Port} = maps:get(connection, Info),
     {ok, Conn} = magenta_riak:connect(Host, Port),
@@ -385,7 +385,7 @@ do_rebuild_indices(Manager, Info) ->
                 )
             catch
                 throw:Reason:Stacktrace ->
-                    _ = lager:warning(
+                    _ = ?LOG_WARNING(
                         "Skipped rebuilding Riak KV indices for object; "
                         "reason=~p, key=~p, stacktrace=~p",
                         [Reason, Key, Stacktrace]
@@ -434,7 +434,7 @@ put(Conn, Prefix, Key, Obj0, PList) ->
                 Conn, Prefix, Key, DTOps, [{timeout, ?RIAK_TIMEOUT} | PList]
             );
         error ->
-            _ = lager:warning(
+            _ = ?LOG_WARNING(
                 "Skipped rebuilding Riak KV indices for object; "
                 "reason=~p, key=~p, object=~p",
                 [invalid_object, Key, Obj0]

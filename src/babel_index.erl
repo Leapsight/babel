@@ -21,6 +21,7 @@
 -include_lib("riakc/include/riakc.hrl").
 -include_lib("kernel/include/logger.hrl").
 
+
 %% Validator for maps_utils:validate/2,3
 -define(BINARY_VALIDATOR, fun
     (Val) when is_atom(Val) ->
@@ -44,7 +45,8 @@ end).
         >>,
         required => true,
         datatype => [binary, atom],
-        default => <<"default">>,
+        allow_undefined => true,
+        default => babel_config:get([bucket_types, index_data]),
         validator => ?BINARY_VALIDATOR
     },
     bucket => #{
@@ -285,8 +287,7 @@ create_partitions(#{type := Type, config := Config}) ->
 %% -----------------------------------------------------------------------------
 -spec bucket(t()) -> maybe_error(binary()).
 
-bucket(Index) ->
-    riakc_map:fetch({<<"bucket">>, register}, Index).
+bucket(#{bucket := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -295,8 +296,7 @@ bucket(Index) ->
 %% -----------------------------------------------------------------------------
 -spec bucket_type(t()) -> maybe_error(binary()).
 
-bucket_type(Index) ->
-    riakc_map:fetch({<<"bucket_type">>, register}, Index).
+bucket_type(#{bucket_type := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -306,11 +306,7 @@ bucket_type(Index) ->
 %% -----------------------------------------------------------------------------
 -spec type(t()) -> maybe_error(module()).
 
-type(Index) ->
-    binary_to_existing_atom(
-        riakc_map:fetch({<<"type">>, register}, Index),
-        utf8
-    ).
+type(#{type := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -320,8 +316,7 @@ type(Index) ->
 %% -----------------------------------------------------------------------------
 -spec config(t()) -> maybe_error(riakc_map:crdt_map()).
 
-config(Index) ->
-    riakc_map:fetch({<<"config">>, map}, Index).
+config(#{config := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
