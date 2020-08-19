@@ -53,7 +53,7 @@ is_in_workflow() ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Equivalent to calling {@link workflow/2 with and empty list passed as
+%% @doc Equivalent to calling {@link workflow/2} with and empty list passed as
 %% the `Opts' argument.
 %% @end
 %% -----------------------------------------------------------------------------
