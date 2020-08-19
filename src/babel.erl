@@ -8,7 +8,6 @@
 
 -define(WORKFLOW_ID, babel_workflow_id).
 -define(WORKFLOW_COUNT, babel_workflow_count).
--define(WORKFLOW_ITEMS, babel_workflow_items).
 -define(WORKFLOW_GRAPH, babel_digraph).
 
 
@@ -96,7 +95,7 @@ workflow(Fun, Opts) ->
         {ok, WorkId, Result}
     catch
         throw:Reason:Stacktrace ->
-            ?LOG_DEBUG(
+            ?LOG_ERROR(
                 "Error while executing workflow; reason=~p, stacktrace=~p",
                 [Reason, Stacktrace]
             ),
@@ -105,7 +104,7 @@ workflow(Fun, Opts) ->
         _:Reason:Stacktrace ->
             %% A user exception, we need to raise it again up the
             %% nested transation stack and out
-            ?LOG_DEBUG(
+            ?LOG_ERROR(
                 "Error while executing workflow; reason=~p, stacktrace=~p",
                 [Reason, Stacktrace]
             ),
@@ -169,8 +168,11 @@ create_index(Config) ->
         || P <- Partitions
     ],
 
-    ok = add_workflow_items([{IndexId, undefined} | PartitionItems]),
-    ok = add_workflow_precedence([Id || {Id, _} <- PartitionItems], IndexId),
+    ok = add_workflow_items([{{index, IndexId}, undefined} | PartitionItems]),
+    ok = add_workflow_precedence(
+        [{partition, Id} || {Id, _} <- PartitionItems],
+        IndexId
+    ),
 
     Index.
 
@@ -186,7 +188,7 @@ create_collection(BucketPrefix, Name) ->
     Collection = babel_index_collection:new(BucketPrefix, Name, []),
     CollectionId = babel_index_collection:id(Collection),
     WorkItem = babel_index_collection:to_work_item(Collection),
-    ok = add_workflow_items([{CollectionId, WorkItem}]),
+    ok = add_workflow_items([{{collection, CollectionId}, WorkItem}]),
     Collection.
 
 
@@ -204,8 +206,8 @@ add_index(Index, Collection0) ->
     CollectionId = babel_index_collection:id(Collection),
     WorkItem = babel_index_collection:to_work_item(Collection),
     IndexId = babel_index:id(Index),
-    ok = add_workflow_items([{CollectionId, WorkItem}]),
-    ok = add_workflow_precedence([IndexId], CollectionId),
+    ok = add_workflow_items([{{collection, CollectionId}, WorkItem}]),
+    ok = add_workflow_precedence([{index, IndexId}], CollectionId),
     Collection.
 
 
@@ -246,7 +248,6 @@ init_workflow(_Opts) ->
             Id = ksuid:gen_id(millisecond),
             undefined = put(?WORKFLOW_ID, Id),
             undefined = put(?WORKFLOW_COUNT, 1),
-            undefined = put(?WORKFLOW_ITEMS, []),
             undefined = put(?WORKFLOW_GRAPH, babel_digraph:new()),
             {ok, Id};
         Id ->
@@ -292,6 +293,34 @@ decrement_nested_count() ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+add_workflow_items(L) ->
+    G = get(?WORKFLOW_GRAPH),
+    {Ids, WorkItems} = lists:unzip(L),
+    _ = put(?WORKFLOW_GRAPH, babel_digraph:add_vertices(G, Ids, WorkItems)),
+    ok.
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+add_workflow_precedence(L, B) when is_list(L) ->
+    G0 = get(?WORKFLOW_GRAPH),
+    G1 = lists:foldl(
+        fun(A, G) -> babel_digraph:add_edge(G, A, B) end,
+        G0,
+        L
+    ),
+    _ = put(?WORKFLOW_GRAPH, G1),
+    ok.
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
 maybe_schedule_workflow() ->
     case is_nested_workflow() of
         true ->
@@ -307,16 +336,18 @@ maybe_schedule_workflow() ->
 %% @end
 %% -----------------------------------------------------------------------------
 schedule_workflow() ->
-    case get(?WORKFLOW_ITEMS) of
-        [] ->
-            ok;
-        L ->
-            WorkItems = lists:flatten(lists:reverse(L)),
-            Work = lists:zip(
-                lists:seq(1, length(WorkItems)),
-                WorkItems
-            ),
-            WorkId = get(?WORKFLOW_ID),
+    WorkId = get(?WORKFLOW_ID),
+    G = get(?WORKFLOW_GRAPH),
+
+    case babel_digraph:topsort(G) of
+        false ->
+            {error, no_work};
+        Vertices ->
+            % Work = lists:zip(
+            %     lists:seq(1, length(WorkItems)),
+            %     WorkItems
+            % ),
+            Work = pack_work(Vertices, G),
             reliable:enqueue(WorkId, Work)
     end.
 
@@ -326,9 +357,31 @@ schedule_workflow() ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-on_error(Reason, #{on_error := Fun}) when is_function(Fun, 0) ->
-    _ = Fun(Reason),
-    ok.
+pack_work(Vertices, G) ->
+    pack_work(Vertices, G, 1, []).
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+pack_work([], _, _, Acc) ->
+    Acc;
+
+pack_work([{index, _} = H|T], G, N, Acc) ->
+    case babel_digraph:out_neighbours(G, H) of
+        [] ->
+            %% Index has to be added to a collection
+            throw(dangling_index);
+        _ ->
+            pack_work(T, G, N, Acc)
+    end;
+
+pack_work([{_, _} = H|T], G, N, Acc) ->
+    {H, Work} = babel_digraph:vertex(G, H),
+    pack_work(T, G, N + 1, [{N, Work}|Acc]).
+
 
 
 %% -----------------------------------------------------------------------------
@@ -354,7 +407,6 @@ maybe_terminate_workflow() ->
 terminate_workflow() ->
     %% We cleanup the process dictionary
     _ = erase(?WORKFLOW_ID),
-    _ = erase(?WORKFLOW_ITEMS),
     _ = erase(?WORKFLOW_COUNT),
     _ = erase(?WORKFLOW_GRAPH),
     ok.
@@ -393,39 +445,9 @@ ensure_in_workflow() ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec append_workflow_items([work_item()]) -> ok.
+on_error(Reason, #{on_error := Fun}) when is_function(Fun, 0) ->
+    _ = Fun(Reason),
+    ok;
 
-append_workflow_items(L) ->
-    Acc0 = get(?WORKFLOW_ITEMS),
-    Acc1 = [L | Acc0],
-    _ = put(?WORKFLOW_ITEMS, Acc1),
-    ok.
-
-
-
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
-add_workflow_items(L) ->
-    G = get(?WORKFLOW_GRAPH),
-    {Ids, WorkItems} = lists:unzip(L),
-    _ = put(?WORKFLOW_GRAPH, babel_digraph:add_vertices(G, Ids, WorkItems)),
-    ok.
-
-
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
-add_workflow_precedence(L, B) when is_list(L) ->
-    G0 = get(?WORKFLOW_GRAPH),
-    G1 = lists:foldl(
-        fun(A, G) -> babel_digraph:add_edge(G, A, B) end,
-        G0,
-        L
-    ),
-    _ = put(?WORKFLOW_GRAPH, G1),
+on_error(_, _) ->
     ok.
