@@ -44,7 +44,7 @@ index_1_test(_) ->
     Index = babel_index:new(Conf),
 
     CRDT = babel_index:to_crdt(Index),
-    ?assertEqual(Index, babel_index:from_crdt(CRDT)),
+    ?assertEqual(true, riakc_map:is_type(CRDT)),
 
     Partitions = babel_index:create_partitions(Index),
     ?assertEqual(8, length(Partitions)),

@@ -22,7 +22,6 @@
 -export([last_updated_ts/1]).
 -export([lookup/5]).
 -export([new/1]).
--export([new/2]).
 -export([size/1]).
 -export([update_data/2]).
 -export([store/5]).
@@ -42,24 +41,21 @@
 -spec new(Id :: binary()) -> t().
 
 new(Id) ->
-    new(Id, []).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec new(Id :: binary(), Data :: list()) -> t().
-
-new(Id, Data) ->
     Ts = integer_to_binary(erlang:system_time(millisecond)),
+
     Values = [
-        babel_crdt:map_entry(register, <<"id">>, Id),
-        babel_crdt:map_entry(register, <<"created_ts">>, Ts),
-        babel_crdt:map_entry(register, <<"last_updated_ts">>, Ts),
-        babel_crdt:map_entry(map, <<"data">>, Data)
+       {{<<"id">>, register}, Id},
+       {{<<"created_ts">>, register}, Ts},
+       {{<<"last_updated_ts">>, register}, Ts},
+       {{<<"data">>, map}, riakc_map:new()}
     ],
-    riakc_map:new(Values, undefined).
+    lists:foldl(
+        fun({K, V}, Acc) ->
+            babel_key_value:set(K, V, Acc)
+        end,
+        riakc_map:new(),
+        Values
+    ).
 
 
 %% -----------------------------------------------------------------------------
@@ -69,7 +65,9 @@ new(Id, Data) ->
 -spec id(Partition :: t()) -> binary() | no_return().
 
 id(Partition) ->
-    riakc_register:value(riakc_map:fetch({<<"id">>, register}, Partition)).
+    riakc_register:value(
+        babel_crdt:dirty_fetch({<<"id">>, register}, Partition)
+    ).
 
 
 %% -----------------------------------------------------------------------------

@@ -288,28 +288,26 @@ to_crdt(Config) ->
         covered_fields := CoveredFields
     } = Config,
 
+
     Values = [
-        babel_crdt:map_entry(
-            register, <<"sort_ordering">>, atom_to_binary(Sort, utf8)),
-        babel_crdt:map_entry(
-            register, <<"number_of_partitions">>, integer_to_binary(N)),
-        babel_crdt:map_entry(
-            register, <<"partition_algorithm">>, atom_to_binary(Algo, utf8)),
-        babel_crdt:map_entry(
-            register, <<"partition_identifier_prefix">>, Prefix),
-        babel_crdt:map_entry(
-            register, <<"partition_identifiers">>, encode_list(Identifiers)),
-        babel_crdt:map_entry(
-            register, <<"partition_by">>, encode_proplist(PartitionBy)),
-        babel_crdt:map_entry(
-            register, <<"index_by">>, encode_proplist(IndexBy)),
-        babel_crdt:map_entry(
-            register, <<"aggregate_by">>, encode_proplist(AggregateBy)),
-        babel_crdt:map_entry(
-            register, <<"covered_fields">>, encode_proplist(CoveredFields))
+        {{<<"sort_ordering">>, register}, atom_to_binary(Sort, utf8)},
+        {{<<"number_of_partitions">>, register}, integer_to_binary(N)},
+        {{<<"partition_algorithm">>, register}, atom_to_binary(Algo, utf8)},
+        {{<<"partition_identifier_prefix">>, register}, Prefix},
+        {{<<"partition_identifiers">>, register}, encode_list(Identifiers)},
+        {{<<"partition_by">>, register}, encode_proplist(PartitionBy)},
+        {{<<"index_by">>, register}, encode_proplist(IndexBy)},
+        {{<<"aggregate_by">>, register}, encode_proplist(AggregateBy)},
+        {{<<"covered_fields">>, register}, encode_proplist(CoveredFields)}
     ],
 
-    riakc_map:new(Values, undefined).
+    lists:foldl(
+        fun({K, V}, Acc) ->
+            babel_key_value:set(K, V, Acc)
+        end,
+        riakc_map:new(),
+        Values
+    ).
 
 
 %% -----------------------------------------------------------------------------

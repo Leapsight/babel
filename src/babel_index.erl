@@ -275,14 +275,19 @@ to_crdt(Index) ->
     ConfigCRDT =  Type:to_crdt(Config),
 
     Values = [
-        babel_crdt:map_entry(register, <<"id">>, Id),
-        babel_crdt:map_entry(register, <<"bucket_type">>, BucketType),
-        babel_crdt:map_entry(register, <<"bucket">>, Bucket),
-        babel_crdt:map_entry(
-            register, <<"type">>, atom_to_binary(Type, utf8)),
+        {{<<"id">>, register}, Id},
+        {{<<"bucket_type">>, register}, BucketType},
+        {{<<"bucket">>, register}, Bucket},
+        {{<<"type">>, register}, atom_to_binary(Type, utf8)},
         {{<<"config">>, map}, ConfigCRDT}
     ],
-    riakc_map:new(Values, undefined).
+    lists:foldl(
+        fun({K, V}, Acc) ->
+            babel_key_value:set(K, V, Acc)
+        end,
+        riakc_map:new(),
+        Values
+    ).
 
 
 %% -----------------------------------------------------------------------------

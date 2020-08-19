@@ -15,7 +15,8 @@ all() ->
         badarg_set_test,
         get_1_test,
         set_1_test,
-        crdt_get_1_test
+        crdt_get_1_test,
+        crdt_set_1_test
     ].
 
 
@@ -132,4 +133,19 @@ crdt_get_1_test(_) ->
         riakc_register:value(
             babel_key_value:get([{<<"info">>, map}, {<<"x">>, register}], CRDT)
         )
+    ).
+
+
+crdt_set_1_test(_) ->
+    Values = [
+        {{<<"r">>, register}, <<"1">>},
+        {{<<"c">>, counter}, 100}
+    ],
+
+    lists:foldl(
+        fun({K, V}, Acc) ->
+            babel_key_value:set(K, V, Acc)
+        end,
+        riakc_map:new(),
+        Values
     ).

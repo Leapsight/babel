@@ -206,7 +206,7 @@ set(Key, Value, KVTerm)
 when (is_atom(Key) orelse is_binary(Key)) andalso is_map(KVTerm) ->
     maps:put(Key, Value, KVTerm);
 
-set({Key, Type}, Value, KVTerm) ->
+set({_, Type} = Key, Value, KVTerm) ->
     riakc_map:is_type(KVTerm) orelse error(badarg),
     riakc_map:update(Key, crdt_update_fun(Type, Value), KVTerm);
 
@@ -244,6 +244,9 @@ collect([], _, _, Acc) ->
 
 
 %% @private
+crdt_update_fun(map, Value) ->
+    fun(_) -> Value end;
+
 crdt_update_fun(register, Value) ->
     fun(Object) -> riakc_register:set(Value, Object) end;
 

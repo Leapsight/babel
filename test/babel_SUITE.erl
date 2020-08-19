@@ -69,4 +69,5 @@ error_dangling_index(_) ->
     Fun = fun() ->
         babel:create_index(Conf)
     end,
+
     ?assertEqual({error, dangling_index}, babel:workflow(Fun)).
