@@ -8,10 +8,12 @@
 
 -define(WORKFLOW_ID, babel_workflow_id).
 -define(WORKFLOW_COUNT, babel_workflow_count).
--define(WORKFLOW_ITEMS, babel_work_items).
+-define(WORKFLOW_ITEMS, babel_workflow_items).
+-define(WORKFLOW_CONN, babel_workflow_connection).
 
 
 -type context()     ::  map().
+-type work_item()   ::  reliable_storage_backend:work_item().
 
 -type opts()        ::  #{
     on_error_abort => boolean(),
@@ -20,6 +22,7 @@
 }.
 
 -export_type([context/0]).
+-export_type([work_item/0]).
 -export_type([opts/0]).
 
 
@@ -29,7 +32,7 @@
 -export([workflow/2]).
 
 -export([get_collection/2]).
-% -export([create_index/2]).
+-export([create_index/1]).
 
 
 
@@ -40,7 +43,7 @@
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns true if the process has a workflow context.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec is_in_workflow() -> boolean().
@@ -50,7 +53,8 @@ is_in_workflow() ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Equivalent to calling {@link workflow/2 with and empty list passed as
+%% the `Opts' argument.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun ::fun(() -> any())) ->
@@ -61,14 +65,31 @@ workflow(Fun) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Executes the functional object `Fun' as a Reliable workflow.
+%% The code that executes inside the workflow should call one or more functions
+%% in this module to schedule work.
+%%
+%% If something goes wrong inside the workflow as a result of a user
+%% error or general exception, the entire workflow is terminated and the
+%% function returns the tuple `{error, Reason}'.
+%%
+%% If everything goes well the function returns the triple
+%% `{ok, WorkId, ResultOfFun}' where `WorkId' is the identifier for the
+%% workflow schedule by Reliable and `ResultOfFun' is the value of the last
+%% expression in `Fun'.
+%%
+%% > Notice that calling this function schedules the work to Reliable, you need
+%% to use the WorkId to check with Reliable the status of the workflow
+%% execution.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun ::fun(() -> any()), Opts :: opts()) ->
-    ok | {error, any()}.
+    {ok, WorkId :: binary(), ResultOfFun :: any()}
+    | {error, Reason :: any()}.
 
 workflow(Fun, Opts) ->
-    ok = init_workflow(Opts),
+    {ok, WorkId} = init_workflow(Opts),
     try
         %% Fun should use this module function which are workflow aware.
         %% If the option on_error_abort was set to true, then any error in
@@ -76,7 +97,7 @@ workflow(Fun, Opts) ->
         %% an exception which we catch below.
         Result = Fun(),
         ok = maybe_schedule_workflow(),
-        Result
+        {ok, WorkId, Result}
     catch
         throw:Reason:Stacktrace ->
             ?LOG_DEBUG(
@@ -98,16 +119,32 @@ workflow(Fun, Opts) ->
 
 
 
-
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Schedules the creation of an index and its partitions according to
+%% `Config'.
+%% > This function needs to be called within a workflow functional object,
+%% see {@link workflow/1,2}.
+%%
+%% Example:
+%%
+%% ```erlang
+%% > babel:workflow(fun() -> babel:create_index(Config) end).
+%% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
+%% '''
 %% @end
 %% -----------------------------------------------------------------------------
--spec create_index(BucketPrefix :: binary(), Config :: map()) ->
-    ok | {error, any()}.
+-spec create_index(Config :: map()) ->
+    ok | no_return().
 
-create_index(_BucketPrefix, _Config) ->
-    % babel_index:new(Config),
+create_index(Config) ->
+    ok = ensure_in_workflow(),
+    Index =  babel_index:new(Config),
+    Partitions = babel_index:create_partitions(Index),
+    L = [
+        babel_index:to_work_item(Index, Partition)
+        || Partition <- Partitions
+    ],
+    ok = append_workflow_items(L),
     ok.
 
 
@@ -162,14 +199,37 @@ init_workflow(Opts) ->
     case get(?WORKFLOW_ID) of
         undefined ->
             %% We are initiating a new workflow
-            undefined = put(?WORKFLOW_ID, ksuid:gen_id(millisecond)),
+            Id = ksuid:gen_id(millisecond),
+            undefined = put(?WORKFLOW_ID, Id),
             undefined = put(?WORKFLOW_COUNT, 1),
             undefined = put(?WORKFLOW_ITEMS, []),
-            ok;
-        _ ->
+            Conn = get_connection(Opts),
+            undefined = put(?WORKFLOW_CONN, Conn),
+            {ok, Id};
+        Id ->
             %% This is a nested call, we are joining an existing workflow
-            increment_nested_count()
+            ok = increment_nested_count(),
+            {ok, Id}
     end.
+
+
+%% @private
+get_connection(#{connection := Conn}) ->
+    Conn;
+
+get_connection(#{connection_pool_name := _PoolName}) ->
+    error(not_implemented).
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc Returns the connection to the pool
+%% @end
+%% -----------------------------------------------------------------------------
+
+return_connection() ->
+    %% @TODO
+    ok.
 
 
 %% -----------------------------------------------------------------------------
@@ -226,9 +286,14 @@ schedule_workflow() ->
     case get(?WORKFLOW_ITEMS) of
         [] ->
             ok;
-        Items ->
+        L ->
+            WorkItems = lists:flatten(lists:reverse(L)),
+            Work = lists:zip(
+                lists:seq(1, length(WorkItems)),
+                WorkItems
+            ),
             WorkId = get(?WORKFLOW_ID),
-            reliable:enqueue(WorkId, Items)
+            reliable:enqueue(WorkId, Work)
     end.
 
 
@@ -253,10 +318,12 @@ maybe_terminate_workflow() ->
 %% @end
 %% -----------------------------------------------------------------------------
 terminate_workflow() ->
+    ok = return_connection(),
     %% We cleanup the process dictionary
     _ = erase(?WORKFLOW_ID),
     _ = erase(?WORKFLOW_ITEMS),
     _ = erase(?WORKFLOW_COUNT),
+    _ = erase(?WORKFLOW_CONN),
     ok.
 
 
@@ -274,3 +341,29 @@ maybe_throw(Reason) ->
         false ->
             {error, Reason}
     end.
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec ensure_in_workflow() -> ok | no_return().
+
+ensure_in_workflow() ->
+    is_in_workflow() orelse error(no_workflow),
+    ok.
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec append_workflow_items([work_item()]) -> ok.
+
+append_workflow_items(L) ->
+    Acc0 = get(?WORKFLOW_ITEMS),
+    Acc1 = [L | Acc0],
+    _ = put(?WORKFLOW_ITEMS, Acc1),
+    ok.

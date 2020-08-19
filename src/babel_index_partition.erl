@@ -26,7 +26,6 @@
 -export([size/1]).
 -export([update_data/2]).
 -export([store/5]).
--export([to_work_item/4]).
 
 
 
@@ -136,23 +135,6 @@ update_data(Fun, Partition0) ->
         fun(R) -> riakc_register:set(Ts, R) end,
         Partition1
     ).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc Returns
-%% @end
-%% -----------------------------------------------------------------------------
--spec to_work_item(
-    BucketType :: binary(),
-    BucketPrefix :: binary(),
-    Key :: binary(),
-    Partition :: t()) ->
-    babel:work_item().
-
-to_work_item(BucketType, BucketPrefix, Key, Partition) ->
-    TypeBucket = type_bucket(BucketType, BucketPrefix),
-    Args = [TypeBucket, Key, riakc_map:to_op(Partition)],
-    {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
 
 
 %% -----------------------------------------------------------------------------

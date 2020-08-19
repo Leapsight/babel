@@ -178,7 +178,7 @@ store(Conn, BucketPrefix, Key, Collection) ->
 store(Conn, BucketPrefix, Key, Collection, ReqOpts)
 when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
     Opts = validate_req_opts(ReqOpts),
-    TypeBucket = type_bucket(BucketPrefix),
+    TypeBucket = typed_bucket(BucketPrefix),
     Op = riakc_map:to_op(Collection),
 
     case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, Opts) of
@@ -257,7 +257,7 @@ lookup(Conn, BucketPrefix, Key) ->
 lookup(Conn, BucketPrefix, Key, ReqOpts)
 when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
     Opts = validate_req_opts(ReqOpts),
-    TypeBucket = type_bucket(BucketPrefix),
+    TypeBucket = typed_bucket(BucketPrefix),
 
     case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, Opts) of
         {ok, _} = OK -> OK;
@@ -300,7 +300,7 @@ delete(Conn, BucketPrefix, Key) ->
 delete(Conn, BucketPrefix, Key, ReqOpts)
 when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
     Opts = validate_req_opts(ReqOpts),
-    TypeBucket = type_bucket(BucketPrefix),
+    TypeBucket = typed_bucket(BucketPrefix),
 
     case riakc_pb_socket:delete(Conn, TypeBucket, Key, Opts) of
         ok -> ok;
@@ -327,7 +327,7 @@ validate_req_opts(Opts) ->
 
 
 %% @private
-type_bucket(Prefix) ->
+typed_bucket(Prefix) ->
     Type = babel_config:get([bucket_types, index_collection]),
     Bucket = <<Prefix/binary, ?PATH_SEPARATOR, ?BUCKET_SUFFIX>>,
     {Type, Bucket}.

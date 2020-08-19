@@ -32,6 +32,8 @@
         false
 end).
 
+-define(BUCKET_SUFFIX, "index_data").
+
 %% Spec for maps_utils:validate/2,3
 -define(SPEC, #{
     id => #{
@@ -128,7 +130,9 @@ end).
 -export([partition_identifiers/1]).
 -export([partition_identifiers/2]).
 -export([to_crdt/1]).
+-export([to_work_item/2]).
 -export([type/1]).
+-export([typed_bucket/1]).
 -export([update/3]).
 %% -export([get/4]).
 %% -export([remove_entry/4]).
@@ -208,7 +212,7 @@ new(IndexData) ->
     } = Index0,
 
     Index1 = maps:without([bucket_prefix], Index0),
-    Bucket = <<BucketPrefix/binary, ?PATH_SEPARATOR, "index_data">>,
+    Bucket = <<BucketPrefix/binary, ?PATH_SEPARATOR, ?BUCKET_SUFFIX>>,
     Index = Index1#{bucket => Bucket},
 
     case Type:init(IndexId, ConfigSpec) of
@@ -294,6 +298,20 @@ create_partitions(#{type := Type, config := Config}) ->
 
 
 %% -----------------------------------------------------------------------------
+%% @doc Returns
+%% @end
+%% -----------------------------------------------------------------------------
+-spec to_work_item(Index :: babel_index:t(), Partition :: t()) ->
+    babel:work_item().
+
+to_work_item(Index, Partition) ->
+    PartitionId = babel_index_partition:id(Partition),
+    TypedBucket = babel_index:typed_bucket(Index),
+    Args = [TypedBucket, PartitionId, riakc_map:to_op(Partition)],
+    {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
+
+
+%% -----------------------------------------------------------------------------
 %% @doc Returns the Riak KV bucket were this index partitions are stored.
 %% @end
 %% -----------------------------------------------------------------------------
@@ -309,6 +327,16 @@ bucket(#{bucket := Value}) -> Value.
 -spec bucket_type(t()) -> maybe_error(binary()).
 
 bucket_type(#{bucket_type := Value}) -> Value.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the Riak KV `type_bucket()' associated with this index.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec typed_bucket(t()) -> maybe_error(binary()).
+
+typed_bucket(#{bucket_type := Type, bucket := Bucket}) ->
+    {Type, Bucket}.
 
 
 %% -----------------------------------------------------------------------------
