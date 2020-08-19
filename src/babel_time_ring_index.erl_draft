@@ -55,6 +55,26 @@
             (X) when is_binary(X) -> true;
             (_) -> false
         end
+    },
+    on_cycle => #{
+        description => "MFA to eval when we have done the full circle",
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        validator => #{
+            module => #{
+                required => true,
+                datatype => binary
+            },
+            function => #{
+                required => true,
+                datatype => binary
+            },
+            args => #{
+                required => true,
+                datatype => list
+            }
+        }
     }
 }).
 
