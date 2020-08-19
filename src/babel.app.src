@@ -1,5 +1,5 @@
 {application, babel, [
-    {description, "An Erlang application providing a way to define and manage custom indices for Riak KV."},
+    {description, "An Erlang application providing a way to define and manage custom indices for Riak KV. It uses Reliable to ensure Riak write operations are executed."},
     {vsn, "0.1.0"},
     {registered, []},
     {mod, {babel_app, []}},
