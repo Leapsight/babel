@@ -91,7 +91,7 @@ workflow(Fun) ->
 workflow(Fun, Opts) ->
     {ok, WorkId} = init_workflow(Opts),
     try
-        %% Fun should use this module function which are workflow aware.
+        %% Fun should use this module functions which are workflow aware.
         %% If the option on_error_abort was set to true, then any error in
         %% the functions used within the function block will throw
         %% an exception which we catch below.
@@ -101,14 +101,16 @@ workflow(Fun, Opts) ->
     catch
         throw:Reason:Stacktrace ->
             ?LOG_DEBUG(
-                "Error while executing workflow; reason=~p, stacktrace=~p", [Reason, Stacktrace]
+                "Error while executing workflow; reason=~p, stacktrace=~p",
+                [Reason, Stacktrace]
             ),
             maybe_throw(Reason);
         _:Reason:Stacktrace ->
             %% A user exception, we need to raise it again up the
             %% nested transation stack and out
             ?LOG_DEBUG(
-                "Error while executing workflow; reason=~p, stacktrace=~p", [Reason, Stacktrace]
+                "Error while executing workflow; reason=~p, stacktrace=~p",
+                [Reason, Stacktrace]
             ),
             error(Reason)
     after
