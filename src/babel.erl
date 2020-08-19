@@ -9,7 +9,7 @@
 -define(WORKFLOW_ID, babel_workflow_id).
 -define(WORKFLOW_COUNT, babel_workflow_count).
 -define(WORKFLOW_ITEMS, babel_workflow_items).
--define(WORKFLOW_CONN, babel_workflow_connection).
+-define(WORKFLOW_GRAPH, babel_digraph).
 
 
 -type context()     ::  map().
@@ -24,14 +24,14 @@
 -export_type([opts/0]).
 
 
-
+-export([add_index/2]).
+% -export([delete_index/2]).
+-export([remove_index/2]).
+-export([create_collection/2]).
+-export([create_index/1]).
 -export([is_in_workflow/0]).
 -export([workflow/1]).
 -export([workflow/2]).
-
--export([create_collection/2]).
--export([fetch_collection/2]).
--export([create_index/2]).
 
 
 
@@ -100,6 +100,7 @@ workflow(Fun, Opts) ->
                 "Error while executing workflow; reason=~p, stacktrace=~p",
                 [Reason, Stacktrace]
             ),
+            ok = on_error(Reason, Opts),
             maybe_throw(Reason);
         _:Reason:Stacktrace ->
             %% A user exception, we need to raise it again up the
@@ -118,7 +119,7 @@ workflow(Fun, Opts) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Schedules the creation of an index and its partitions according to
-%% `Config', adding the resulting index to collection `Collection'.
+%% `Config'.
 %% > This function needs to be called within a workflow functional object,
 %% see {@link workflow/1,2}.
 %%
@@ -154,26 +155,24 @@ workflow(Fun, Opts) ->
 %% '''
 %% @end
 %% -----------------------------------------------------------------------------
--spec create_index(Collection :: babel_index_collection:t(), Config :: map()) ->
-    ok | no_return().
+-spec create_index(Config :: map()) -> babel_index:t() | no_return().
 
-create_index(Collection0, Config) ->
+create_index(Config) ->
     ok = ensure_in_workflow(),
 
-    Index =  babel_index:new(Config),
-    Id = babel_index:id(Index),
-
-    Collection = babel_index_collection:add_index(Id, Index, Collection0),
+    Index = babel_index:new(Config),
+    IndexId = babel_index:id(Index),
     Partitions = babel_index:create_partitions(Index),
 
-    %% We should first create the partitions and then add the new index to the
-    %% collection
-    Items = [
-        [babel_index:to_work_item(Index, P) || P <- Partitions],
-        babel_index_collection:to_work_item(Collection)
+    PartitionItems = [
+        {babel_index_partition:id(P), babel_index:to_work_item(Index, P)}
+        || P <- Partitions
     ],
-    ok = append_workflow_items(Items),
-    ok.
+
+    ok = add_workflow_items([{IndexId, undefined} | PartitionItems]),
+    ok = add_workflow_precedence([Id || {Id, _} <- PartitionItems], IndexId),
+
+    Index.
 
 
 %% -----------------------------------------------------------------------------
@@ -184,37 +183,48 @@ create_index(Collection0, Config) ->
     babel_index_collection:t() | no_return().
 
 create_collection(BucketPrefix, Name) ->
-    babel_index_collection:new(BucketPrefix, Name, []).
+    Collection = babel_index_collection:new(BucketPrefix, Name, []),
+    CollectionId = babel_index_collection:id(Collection),
+    WorkItem = babel_index_collection:to_work_item(Collection),
+    ok = add_workflow_items([{CollectionId, WorkItem}]),
+    Collection.
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns the collection for a given name `Name'
+%% @doc Adds
 %% @end
 %% -----------------------------------------------------------------------------
--spec fetch_collection(BucketPrefix :: binary(), Key :: binary()) ->
+-spec add_index(
+    Index :: babel_index:t(),
+    Collection :: babel_index_collection:t()) ->
     babel_index_collection:t() | no_return().
 
-fetch_collection(BucketPrefix, Key) ->
-    try cache:get(babel_index_collection, {BucketPrefix, Key}, 5000) of
-        undefined ->
-            % TODO
-            Conn = undefined,
-            case label_collection:lookup(Conn, BucketPrefix, Key) of
-               {ok, _}  = OK ->
-                   OK;
-               {error, Reason} ->
-                   throw(Reason)
-            end;
+add_index(Index, Collection0) ->
+    Collection = babel_index_collection:add_index(Index, Collection0),
+    CollectionId = babel_index_collection:id(Collection),
+    WorkItem = babel_index_collection:to_work_item(Collection),
+    IndexId = babel_index:id(Index),
+    ok = add_workflow_items([{CollectionId, WorkItem}]),
+    ok = add_workflow_precedence([IndexId], CollectionId),
+    Collection.
 
-        Collection ->
-            Collection
-    catch
-        throw:Reason ->
-            {error, Reason};
-        _:timeout ->
-            {error, timeout}
-    end.
 
+%% -----------------------------------------------------------------------------
+%% @doc Removes an index at identifier `IndexId' from collection `Collection'.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec remove_index(
+    IndexId :: binary(),
+    Collection :: babel_index_collection:t()) ->
+    babel_index_collection:t() | no_return().
+
+remove_index(IndexId, Collection0) ->
+    Collection = babel_index_collection:delete_index(IndexId, Collection0),
+    CollectionId = babel_index_collection:id(Collection),
+    WorkItem = babel_index_collection:to_work_item(Collection),
+    ok = add_workflow_items([{CollectionId, WorkItem}]),
+    ok = add_workflow_precedence([IndexId], CollectionId),
+    Collection.
 
 
 %% =============================================================================
@@ -228,41 +238,22 @@ fetch_collection(BucketPrefix, Key) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-init_workflow(Opts) ->
+init_workflow(_Opts) ->
     case get(?WORKFLOW_ID) of
         undefined ->
             %% We are initiating a new workflow
+            %% We store the worflow state in the process dictionary
             Id = ksuid:gen_id(millisecond),
             undefined = put(?WORKFLOW_ID, Id),
             undefined = put(?WORKFLOW_COUNT, 1),
             undefined = put(?WORKFLOW_ITEMS, []),
-            Conn = get_connection(Opts),
-            undefined = put(?WORKFLOW_CONN, Conn),
+            undefined = put(?WORKFLOW_GRAPH, babel_digraph:new()),
             {ok, Id};
         Id ->
             %% This is a nested call, we are joining an existing workflow
             ok = increment_nested_count(),
             {ok, Id}
     end.
-
-
-%% @private
-get_connection(#{connection := Conn}) ->
-    Conn;
-
-get_connection(#{connection_pool_name := _PoolName}) ->
-    error(not_implemented).
-
-
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc Returns the connection to the pool
-%% @end
-%% -----------------------------------------------------------------------------
-
-return_connection() ->
-    %% @TODO
-    ok.
 
 
 %% -----------------------------------------------------------------------------
@@ -336,7 +327,7 @@ schedule_workflow() ->
 %% @end
 %% -----------------------------------------------------------------------------
 on_error(Reason, #{on_error := Fun}) when is_function(Fun, 0) ->
-    _ = Fun(),
+    _ = Fun(Reason),
     ok.
 
 
@@ -361,12 +352,11 @@ maybe_terminate_workflow() ->
 %% @end
 %% -----------------------------------------------------------------------------
 terminate_workflow() ->
-    ok = return_connection(),
     %% We cleanup the process dictionary
     _ = erase(?WORKFLOW_ID),
     _ = erase(?WORKFLOW_ITEMS),
     _ = erase(?WORKFLOW_COUNT),
-    _ = erase(?WORKFLOW_CONN),
+    _ = erase(?WORKFLOW_GRAPH),
     ok.
 
 
@@ -409,4 +399,33 @@ append_workflow_items(L) ->
     Acc0 = get(?WORKFLOW_ITEMS),
     Acc1 = [L | Acc0],
     _ = put(?WORKFLOW_ITEMS, Acc1),
+    ok.
+
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+add_workflow_items(L) ->
+    G = get(?WORKFLOW_GRAPH),
+    {Ids, WorkItems} = lists:unzip(L),
+    _ = put(?WORKFLOW_GRAPH, babel_digraph:add_vertices(G, Ids, WorkItems)),
+    ok.
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+add_workflow_precedence(L, B) when is_list(L) ->
+    G0 = get(?WORKFLOW_GRAPH),
+    G1 = lists:foldl(
+        fun(A, G) -> babel_digraph:add_edge(G, A, B) end,
+        G0,
+        L
+    ),
+    _ = put(?WORKFLOW_GRAPH, G1),
     ok.

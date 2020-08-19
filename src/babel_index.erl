@@ -127,6 +127,7 @@ end).
 -export([create_partitions/1]).
 -export([from_crdt/1]).
 -export([new/1]).
+-export([id/1]).
 -export([partition_identifiers/1]).
 -export([partition_identifiers/2]).
 -export([to_crdt/1]).
@@ -309,6 +310,16 @@ to_work_item(Index, Partition) ->
     TypedBucket = babel_index:typed_bucket(Index),
     Args = [TypedBucket, PartitionId, riakc_map:to_op(Partition)],
     {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns id of this index
+%% @end
+%% -----------------------------------------------------------------------------
+-spec id(t()) -> binary().
+
+id(#{id := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------

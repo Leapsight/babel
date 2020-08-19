@@ -61,7 +61,7 @@
 
 
 %% API
--export([add_index/3]).
+-export([add_index/2]).
 -export([delete_index/2]).
 -export([store/2]).
 -export([store/3]).
@@ -177,14 +177,14 @@ index(Key, #babel_index_collection{} = Collection) when is_binary(Key) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec add_index(Id :: binary(), Index :: babel_index:t(), Collection :: t()) ->
+-spec add_index(Index :: babel_index:t(), Collection :: t()) ->
     t() | no_return().
 
-add_index(Id, Index, #babel_index_collection{} = Collection) ->
-
+add_index(Index, #babel_index_collection{} = Collection) ->
+    IndexId = babel_index:id(Index),
     RiakMap = babel_index:to_crdt(Index),
     Data0 = Collection#babel_index_collection.data,
-    Data = riakc_map:update({Id, map}, fun(_) -> RiakMap end, Data0),
+    Data = riakc_map:update({IndexId, map}, fun(_) -> RiakMap end, Data0),
 
     Collection#babel_index_collection{data = Data}.
 
