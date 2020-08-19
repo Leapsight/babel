@@ -208,7 +208,7 @@ when (is_atom(Key) orelse is_binary(Key)) andalso is_map(KVTerm) ->
 
 set({_, Type} = Key, Value, KVTerm) ->
     riakc_map:is_type(KVTerm) orelse error(badarg),
-    riakc_map:update(Key, crdt_update_fun(Type, Value), KVTerm);
+    riakc_map:update(Key, riak_update_fun(Type, Value), KVTerm);
 
 set(_, _, _) ->
     error(badarg).
@@ -244,19 +244,19 @@ collect([], _, _, Acc) ->
 
 
 %% @private
-crdt_update_fun(map, Value) ->
+riak_update_fun(map, Value) ->
     fun(_) -> Value end;
 
-crdt_update_fun(register, Value) ->
+riak_update_fun(register, Value) ->
     fun(Object) -> riakc_register:set(Value, Object) end;
 
-crdt_update_fun(flag, true) ->
+riak_update_fun(flag, true) ->
     fun(Object) -> riakc_flag:enable(Object) end;
 
-crdt_update_fun(flag, false) ->
+riak_update_fun(flag, false) ->
     fun(Object) -> riakc_flag:disable(Object) end;
 
-crdt_update_fun(counter, N) ->
+riak_update_fun(counter, N) ->
     fun(Object) ->
         case N - riakc_counter:value(Object) of
             0 ->
@@ -268,5 +268,5 @@ crdt_update_fun(counter, N) ->
         end
     end;
 
-crdt_update_fun(Type, _) ->
+riak_update_fun(Type, _) ->
     error({unsupported_type, Type}).
