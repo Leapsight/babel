@@ -49,11 +49,9 @@ end).
         default => babel_config:get([bucket_types, index_data]),
         validator => ?BINARY_VALIDATOR
     },
-    bucket => #{
+    bucket_prefix => #{
         description => <<
             "The bucket name used to store the babel_index_partition:t() objects"
-            " of this index. Typically the name of an entity in plural form"
-            " e.g. 'accounts'."
         >>,
         required => true,
         datatype => [binary, atom],
@@ -198,17 +196,26 @@ end).
 %%
 %% @end
 %% -----------------------------------------------------------------------------
--spec new(IndexData :: map()) -> maybe_error({ok, t()}).
+-spec new(IndexData :: map()) -> Index :: t() | no_return().
 
 new(IndexData) ->
-    Index = maps_utils:validate(IndexData, ?SPEC),
-    #{id := IndexId, type := Type, config := ConfigSpec} = Index,
+    Index0 = maps_utils:validate(IndexData, ?SPEC),
+    #{
+        id := IndexId,
+        type := Type,
+        config := ConfigSpec,
+        bucket_prefix := BucketPrefix
+    } = Index0,
+
+    Index1 = maps:without([bucket_prefix], Index0),
+    Bucket = <<BucketPrefix/binary, ?PATH_SEPARATOR, "index_data">>,
+    Index = Index1#{bucket => Bucket},
 
     case Type:init(IndexId, ConfigSpec) of
         {ok, Config} ->
-            {ok, Index#{config => Config}};
-        {error, _} = Error ->
-            Error
+            Index#{config => Config};
+        {error, Reason} ->
+            error(Reason)
     end.
 
 
@@ -277,8 +284,13 @@ to_crdt(Index) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+-spec create_partitions(t()) -> [babel_index_partition:t()] | no_return().
+
 create_partitions(#{type := Type, config := Config}) ->
-    Type:init_partitions(Config).
+    case Type:init_partitions(Config) of
+        {ok, Partitions} -> Partitions;
+        {error, Reason} -> error(Reason)
+    end.
 
 
 %% -----------------------------------------------------------------------------

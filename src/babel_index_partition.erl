@@ -147,7 +147,7 @@ update_data(Fun, Partition0) ->
     BucketPrefix :: binary(),
     Key :: binary(),
     Partition :: t()) ->
-    reliable_storage_backend:work_item().
+    babel:work_item().
 
 to_work_item(BucketType, BucketPrefix, Key, Partition) ->
     TypeBucket = type_bucket(BucketType, BucketPrefix),

@@ -38,7 +38,7 @@ collection_1_test(_) ->
     Conf = #{
         id => <<"users_by_email">>,
         bucket_type => <<"map">>,
-        bucket => <<"lojack/johndoe/index_data">>,
+        bucket_prefix => <<"lojack/johndoe">>,
         type => babel_hash_partitioned_index,
         config => #{
             sort_ordering => Sort,
@@ -49,7 +49,7 @@ collection_1_test(_) ->
             covered_fields => Covered
         }
     },
-    {ok, Index} = babel_index:new(Conf),
+    Index = babel_index:new(Conf),
 
     C1 = babel_index_collection:new([]),
     C2 = babel_index_collection:add_index(<<"a">>, Index, C1),

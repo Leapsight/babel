@@ -61,15 +61,17 @@
     partition_algorithm := atom(),
     partition_identifier_prefix := binary(),
     partition_identifiers := [binary()],
-    partition_by := [riakc_map:key() | [riakc_map:key()]],
-    index_by := [riakc_map:key() | [riakc_map:key()]],
-    aggregate_by := [riakc_map:key() | [riakc_map:key()]],
-    covered_fields := [riakc_map:key() | [riakc_map:key()]]
+    partition_by := fields(),
+    index_by := fields(),
+    aggregate_by := fields(),
+    covered_fields := fields()
 }.
 
 -type action()      ::  {babel_index:action(), babel_index:data()}.
+-type fields()      ::  [babel_key_value:key() | [babel_key_value:key()]].
 
 -export_type([action/0]).
+-export_type([fields/0]).
 
 
 %% API
@@ -118,7 +120,6 @@ sort_ordering(#{sort_ordering := Value}) -> Value.
 -spec partition_algorithm(t()) -> atom().
 
 partition_algorithm(#{partition_algorithm := Value}) -> Value.
-
 
 
 %% -----------------------------------------------------------------------------
@@ -315,9 +316,7 @@ to_crdt(Config) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec init_partitions(t()) ->
-    {ok, [babel_index_partition:t()]}
-    | {error, any()}.
+-spec init_partitions(t()) -> [babel_index_partition:t()].
 
 init_partitions(#{partition_identifiers := Identifiers}) ->
     Partitions = [babel_index_partition:new(Id) || Id <- Identifiers],
@@ -343,14 +342,16 @@ number_of_partitions(#{number_of_partitions := Value}) -> Value.
 partition_identifier(Data, Config) ->
     N = number_of_partitions(Config),
     Algo = partition_algorithm(Config),
-    Prefix = partition_identifier_prefix(Config),
 
     PKey = gen_index_key(partition_by(Config), Data),
 
     Bucket = babel_consistent_hashing:bucket(PKey, N, Algo),
-    % gen_identifier(Prefix, Bucket).
-    %% N is zero-based
-    lists:nth(N - 1, partition_identifiers(Config)).
+
+    %% Prefix = partition_identifier_prefix(Config),
+    %% gen_identifier(Prefix, Bucket).
+
+    %% Bucket is zero-based
+    lists:nth(Bucket + 1, partition_identifiers(Config)).
 
 
 
