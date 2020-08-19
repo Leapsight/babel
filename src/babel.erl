@@ -16,9 +16,7 @@
 -type work_item()   ::  reliable_storage_backend:work_item().
 
 -type opts()        ::  #{
-    on_error_abort => boolean(),
-    connection => pid(),
-    connection_pool => atom()
+    on_error => fun((Reason :: any()) -> any())
 }.
 
 -export_type([context/0]).
@@ -31,8 +29,9 @@
 -export([workflow/1]).
 -export([workflow/2]).
 
--export([get_collection/2]).
--export([create_index/1]).
+-export([create_collection/2]).
+-export([fetch_collection/2]).
+-export([create_index/2]).
 
 
 
@@ -57,7 +56,7 @@ is_in_workflow() ->
 %% the `Opts' argument.
 %% @end
 %% -----------------------------------------------------------------------------
--spec workflow(Fun ::fun(() -> any())) ->
+-spec workflow(Fun :: fun(() -> any())) ->
     {ok, Id :: binary()} | {error, any()}.
 
 workflow(Fun) ->
@@ -92,9 +91,6 @@ workflow(Fun, Opts) ->
     {ok, WorkId} = init_workflow(Opts),
     try
         %% Fun should use this module functions which are workflow aware.
-        %% If the option on_error_abort was set to true, then any error in
-        %% the functions used within the function block will throw
-        %% an exception which we catch below.
         Result = Fun(),
         ok = maybe_schedule_workflow(),
         {ok, WorkId, Result}
@@ -112,58 +108,93 @@ workflow(Fun, Opts) ->
                 "Error while executing workflow; reason=~p, stacktrace=~p",
                 [Reason, Stacktrace]
             ),
+            ok = on_error(Reason, Opts),
             error(Reason)
     after
-        ok = maybe_terminate_workflow(),
-        % ok = maybe_return_connection()
-        ok
+        ok = maybe_terminate_workflow()
     end.
 
 
 
 %% -----------------------------------------------------------------------------
 %% @doc Schedules the creation of an index and its partitions according to
-%% `Config'.
+%% `Config', adding the resulting index to collection `Collection'.
 %% > This function needs to be called within a workflow functional object,
 %% see {@link workflow/1,2}.
 %%
-%% Example:
+%% The index collection `Collection' has to exist in the database, otherwise it
+%% fails with an exception, terminating the workflow. See {@link
+%% create_collection/3} to create a collection within the same workflow
+%% execution.
+%%
+%% Example: Creating an index and adding it to an existing collection
 %%
 %% ```erlang
-%% > babel:workflow(fun() -> babel:create_index(Config) end).
+%% > babel:workflow(
+%%     fun() ->
+%%          Collection = babel_index_collection:fetch(
+%%              Conn, <<"foo">>, <<"users">>),
+%%          _ = babel:create_index(Collection, Config),
+%%          ok
+%%     end).
+%% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
+%% '''
+%%
+%% Example: Creating an index and adding it to a newly created collection
+%%
+%% ```erlang
+%% > babel:workflow(
+%%      fun() ->
+%%          Collection = babel:create_collection(<<"foo">>, <<"users">>),
+%%          _ = babel:create_index(Collection, Config),
+%%          ok
+%%      end
+%% ).
 %% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
 %% '''
 %% @end
 %% -----------------------------------------------------------------------------
--spec create_index(Config :: map()) ->
+-spec create_index(Collection :: babel_index_collection:t(), Config :: map()) ->
     ok | no_return().
 
-create_index(Config) ->
+create_index(Collection0, Config) ->
     ok = ensure_in_workflow(),
+
     Index =  babel_index:new(Config),
+    Id = babel_index:id(Index),
+
+    Collection = babel_index_collection:add_index(Id, Index, Collection0),
     Partitions = babel_index:create_partitions(Index),
-    L = [
-        babel_index:to_work_item(Index, Partition)
-        || Partition <- Partitions
+
+    %% We should first create the partitions and then add the new index to the
+    %% collection
+    Items = [
+        [babel_index:to_work_item(Index, P) || P <- Partitions],
+        babel_index_collection:to_work_item(Collection)
     ],
-    ok = append_workflow_items(L),
+    ok = append_workflow_items(Items),
     ok.
 
 
+%% -----------------------------------------------------------------------------
+%% @doc Schedules the creation of an index collection.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec create_collection(BucketPrefix :: binary(), Name :: binary()) ->
+    babel_index_collection:t() | no_return().
 
-% compute_indices(<<"accounts">>, Acc1) ->
-%     WorkItems
-%     workflow:eneuque(WorkdID, WorItems),
+create_collection(BucketPrefix, Name) ->
+    babel_index_collection:new(BucketPrefix, Name, []).
 
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns the collection for a given name `Name'
 %% @end
 %% -----------------------------------------------------------------------------
--spec get_collection(BucketPrefix :: binary(), Key :: binary()) ->
-    babel_index_collection:t() | {error, any()}.
+-spec fetch_collection(BucketPrefix :: binary(), Key :: binary()) ->
+    babel_index_collection:t() | no_return().
 
-get_collection(BucketPrefix, Key) ->
+fetch_collection(BucketPrefix, Key) ->
     try cache:get(babel_index_collection, {BucketPrefix, Key}, 5000) of
         undefined ->
             % TODO
@@ -297,6 +328,16 @@ schedule_workflow() ->
             WorkId = get(?WORKFLOW_ID),
             reliable:enqueue(WorkId, Work)
     end.
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+on_error(Reason, #{on_error := Fun}) when is_function(Fun, 0) ->
+    _ = Fun(),
+    ok.
 
 
 %% -----------------------------------------------------------------------------

@@ -51,13 +51,14 @@ collection_1_test(_) ->
     },
     Index = babel_index:new(Conf),
 
-    C1 = babel_index_collection:new([]),
+    C1 = babel_index_collection:new(<<"foo">>, <<"bar">>),
     C2 = babel_index_collection:add_index(<<"a">>, Index, C1),
 
     RiakMap = babel_index:to_crdt(Index),
     ?assertEqual(Index, babel_index:from_crdt(RiakMap)),
     ?assertEqual(RiakMap, babel_index_collection:index(<<"a">>, C2)),
-    ?assertEqual(RiakMap, babel_crdt:dirty_fetch({<<"a">>, map}, C2)),
+    CRDT = babel_index_collection:data(C2),
+    ?assertEqual(RiakMap, babel_crdt:dirty_fetch({<<"a">>, map}, CRDT)),
     ok.
 
 

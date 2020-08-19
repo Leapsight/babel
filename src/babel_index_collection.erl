@@ -46,26 +46,39 @@
 
 -define(BUCKET_SUFFIX, "index_collection").
 
--type t()           ::  riakc_map:crdt_map().
+-record(babel_index_collection, {
+    id      ::  binary(),
+    bucket  ::  binary(),
+    data    ::  data()
+}).
+
+-type t()           ::  #babel_index_collection{}.
+-type data()        ::  riakc_map:crdt_map().
 
 -export_type([t/0]).
+-export_type([data/0]).
 -export_type([req_opts/0]).
 
 
 %% API
 -export([add_index/3]).
 -export([delete_index/2]).
--export([store/4]).
--export([store/5]).
+-export([store/2]).
+-export([store/3]).
 -export([delete/3]).
 -export([delete/4]).
 -export([fetch/3]).
 -export([fetch/4]).
--export([new/1]).
+-export([new/2]).
+-export([new/3]).
 -export([index/2]).
 -export([lookup/3]).
 -export([lookup/4]).
 -export([size/1]).
+-export([id/1]).
+-export([bucket/1]).
+-export([data/1]).
+-export([to_work_item/1]).
 
 
 
@@ -76,21 +89,37 @@
 
 
 
-% create_index()
+%% -----------------------------------------------------------------------------
+%% @doc Takes a list of pairs (property list) or map of binary keys to values
+%% of type `babel_index:t()' and returns an index collection.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec new(BucketPrefix :: binary(), Name :: binary()) -> t().
+
+new(BucketPrefix, Name) ->
+    new(BucketPrefix, Name, []).
+
 
 %% -----------------------------------------------------------------------------
 %% @doc Takes a list of pairs (property list) or map of binary keys to values
 %% of type `babel_index:t()' and returns an index collection.
 %% @end
 %% -----------------------------------------------------------------------------
--spec new(Indices :: [{binary(), babel_index:t()}]) -> t().
+-spec new(
+    BucketPrefix :: binary(),
+    Name :: binary(),
+    Indices :: [{binary(), babel_index:t()}]) -> t().
 
-new(Indices) when is_list(Indices) ->
+new(BucketPrefix, Name, Indices) when is_list(Indices) ->
     Values = [babel_crdt:map_entry(map, K, V) || {K, V} <- Indices],
-    riakc_map:new(Values, undefined);
+    #babel_index_collection{
+        id = Name,
+        bucket = BucketPrefix,
+        data = riakc_map:new(Values, undefined)
+    };
 
-new(Indices) when is_map(Indices) ->
-    new(maps:to_list(Indices)).
+new(BucketPrefix, Name, Indices) when is_map(Indices) ->
+    new(BucketPrefix, Name, maps:to_list(Indices)).
 
 
 %% -----------------------------------------------------------------------------
@@ -99,8 +128,36 @@ new(Indices) when is_map(Indices) ->
 %% -----------------------------------------------------------------------------
 -spec size(Collection :: t()) -> non_neg_integer().
 
-size(Collection) ->
-    riakc_map:size(Collection).
+size(#babel_index_collection{} = Collection) ->
+    Data = Collection#babel_index_collection.data,
+    riakc_map:size(Data).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec id(Collection :: t()) -> binary().
+
+id(#babel_index_collection{id = Value}) -> Value.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec bucket(Collection :: t()) -> binary().
+
+bucket(#babel_index_collection{bucket = Value}) -> Value.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec data(Collection :: t()) -> data().
+
+data(#babel_index_collection{data = Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -111,8 +168,9 @@ size(Collection) ->
 %% -----------------------------------------------------------------------------
 -spec index(Key :: binary(), Collection :: t()) -> babel_index:t().
 
-index(Key, Collection) when is_binary(Key) ->
-    babel_crdt:dirty_fetch({Key, map}, Collection).
+index(Key, #babel_index_collection{} = Collection) when is_binary(Key) ->
+    Data = Collection#babel_index_collection.data,
+    babel_crdt:dirty_fetch({Key, map}, Data).
 
 
 %% -----------------------------------------------------------------------------
@@ -122,9 +180,13 @@ index(Key, Collection) when is_binary(Key) ->
 -spec add_index(Id :: binary(), Index :: babel_index:t(), Collection :: t()) ->
     t() | no_return().
 
-add_index(Id, Index, Collection) ->
+add_index(Id, Index, #babel_index_collection{} = Collection) ->
+
     RiakMap = babel_index:to_crdt(Index),
-    riakc_map:update({Id, map}, fun(_) -> RiakMap end, Collection).
+    Data0 = Collection#babel_index_collection.data,
+    Data = riakc_map:update({Id, map}, fun(_) -> RiakMap end, Data0),
+
+    Collection#babel_index_collection{data = Data}.
 
 
 %% -----------------------------------------------------------------------------
@@ -134,8 +196,26 @@ add_index(Id, Index, Collection) ->
 -spec delete_index(Id :: binary(), Collection :: t()) ->
     t() | no_return().
 
-delete_index(Id, Collection) ->
-    riakc_map:erase({Id, map}, Collection).
+delete_index(Id, #babel_index_collection{} = Collection) ->
+    Data = Collection#babel_index_collection.data,
+    Collection#babel_index_collection{data = riakc_map:erase({Id, map}, Data)}.
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns
+%% @end
+%% -----------------------------------------------------------------------------
+-spec to_work_item(Collection :: t()) ->
+    babel:work_item().
+
+to_work_item(#babel_index_collection{} = Collection) ->
+    Key = Collection#babel_index_collection.id,
+    Data = Collection#babel_index_collection.data,
+    TypedBucket = typed_bucket(Collection),
+    Args = [TypedBucket, Key, riakc_map:to_op(Data)],
+    {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
+
 
 
 %% -----------------------------------------------------------------------------
@@ -144,20 +224,16 @@ delete_index(Id, Collection) ->
 %% key `Key'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec store(
-    Conn :: pid(),
-    BucketPrefix :: binary(),
-    Key :: binary(),
-    Collection :: t()) ->
+-spec store(Conn :: pid(), Collection :: t()) ->
     {ok, Index :: t()} | {error, Reason :: any()}.
 
 
-store(Conn, BucketPrefix, Key, Collection) ->
+store(Conn, Collection) ->
     ReqOpts = #{
         w => quorum,
         pw => quorum
     },
-    store(Conn, BucketPrefix, Key, Collection, ReqOpts).
+    store(Conn, Collection, ReqOpts).
 
 
 %% -----------------------------------------------------------------------------
@@ -166,20 +242,16 @@ store(Conn, BucketPrefix, Key, Collection) ->
 %% key `Key'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec store(
-    Conn :: pid(),
-    BucketPrefix :: binary(),
-    Key :: binary(),
-    Collection :: t(),
-    ReqOpts :: req_opts()) ->
+-spec store(Conn :: pid(), Collection :: t(), ReqOpts :: req_opts()) ->
     {ok, Index :: t()} | {error, Reason :: any()}.
 
 
-store(Conn, BucketPrefix, Key, Collection, ReqOpts)
-when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
+store(Conn, Collection, ReqOpts) when is_pid(Conn) ->
     Opts = validate_req_opts(ReqOpts),
-    TypeBucket = typed_bucket(BucketPrefix),
-    Op = riakc_map:to_op(Collection),
+    Key = Collection#babel_index_collection.id,
+    Data = Collection#babel_index_collection.data,
+    TypeBucket = typed_bucket(Collection),
+    Op = riakc_map:to_op(Data),
 
     case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, Opts) of
         {error, _} = Error ->
@@ -197,7 +269,7 @@ when is_pid(Conn) andalso is_binary(BucketPrefix) andalso is_binary(Key) ->
     Conn :: pid(),
     BucketPrefix :: binary(),
     Key :: binary()) ->
-    {ok, t()} | no_return().
+    t() | no_return().
 
 fetch(Conn, BucketPrefix, Key) ->
     ReqOpts = #{
@@ -216,7 +288,7 @@ fetch(Conn, BucketPrefix, Key) ->
     BucketPrefix :: binary(),
     Key :: binary(),
     Opts :: req_opts()) ->
-    {ok, t()} | no_return().
+    t() | no_return().
 
 fetch(Conn, BucketPrefix, Key, ReqOpts) ->
     case lookup(Conn, BucketPrefix, Key, ReqOpts) of
@@ -327,6 +399,10 @@ validate_req_opts(Opts) ->
 
 
 %% @private
+typed_bucket(#babel_index_collection{bucket = Bucket}) ->
+    Type = babel_config:get([bucket_types, index_collection]),
+    {Type, Bucket};
+
 typed_bucket(Prefix) ->
     Type = babel_config:get([bucket_types, index_collection]),
     Bucket = <<Prefix/binary, ?PATH_SEPARATOR, ?BUCKET_SUFFIX>>,
