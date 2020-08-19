@@ -164,14 +164,16 @@ create_index(Config) ->
     Partitions = babel_index:create_partitions(Index),
 
     PartitionItems = [
-        {babel_index_partition:id(P), babel_index:to_work_item(Index, P)}
-        || P <- Partitions
+        {
+            {partition, babel_index_partition:id(P)},
+            babel_index:to_work_item(Index, P)
+        } || P <- Partitions
     ],
 
     ok = add_workflow_items([{{index, IndexId}, undefined} | PartitionItems]),
     ok = add_workflow_precedence(
-        [{partition, Id} || {Id, _} <- PartitionItems],
-        IndexId
+        [Id || {Id, _} <- PartitionItems],
+        {index, IndexId}
     ),
 
     Index.
@@ -203,11 +205,11 @@ create_collection(BucketPrefix, Name) ->
 
 add_index(Index, Collection0) ->
     Collection = babel_index_collection:add_index(Index, Collection0),
-    CollectionId = babel_index_collection:id(Collection),
+    CollectionId = {collection, babel_index_collection:id(Collection)},
     WorkItem = babel_index_collection:to_work_item(Collection),
-    IndexId = babel_index:id(Index),
-    ok = add_workflow_items([{{collection, CollectionId}, WorkItem}]),
-    ok = add_workflow_precedence([{index, IndexId}], CollectionId),
+    IndexId = {index, babel_index:id(Index)},
+    ok = add_workflow_items([{CollectionId, WorkItem}]),
+    ok = add_workflow_precedence([IndexId], CollectionId),
     Collection.
 
 
@@ -222,10 +224,9 @@ add_index(Index, Collection0) ->
 
 remove_index(IndexId, Collection0) ->
     Collection = babel_index_collection:delete_index(IndexId, Collection0),
-    CollectionId = babel_index_collection:id(Collection),
+    CollectionId = {collection, babel_index_collection:id(Collection)},
     WorkItem = babel_index_collection:to_work_item(Collection),
     ok = add_workflow_items([{CollectionId, WorkItem}]),
-    ok = add_workflow_precedence([IndexId], CollectionId),
     Collection.
 
 
@@ -343,10 +344,6 @@ schedule_workflow() ->
         false ->
             {error, no_work};
         Vertices ->
-            % Work = lists:zip(
-            %     lists:seq(1, length(WorkItems)),
-            %     WorkItems
-            % ),
             Work = pack_work(Vertices, G),
             reliable:enqueue(WorkId, Work)
     end.
