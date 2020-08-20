@@ -70,4 +70,7 @@ error_dangling_index(_) ->
         babel:create_index(Conf)
     end,
 
-    ?assertEqual({error, dangling_index}, babel:workflow(Fun)).
+    ?assertEqual(
+        {error, {dangling_index, <<"users_by_email">>}},
+        babel:workflow(Fun)
+    ).

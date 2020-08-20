@@ -15,7 +15,7 @@
 -type work_item()   ::  reliable_storage_backend:work_item().
 
 -type opts()        ::  #{
-    on_error => fun((Reason :: any()) -> any())
+    on_terminate => fun((Reason :: any()) -> any())
 }.
 
 -export_type([context/0]).
@@ -80,6 +80,40 @@ workflow(Fun) ->
 %% to use the WorkId to check with Reliable the status of the workflow
 %% execution.
 %%
+%% Example: Creating an index and adding it to an existing collection
+%%
+%% ```erlang
+%% > babel:workflow(
+%%     fun() ->
+%%          CollectionX0 = create_collection(<<"foo">>, <<"bar">>),
+%%          CollectionY0 = babel_index_collection:fetch(
+%%              Conn, <<"foo">>, <<"users">>),
+%%          IndexA = babel:create_index(ConfigA),
+%%          IndexB = babel:create_index(ConfigB),
+%%          CollectionX1 = babel:add_index(IndexA, CollectionX0),
+%%          CollectionY1 = babel:add_index(IndexB, CollectionY0),
+%%          ok
+%%     end).
+%% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
+%% '''
+%%
+%% The resulting workflow execution will schedule the writes in the order that
+%% results from the dependency graph constructed using the index partitions and
+%% index resulting from the {@link create_index/1} call and the collection
+%% resulting from the {@link create_collection/2} and @{@link add_index/2}.
+%% This ensures partitions are created first and then collections. Notice that
+%% indices are not persisted per se and need to be added to a collection, the
+%% workflow will fail with a `{dangling, IndexId}' exception if that is the
+%% case.
+%%
+%% The `Opts' argument offers the following options:
+%%
+%% * `on_terminate` – a functional object `fun((Reason :: any()) -> ok)'. This
+%% function will be evaluated before the call terminates. In case of succesful
+%% termination the value `normal' is passed as argument. Otherwise, in case of
+%% error, the error reason will be passed as argument. This allows you to
+%% perform a cleanup after the workflow execution e.g. returning a riak
+%% connection object to a pool.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun ::fun(() -> any()), Opts :: opts()) ->
@@ -92,6 +126,7 @@ workflow(Fun, Opts) ->
         %% Fun should use this module functions which are workflow aware.
         Result = Fun(),
         ok = maybe_schedule_workflow(),
+        ok = on_terminate(normal, Opts),
         {ok, WorkId, Result}
     catch
         throw:Reason:Stacktrace ->
@@ -99,7 +134,7 @@ workflow(Fun, Opts) ->
                 "Error while executing workflow; reason=~p, stacktrace=~p",
                 [Reason, Stacktrace]
             ),
-            ok = on_error(Reason, Opts),
+            ok = on_terminate(Reason, Opts),
             maybe_throw(Reason);
         _:Reason:Stacktrace ->
             %% A user exception, we need to raise it again up the
@@ -108,10 +143,10 @@ workflow(Fun, Opts) ->
                 "Error while executing workflow; reason=~p, stacktrace=~p",
                 [Reason, Stacktrace]
             ),
-            ok = on_error(Reason, Opts),
+            ok = on_terminate(Reason, Opts),
             error(Reason)
     after
-        ok = maybe_terminate_workflow()
+        ok = maybe_cleanup()
     end.
 
 
@@ -122,36 +157,20 @@ workflow(Fun, Opts) ->
 %% > This function needs to be called within a workflow functional object,
 %% see {@link workflow/1,2}.
 %%
-%% The index collection `Collection' has to exist in the database, otherwise it
-%% fails with an exception, terminating the workflow. See {@link
-%% create_collection/3} to create a collection within the same workflow
-%% execution.
 %%
 %% Example: Creating an index and adding it to an existing collection
 %%
 %% ```erlang
 %% > babel:workflow(
 %%     fun() ->
-%%          Collection = babel_index_collection:fetch(
-%%              Conn, <<"foo">>, <<"users">>),
-%%          _ = babel:create_index(Collection, Config),
+%%          Collection0 = babel_index_collection:fetch(Conn, BucketPrefix, Key),
+%%          Index = babel:create_index(Config),
+%%          _Collection1 = babel:add_index(Index, Collection0),
 %%          ok
 %%     end).
 %% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
 %% '''
 %%
-%% Example: Creating an index and adding it to a newly created collection
-%%
-%% ```erlang
-%% > babel:workflow(
-%%      fun() ->
-%%          Collection = babel:create_collection(<<"foo">>, <<"users">>),
-%%          _ = babel:create_index(Collection, Config),
-%%          ok
-%%      end
-%% ).
-%% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
-%% '''
 %% @end
 %% -----------------------------------------------------------------------------
 -spec create_index(Config :: map()) -> babel_index:t() | no_return().
@@ -368,11 +387,11 @@ prepare_work() ->
 prepare_work([], _, _, Acc) ->
     {ok, Acc};
 
-prepare_work([{index, _} = H|T], G, N, Acc) ->
+prepare_work([{index, Id} = H|T], G, N, Acc) ->
     case babel_digraph:out_neighbours(G, H) of
         [] ->
             %% Index has to be added to a collection
-            throw(dangling_index);
+            throw({dangling_index, Id});
         _ ->
             prepare_work(T, G, N, Acc)
     end;
@@ -388,11 +407,11 @@ prepare_work([{_, _} = H|T], G, N, Acc) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-maybe_terminate_workflow() ->
+maybe_cleanup() ->
     ok = decrement_nested_count(),
     case get(?WORKFLOW_COUNT) == 0 of
         true ->
-            terminate_workflow();
+            cleanup();
         false ->
             ok
     end.
@@ -403,7 +422,7 @@ maybe_terminate_workflow() ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-terminate_workflow() ->
+cleanup() ->
     %% We cleanup the process dictionary
     _ = erase(?WORKFLOW_ID),
     _ = erase(?WORKFLOW_COUNT),
@@ -444,9 +463,9 @@ ensure_in_workflow() ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-on_error(Reason, #{on_error := Fun}) when is_function(Fun, 0) ->
+on_terminate(Reason, #{on_terminate := Fun}) when is_function(Fun, 0) ->
     _ = Fun(Reason),
     ok;
 
-on_error(_, _) ->
+on_terminate(_, _) ->
     ok.
