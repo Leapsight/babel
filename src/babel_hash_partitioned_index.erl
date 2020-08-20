@@ -500,22 +500,42 @@ maybe_reverse(_, _, L) ->
     lists:reverse(L).
 
 
+%% -----------------------------------------------------------------------------
 %% @private
+%% @doc We encode the term in JSON for interoperability with clients in other
+%% programming languages.
+%% @end
+%% -----------------------------------------------------------------------------
 encode_list(List) ->
     jsx:encode(List).
 
 
+%% -----------------------------------------------------------------------------
 %% @private
+%% @doc We encode the term in JSON for interoperability with clients in other
+%% programming languages.
+%% @end
+%% -----------------------------------------------------------------------------
 decode_list(Data) ->
     jsx:decode(Data).
 
 
+%% -----------------------------------------------------------------------------
 %% @private
+%% @doc We encode the term in JSON for interoperability with clients in other
+%% programming languages.
+%% @end
+%% -----------------------------------------------------------------------------
 encode_proplist(List) ->
     jsx:encode(List).
 
 
+%% -----------------------------------------------------------------------------
 %% @private
+%% @doc We encode the term in JSON for interoperability with clients in other
+%% programming languages.
+%% @end
+%% -----------------------------------------------------------------------------
 decode_proplist(Data) ->
     [
         {Key, binary_to_existing_atom(Type,  utf8)}
