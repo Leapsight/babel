@@ -138,7 +138,7 @@ cancel() ->
 
 %% -----------------------------------------------------------------------------
 %% @doc
-%% things_service_index_manager:rebuild_index(<<"mrn:agent:f5a1...">>).
+%% `things_service_index_manager:rebuild_index(<<"mrn:agent:f5a1...">>).'
 %% @end
 %% -----------------------------------------------------------------------------
 -spec rebuild_index(Key :: binary()) -> ok | {error, any()}.
@@ -149,9 +149,11 @@ rebuild_index(Key) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc
+%% ```
 %% things_service_index_manager:rebuild_index(
 %%     <<"mrn:agent:f5a1...">>, #{pr => 1, pw => 3}
 %% ).
+%% '''
 %% @end
 %% -----------------------------------------------------------------------------
 -spec rebuild_index(Key :: binary(), Opts :: map()) -> ok | {error, any()}.
@@ -168,9 +170,11 @@ rebuild_index(Key, Opts) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc
+%% ```
 %% things_service_index_manager:rebuild_indices(
 %%     #{pr => 1, pw => 3, backoff_every => 100, backoff_delay => 50}
 %% ).
+%% '''
 %% @end
 %% -----------------------------------------------------------------------------
 -spec rebuild_indices() ->

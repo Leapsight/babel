@@ -29,7 +29,7 @@
 %% "n_val":3, "pw":"quorum", "pr":"quorum", "notfound_ok":false,
 %% "basic_quorum":true}}'
 %% riak-admin bucket-type activate my_index_collection
-%% ```
+%% '''
 %%
 %% ## Default replication properties
 %%

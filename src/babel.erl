@@ -63,15 +63,26 @@ workflow(Fun) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Executes the functional object `Fun' as a Reliable workflow.
+%% @doc Executes the functional object `Fun' as a Reliable workflow, i.e.
+%% ordering and scheduling all resulting Riak KV object writes.
+%%
 %% The code that executes inside the workflow should call one or more functions
-%% in this module to schedule work.
+%% in this module to schedule writes in Riak KV. For example, if you wanted to
+%% schedule an index creation you should use {@link create_index/2} instead of
+%% {@link babel_index_collection}, {@link babel_index} and {@link
+%% babel_index_partition} functions directly.
+%%
+%% Any other operation, including reading and writing from/to Riak KV directly
+%% or by using the API provided by other Babel modules will work as normal and
+%% will not affect the workflow, only the special functions in this module will
+%% add work items to the workflow.
 %%
 %% If something goes wrong inside the workflow as a result of a user
 %% error or general exception, the entire workflow is terminated and the
-%% function returns the tuple `{error, Reason}'.
+%% function raises an exception. In case of an internal error, the function
+%% returns the tuple `{error, Reason}'.
 %%
-%% If everything goes well the function returns the triple
+%% If everything goes well, the function returns the triple
 %% `{ok, WorkId, ResultOfFun}' where `WorkId' is the identifier for the
 %% workflow schedule by Reliable and `ResultOfFun' is the value of the last
 %% expression in `Fun'.
@@ -80,9 +91,9 @@ workflow(Fun) ->
 %% to use the WorkId to check with Reliable the status of the workflow
 %% execution.
 %%
-%% Example: Creating an index and adding it to an existing collection
+%% Example: Creating various babel objects and scheduling
 %%
-%% ```erlang
+%% ```
 %% > babel:workflow(
 %%     fun() ->
 %%          CollectionX0 = create_collection(<<"foo">>, <<"bar">>),
@@ -114,11 +125,13 @@ workflow(Fun) ->
 %% error, the error reason will be passed as argument. This allows you to
 %% perform a cleanup after the workflow execution e.g. returning a riak
 %% connection object to a pool.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun ::fun(() -> any()), Opts :: opts()) ->
     {ok, WorkId :: binary(), ResultOfFun :: any()}
-    | {error, Reason :: any()}.
+    | {error, Reason :: any()}
+    | no_return().
 
 workflow(Fun, Opts) ->
     {ok, WorkId} = init_workflow(Opts),
@@ -155,12 +168,12 @@ workflow(Fun, Opts) ->
 %% @doc Schedules the creation of an index and its partitions according to
 %% `Config'.
 %% > This function needs to be called within a workflow functional object,
-%% see {@link workflow/1,2}.
+%% see {@link workflow/1}.
 %%
 %%
 %% Example: Creating an index and adding it to an existing collection
 %%
-%% ```erlang
+%% ```
 %% > babel:workflow(
 %%     fun() ->
 %%          Collection0 = babel_index_collection:fetch(Conn, BucketPrefix, Key),

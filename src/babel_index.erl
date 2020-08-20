@@ -7,7 +7,7 @@
 %% maps.
 %%
 %% An index is persisted as a read-only CRDT Map as part of an index collection
-%% {@linkbabel_collection}. An index collection aggregates all indices
+%% {@link babel_index_collection}. An index collection aggregates all indices
 %% for a topic e.g. domain model entity.
 %%
 %% As this object is read-only we turn it into an Erlang map as soon as we read
@@ -445,7 +445,7 @@ partition_identifiers(Index) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns the list of Riak KV keys under which the partitions are stored
-%% in a defined order i.e. `asc` | `desc`.
+%% in a defined order i.e. `asc' or `desc'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec partition_identifiers(t(), asc | desc) -> maybe_error([binary()]).
