@@ -337,15 +337,11 @@ maybe_schedule_workflow() ->
 %% @end
 %% -----------------------------------------------------------------------------
 schedule_workflow() ->
-    WorkId = get(?WORKFLOW_ID),
-    G = get(?WORKFLOW_GRAPH),
-
-    case babel_digraph:topsort(G) of
-        false ->
-            {error, no_work};
-        Vertices ->
-            Work = pack_work(Vertices, G),
-            reliable:enqueue(WorkId, Work)
+    case prepare_work() of
+        {ok, Work} ->
+            reliable:enqueue(get(?WORKFLOW_ID), Work);
+        {error, _} = Error ->
+            Error
     end.
 
 
@@ -354,8 +350,14 @@ schedule_workflow() ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-pack_work(Vertices, G) ->
-    pack_work(Vertices, G, 1, []).
+prepare_work() ->
+    G = get(?WORKFLOW_GRAPH),
+    case babel_digraph:topsort(G) of
+        false ->
+            {error, no_work};
+        Vertices ->
+            prepare_work(Vertices, G, 1, [])
+    end.
 
 
 %% -----------------------------------------------------------------------------
@@ -363,21 +365,21 @@ pack_work(Vertices, G) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-pack_work([], _, _, Acc) ->
-    Acc;
+prepare_work([], _, _, Acc) ->
+    {ok, Acc};
 
-pack_work([{index, _} = H|T], G, N, Acc) ->
+prepare_work([{index, _} = H|T], G, N, Acc) ->
     case babel_digraph:out_neighbours(G, H) of
         [] ->
             %% Index has to be added to a collection
             throw(dangling_index);
         _ ->
-            pack_work(T, G, N, Acc)
+            prepare_work(T, G, N, Acc)
     end;
 
-pack_work([{_, _} = H|T], G, N, Acc) ->
+prepare_work([{_, _} = H|T], G, N, Acc) ->
     {H, Work} = babel_digraph:vertex(G, H),
-    pack_work(T, G, N + 1, [{N, Work}|Acc]).
+    prepare_work(T, G, N + 1, [{N, Work}|Acc]).
 
 
 
