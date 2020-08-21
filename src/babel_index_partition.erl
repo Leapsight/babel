@@ -8,10 +8,18 @@
 
 -define(BUCKET_SUFFIX, "index_data").
 
+-record(babel_index_partition, {
+    id                      ::  binary(),
+    created_ts              ::  non_neg_integer(),
+    last_updated_ts         ::  non_neg_integer(),
+    data                    ::  riakc_map:crdt_map()
+}).
 
--type t()   ::  riakc_map:crdt_map().
+-type t()                   ::  #babel_index_partition{}.
+-type riak_object()         ::  riakc_map:crdt_map().
 
 -export_type([t/0]).
+-export_type([riak_object/0]).
 
 -export([created_ts/1]).
 -export([data/1]).
@@ -25,6 +33,8 @@
 -export([size/1]).
 -export([update_data/2]).
 -export([store/5]).
+-export([from_riak_object/1]).
+-export([to_riak_object/1]).
 
 
 
@@ -41,21 +51,70 @@
 -spec new(Id :: binary()) -> t().
 
 new(Id) ->
-    Ts = integer_to_binary(erlang:system_time(millisecond)),
+    Ts = erlang:system_time(millisecond),
+
+    #babel_index_partition{
+        id = Id,
+        created_ts = Ts,
+        last_updated_ts = Ts,
+        data = riakc_map:new()
+    }.
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec from_riak_object(Object :: riak_object()) -> Partition :: t().
+
+from_riak_object(Object) ->
+    Id = babel_crdt:register_to_binary(
+        riakc_map:fetch({<<"id">>, register}, Object)
+    ),
+    Created = babel_crdt:register_to_integer(
+        riakc_map:fetch({<<"created_ts">>, register}, Object)
+    ),
+    LastUpdated = babel_crdt:register_to_integer(
+        riakc_map:fetch({<<"last_updated_ts">>, register}, Object)
+    ),
+    Data = riakc_map:fetch({<<"data">>, map}, Object),
+
+    #babel_index_partition{
+        id = Id,
+        created_ts = Created,
+        last_updated_ts = LastUpdated,
+        data = Data
+    }.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec to_riak_object(Index :: t()) -> IndexCRDT :: riak_object().
+
+to_riak_object(#babel_index_partition{} = Partition) ->
+    #babel_index_partition{
+        id = Id,
+        created_ts = Created,
+        last_updated_ts = LastUpdated,
+        data = Data
+    } = Partition,
 
     Values = [
-       {{<<"id">>, register}, Id},
-       {{<<"created_ts">>, register}, Ts},
-       {{<<"last_updated_ts">>, register}, Ts},
-       {{<<"data">>, map}, riakc_map:new()}
+        {{<<"id">>, register}, Id},
+        {{<<"created_ts">>, register}, integer_to_binary(Created)},
+        {{<<"last_updated_ts">>, register}, integer_to_binary(LastUpdated)},
+        {{<<"config">>, map}, Data}
     ],
+
     lists:foldl(
-        fun({K, V}, Acc) ->
-            babel_key_value:set(K, V, Acc)
-        end,
+        fun({K, V}, Acc) -> babel_key_value:set(K, V, Acc) end,
         riakc_map:new(),
         Values
     ).
+
 
 
 %% -----------------------------------------------------------------------------
@@ -64,10 +123,7 @@ new(Id) ->
 %% -----------------------------------------------------------------------------
 -spec id(Partition :: t()) -> binary() | no_return().
 
-id(Partition) ->
-    riakc_register:value(
-        babel_crdt:dirty_fetch({<<"id">>, register}, Partition)
-    ).
+id(#babel_index_partition{id = Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -84,38 +140,27 @@ size(Partition) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec created_ts(Partition :: t()) -> non_neg_integer() | no_return().
+-spec created_ts(Partition :: t()) -> non_neg_integer().
 
-created_ts(Partition) ->
-    binary_to_integer(
-        riakc_register:value(
-            riakc_map:fetch({<<"created_ts">>, register}, Partition)
-        )
-    ).
+created_ts(#babel_index_partition{created_ts = Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec last_updated_ts(Partition :: t()) -> non_neg_integer() | no_return().
+-spec last_updated_ts(Partition :: t()) -> non_neg_integer().
 
-last_updated_ts(Partition) ->
-    binary_to_integer(
-        riakc_register:value(
-            riakc_map:fetch({<<"last_updated_ts">>, register}, Partition)
-        )
-    ).
+last_updated_ts(#babel_index_partition{last_updated_ts = Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec data(Partition :: t()) -> riakc_map:crdt_map() | no_return().
+-spec data(Partition :: t()) -> riakc_map:crdt_map().
 
-data(Partition) ->
-    riakc_map:fetch({<<"data">>, map}, Partition).
+data(#babel_index_partition{data = Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -124,15 +169,15 @@ data(Partition) ->
 %% -----------------------------------------------------------------------------
 -spec update_data(riakc_map:update_fun(), t()) -> t().
 
-update_data(Fun, Partition0) ->
-    Ts = integer_to_binary(erlang:system_time(millisecond)),
-    Partition1 = riakc_map:update({<<"data">>, map}, Fun, Partition0),
+update_data(Fun, #babel_index_partition{} = Partition) ->
+    Ts = erlang:system_time(millisecond),
+    Data0 = Partition#babel_index_partition.data,
+    Data1 = riakc_map:update({<<"data">>, map}, Fun, Data0),
 
-    riakc_map:update(
-        {<<"last_updated_ts">>, register},
-        fun(R) -> riakc_register:set(Ts, R) end,
-        Partition1
-    ).
+    Partition#babel_index_partition{
+        last_updated_ts = Ts,
+        data = Data1
+    }.
 
 
 %% -----------------------------------------------------------------------------
@@ -154,7 +199,8 @@ store(Conn, BucketType, BucketPrefix, Key, Partition) ->
         notfound_ok => false,
         basic_quorum => true
     },
-    Op = riakc_map:to_op(Partition),
+
+    Op = riakc_map:to_op(to_riak_object(Partition)),
 
     TypeBucket = type_bucket(BucketType, BucketPrefix),
 
@@ -221,10 +267,14 @@ fetch(Conn, BucketType, BucketPrefix, Key, ReqOpts) ->
 lookup(Conn, BucketType, BucketPrefix, Key, ReqOpts) ->
     Opts = validate_req_opts(ReqOpts),
     TypeBucket = type_bucket(BucketType, BucketPrefix),
+
     case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, Opts) of
-        {ok, _} = OK -> OK;
-        {error, {notfound, _}} -> {error, not_found};
-        {error, _} = Error -> Error
+        {ok, Object} ->
+            {ok, from_riak_object(Object)};
+        {error, {notfound, _}} ->
+            {error, not_found};
+        {error, _} = Error ->
+            Error
     end.
 
 

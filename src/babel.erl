@@ -23,12 +23,15 @@
 -export_type([opts/0]).
 
 
+-export([abort/1]).
 -export([add_index/2]).
-% -export([delete_index/2]).
--export([remove_index/2]).
 -export([create_collection/2]).
--export([create_index/1]).
+-export([create_index/2]).
+-export([delete_index/2]).
 -export([is_in_workflow/0]).
+-export([rebuild_index/4]).
+-export([remove_index/2]).
+-export([update_indices/3]).
 -export([workflow/1]).
 -export([workflow/2]).
 
@@ -48,6 +51,20 @@
 
 is_in_workflow() ->
     get(?WORKFLOW_ID) =/= undefined.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Makes the workflow silently return the tuple {aborted, Reason}.
+%% Termination of a Babel workflow means that an exception is thrown to an
+%% enclosing catch. Thus, the expression `catch babel:abort(foo)' does not
+%% terminate the workflow.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec abort(Reason :: any()) -> no_return().
+
+abort(Reason) ->
+    throw({aborted, Reason}).
+
 
 
 %% -----------------------------------------------------------------------------
@@ -96,26 +113,22 @@ workflow(Fun) ->
 %% ```
 %% > babel:workflow(
 %%     fun() ->
-%%          CollectionX0 = create_collection(<<"foo">>, <<"bar">>),
+%%          CollectionX0 = babel_index_collection:new(<<"foo">>, <<"bar">>),
 %%          CollectionY0 = babel_index_collection:fetch(
-%%              Conn, <<"foo">>, <<"users">>),
-%%          IndexA = babel:create_index(ConfigA),
-%%          IndexB = babel:create_index(ConfigB),
-%%          CollectionX1 = babel:add_index(IndexA, CollectionX0),
-%%          CollectionY1 = babel:add_index(IndexB, CollectionY0),
+%% Conn, <<"foo">>, <<"users">>),
+%%          IndexA = babel_index:new(ConfigA),
+%%          IndexB = babel_index:new(ConfigB),
+%%          ok = babel:create_index(IndexA, CollectionX0),
+%%          ok = babel:create_index(IndexB, CollectionY0),
 %%          ok
 %%     end).
-%% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
+%% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
 %% '''
 %%
 %% The resulting workflow execution will schedule the writes in the order that
-%% results from the dependency graph constructed using the index partitions and
-%% index resulting from the {@link create_index/1} call and the collection
-%% resulting from the {@link create_collection/2} and @{@link add_index/2}.
-%% This ensures partitions are created first and then collections. Notice that
-%% indices are not persisted per se and need to be added to a collection, the
-%% workflow will fail with a `{dangling, IndexId}' exception if that is the
-%% case.
+%% results from the dependency graph constructed using the results of this
+%% module functions. This ensures partitions are created first and then
+%% collections.
 %%
 %% The `Opts' argument offers the following options:
 %%
@@ -165,8 +178,35 @@ workflow(Fun, Opts) ->
 
 
 %% -----------------------------------------------------------------------------
+%% @doc Schedules the creation of an index collection using Reliable.
+%% Fails if the collection already existed
+%% > This function needs to be called within a workflow functional object,
+%% see {@link workflow/1}.
+%%
+%% @end
+%% -----------------------------------------------------------------------------
+-spec create_collection(BucketPrefix :: binary(), Name :: binary()) ->
+    babel_index_collection:t() | no_return().
+
+create_collection(BucketPrefix, Name) ->
+
+    ok = ensure_in_workflow(),
+
+    Collection = babel_index_collection:new(BucketPrefix, Name, []),
+    CollectionId = {collection, babel_index_collection:id(Collection)},
+
+    ok = ensure_workflow_does_not_exist(CollectionId),
+
+    WorkItem = babel_index_collection:to_work_item(Collection),
+    ok = add_workflow_items([{CollectionId, WorkItem}]),
+
+    Collection.
+
+
+%% -----------------------------------------------------------------------------
 %% @doc Schedules the creation of an index and its partitions according to
-%% `Config'.
+%% `Config' using Reliable.
+%%
 %% > This function needs to be called within a workflow functional object,
 %% see {@link workflow/1}.
 %%
@@ -177,8 +217,8 @@ workflow(Fun, Opts) ->
 %% > babel:workflow(
 %%     fun() ->
 %%          Collection0 = babel_index_collection:fetch(Conn, BucketPrefix, Key),
-%%          Index = babel:create_index(Config),
-%%          _Collection1 = babel:add_index(Index, Collection0),
+%%          Index = babel_index:new(Config),
+%%          ok = babel:create_index(Index, Collection0),
 %%          ok
 %%     end).
 %% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
@@ -186,13 +226,13 @@ workflow(Fun, Opts) ->
 %%
 %% @end
 %% -----------------------------------------------------------------------------
--spec create_index(Config :: map()) -> babel_index:t() | no_return().
+-spec create_index(
+    Index :: babel_index:t(), Collection :: babel_index_collection:t()) ->
+    ok | no_return().
 
-create_index(Config) ->
+create_index(Index, Collection) ->
     ok = ensure_in_workflow(),
 
-    Index = babel_index:new(Config),
-    IndexId = babel_index:id(Index),
     Partitions = babel_index:create_partitions(Index),
 
     PartitionItems = [
@@ -202,28 +242,21 @@ create_index(Config) ->
         } || P <- Partitions
     ],
 
-    ok = add_workflow_items([{{index, IndexId}, undefined} | PartitionItems]),
+    NewCollection = babel_index_collection:add_index(Index, Collection),
+    CollectionId = {collection, babel_index_collection:id(NewCollection)},
+    WorkItem = babel_index_collection:to_work_item(NewCollection),
+
+    ok = add_workflow_items([{CollectionId, WorkItem} | PartitionItems]),
+
+    %% Index partitions write will be scheduled prior to the collection write
+    %% so we know that if in a subsequent read of the collection, the index is
+    %% present it means its partitions have been already written to Riak.
     ok = add_workflow_precedence(
-        [Id || {Id, _} <- PartitionItems],
-        {index, IndexId}
+        [Id || {Id, _} <- PartitionItems], CollectionId
     ),
 
-    Index.
+    ok.
 
-
-%% -----------------------------------------------------------------------------
-%% @doc Schedules the creation of an index collection.
-%% @end
-%% -----------------------------------------------------------------------------
--spec create_collection(BucketPrefix :: binary(), Name :: binary()) ->
-    babel_index_collection:t() | no_return().
-
-create_collection(BucketPrefix, Name) ->
-    Collection = babel_index_collection:new(BucketPrefix, Name, []),
-    CollectionId = babel_index_collection:id(Collection),
-    WorkItem = babel_index_collection:to_work_item(Collection),
-    ok = add_workflow_items([{{collection, CollectionId}, WorkItem}]),
-    Collection.
 
 
 %% -----------------------------------------------------------------------------
@@ -240,8 +273,10 @@ add_index(Index, Collection0) ->
     CollectionId = {collection, babel_index_collection:id(Collection)},
     WorkItem = babel_index_collection:to_work_item(Collection),
     IndexId = {index, babel_index:id(Index)},
+
     ok = add_workflow_items([{CollectionId, WorkItem}]),
     ok = add_workflow_precedence([IndexId], CollectionId),
+
     Collection.
 
 
@@ -258,8 +293,54 @@ remove_index(IndexId, Collection0) ->
     Collection = babel_index_collection:delete_index(IndexId, Collection0),
     CollectionId = {collection, babel_index_collection:id(Collection)},
     WorkItem = babel_index_collection:to_work_item(Collection),
+
     ok = add_workflow_items([{CollectionId, WorkItem}]),
+
     Collection.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec rebuild_index(
+    Index :: babel_index:t(),
+    BucketType :: binary(),
+    Bucket :: binary(),
+    Opts :: map()) -> ok | no_return().
+
+rebuild_index(_Index, _BucketType, _Bucket, _Opts) ->
+    %% TODO call the manager
+    ok.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec update_indices(
+    Object :: key_value:t(),
+    Collection :: babel_index_collection:t(),
+    Opts :: map()) ->
+    ok | no_return().
+
+update_indices(_Object, _Collection, _Opts) ->
+    %% TODO
+    ok.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec delete_index(
+    Index :: babel_index:t(), Collection :: babel_index_collection:t()) ->
+    ok | no_return().
+
+delete_index(_Index, _Collection) ->
+    %% TODO
+    ok.
+
 
 
 %% =============================================================================
@@ -354,6 +435,20 @@ add_workflow_precedence(L, B) when is_list(L) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+ensure_workflow_does_not_exist(Id) ->
+    case babel_digraph:vertex(get(?WORKFLOW_GRAPH), Id) of
+        false ->
+            ok;
+        {Id, _} ->
+            throw(already_exists)
+    end.
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
 maybe_schedule_workflow() ->
     case is_nested_workflow() of
         true ->
@@ -398,7 +493,7 @@ prepare_work() ->
 %% @end
 %% -----------------------------------------------------------------------------
 prepare_work([], _, _, Acc) ->
-    {ok, Acc};
+    {ok, lists:reverse(Acc)};
 
 prepare_work([{index, Id} = H|T], G, N, Acc) ->
     case babel_digraph:out_neighbours(G, H) of
@@ -412,7 +507,6 @@ prepare_work([{index, Id} = H|T], G, N, Acc) ->
 prepare_work([{_, _} = H|T], G, N, Acc) ->
     {H, Work} = babel_digraph:vertex(G, H),
     prepare_work(T, G, N + 1, [{N, Work}|Acc]).
-
 
 
 %% -----------------------------------------------------------------------------

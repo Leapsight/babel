@@ -46,6 +46,11 @@
 
 -define(BUCKET_SUFFIX, "index_collection").
 
+%% TODO Map <-> CRDT
+%% we need to store objects with local update capability that will apply
+%% changes to the CRDT on to_riak_object.
+%% This is to be able to operate with them before they are store in RIAK as we
+%% are delyaing storage via Reliable
 -record(babel_index_collection, {
     id      ::  binary(),
     bucket  ::  binary(),
@@ -62,22 +67,23 @@
 
 %% API
 -export([add_index/2]).
--export([delete_index/2]).
--export([store/2]).
--export([store/3]).
--export([delete/3]).
--export([delete/4]).
--export([fetch/3]).
--export([fetch/4]).
--export([new/2]).
--export([new/3]).
--export([index/2]).
--export([lookup/3]).
--export([lookup/4]).
--export([size/1]).
--export([id/1]).
 -export([bucket/1]).
 -export([data/1]).
+-export([delete/3]).
+-export([delete/4]).
+-export([delete_index/2]).
+-export([fetch/3]).
+-export([fetch/4]).
+-export([id/1]).
+-export([index/2]).
+-export([indices/1]).
+-export([lookup/3]).
+-export([lookup/4]).
+-export([new/2]).
+-export([new/3]).
+-export([size/1]).
+-export([store/2]).
+-export([store/3]).
 -export([to_work_item/1]).
 
 
@@ -128,9 +134,8 @@ new(BucketPrefix, Name, Indices) when is_map(Indices) ->
 %% -----------------------------------------------------------------------------
 -spec size(Collection :: t()) -> non_neg_integer().
 
-size(#babel_index_collection{} = Collection) ->
-    Data = Collection#babel_index_collection.data,
-    riakc_map:size(Data).
+size(Collection) ->
+    riakc_map:size(data(Collection)).
 
 
 %% -----------------------------------------------------------------------------
@@ -170,7 +175,20 @@ data(#babel_index_collection{data = Value}) -> Value.
 
 index(Key, #babel_index_collection{} = Collection) when is_binary(Key) ->
     Data = Collection#babel_index_collection.data,
-    babel_crdt:dirty_fetch({Key, map}, Data).
+    CRDT = babel_crdt:dirty_fetch({Key, map}, Data),
+    babel_index:from_riak_object(CRDT).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns all the indices in the collection.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec indices(Collection :: t()) -> [babel_index:t()].
+
+indices(#babel_index_collection{} = Collection) ->
+    Data = Collection#babel_index_collection.data,
+    Keys = babel_crdt:dirty_fetch_keys(Data),
+    [babel_index:from_riak_object(babel_crdt:dirty_fetch(Key, Data)) || Key <- Keys].
 
 
 %% -----------------------------------------------------------------------------
@@ -182,9 +200,9 @@ index(Key, #babel_index_collection{} = Collection) when is_binary(Key) ->
 
 add_index(Index, #babel_index_collection{} = Collection) ->
     IndexId = babel_index:id(Index),
-    RiakMap = babel_index:to_crdt(Index),
+    Object = babel_index:to_riak_object(Index),
     Data0 = Collection#babel_index_collection.data,
-    Data = riakc_map:update({IndexId, map}, fun(_) -> RiakMap end, Data0),
+    Data = riakc_map:update({IndexId, map}, fun(_) -> Object end, Data0),
 
     Collection#babel_index_collection{data = Data}.
 

@@ -12,7 +12,7 @@ all() ->
     [
         nothing_test,
         error_test,
-        error_dangling_index
+        index_creation_1_test
     ].
 
 
@@ -26,10 +26,12 @@ init_per_suite(Config) ->
     %% Start the application.
     application:ensure_all_started(reliable),
     application:ensure_all_started(babel),
+    meck:unload(),
 
     Config.
 
 end_per_suite(Config) ->
+    meck:unload(),
     {save_config, Config}.
 
 
@@ -44,7 +46,16 @@ error_test(_) ->
     ?assertError(foo, babel:workflow(fun() -> exit(foo) end, [])).
 
 
-error_dangling_index(_) ->
+index_creation_1_test(_) ->
+    meck:new(reliable, [passthrough]),
+    meck:expect(reliable, enqueue, fun
+        (_, Work) ->
+            ct:pal("Work being scheduled is ~p", [Work]),
+            %% 8 partitions + 1 collection
+            ?assertEqual(9, length(Work)),
+            ok
+    end),
+
     Sort = asc,
     N = 8,
     Algo = jch,
@@ -54,7 +65,7 @@ error_dangling_index(_) ->
 
     Conf = #{
         id => <<"users_by_email">>,
-        bucket_type => <<"map">>,
+        bucket_type => <<"index_data">>,
         bucket_prefix => <<"lojack/johndoe">>,
         type => babel_hash_partitioned_index,
         config => #{
@@ -67,10 +78,11 @@ error_dangling_index(_) ->
         }
     },
     Fun = fun() ->
-        babel:create_index(Conf)
+        Index = babel_index:new(Conf),
+        Collection = babel_index_collection:new(<<"mytenant">>, <<"users">>),
+        ok = babel:create_index(Index, Collection),
+        ok
     end,
 
-    ?assertEqual(
-        {error, {dangling_index, <<"users_by_email">>}},
-        babel:workflow(Fun)
-    ).
+    {ok, _, _} =  babel:workflow(Fun),
+    ok.

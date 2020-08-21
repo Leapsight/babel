@@ -85,14 +85,14 @@
 
 
 %% BEHAVIOUR CALLBACKS
--export([from_crdt/1]).
+-export([from_riak_object/1]).
 -export([init/2]).
 -export([init_partitions/1]).
 -export([number_of_partitions/1]).
 -export([partition_identifier/2]).
 -export([partition_identifiers/2]).
 -export([partition_size/2]).
--export([to_crdt/1]).
+-export([to_riak_object/1]).
 -export([update_partition/3]).
 
 
@@ -204,10 +204,10 @@ init(IndexId, ConfigData0) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec from_crdt(Object :: babel_index:config_crdt()) ->
+-spec from_riak_object(Object :: babel_index:config_crdt()) ->
     Config :: t().
 
-from_crdt(Object) ->
+from_riak_object(Object) ->
     Sort = babel_crdt:register_to_existing_atom(
         riakc_map:fetch({<<"sort_ordering">>, register}, Object),
         utf8
@@ -272,10 +272,10 @@ from_crdt(Object) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_crdt(Config :: t()) ->
+-spec to_riak_object(Config :: t()) ->
     ConfigCRDT :: babel_index:config_crdt().
 
-to_crdt(Config) ->
+to_riak_object(Config) ->
     #{
         sort_ordering := Sort,
         number_of_partitions := N,
@@ -438,7 +438,6 @@ gen_identifier(Prefix, N) ->
 %% @private
 gen_index_key(Keys, Data) ->
     binary_utils:join(babel_key_value:collect(Keys, Data)).
-
 
 %% @private
 insert_data({AggregateKey, IndexKey}, Value, Partition) ->

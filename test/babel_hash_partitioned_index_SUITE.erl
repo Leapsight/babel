@@ -43,7 +43,7 @@ index_1_test(_) ->
     },
     Index = babel_index:new(Conf),
 
-    CRDT = babel_index:to_crdt(Index),
+    CRDT = babel_index:to_riak_object(Index),
     ?assertEqual(true, riakc_map:is_type(CRDT)),
 
     Partitions = babel_index:create_partitions(Index),

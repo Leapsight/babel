@@ -4,6 +4,7 @@
 
 -export([map_entry/3]).
 -export([dirty_fetch/2]).
+-export([dirty_fetch_keys/1]).
 
 -export([to_integer/1]).
 -export([register_to_term/1]).
@@ -121,6 +122,20 @@ dirty_fetch(Key, {map, _, Updates, Removes, _} = Map) ->
                     riakc_map:fetch(Key, Map)
             end
     end.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec dirty_fetch_keys(riakc_map:crdt_map()) -> [riakc_map:key()].
+
+dirty_fetch_keys({map, _, Updates, Removes, _} = Map) ->
+    Removed = sets:from_list(orddict:fetch_keys(Removes)),
+    Updated = sets:from_list(orddict:fetch_keys(Updates)),
+    Values = sets:from_list(riakc_map:fetch_keys(Map)),
+
+    sets:to_list(sets:subtract(sets:union(Values, Updated), Removed)).
 
 
 
