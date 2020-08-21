@@ -261,11 +261,12 @@ handle_info({error, Reason, Info0, Pid}, #state{worker = Pid} = State) ->
     Info1 = maps:put(end_ts, erlang:system_time(millisecond), Info0),
     Info2 = maps:put(status, failed, Info1),
     Elapsed = elapsed(Info2),
-
-    _ = ?LOG_ERROR(
-        "Error while rebuilding indices; reason=~p, elapsed_time_secs=~p, info=~p",
-        [Reason, Elapsed, Info2]
-    ),
+    ?LOG_ERROR(#{
+        message => "Error while rebuilding indices",
+        reason => Reason,
+        elapsed_time_secs => Elapsed,
+        info => Info2
+    }),
     %% We store the last info and remove worker pid
     NewState = State#state{info = Info2, worker = undefined},
     {noreply, NewState};

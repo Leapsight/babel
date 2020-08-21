@@ -54,7 +54,10 @@ is_in_workflow() ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Makes the workflow silently return the tuple {aborted, Reason}.
+%% @doc When called within the functional object in {@link workflow/1},
+%% makes the workflow silently return the tuple {aborted, Reason} as the
+%% error reason.
+%%
 %% Termination of a Babel workflow means that an exception is thrown to an
 %% enclosing catch. Thus, the expression `catch babel:abort(foo)' does not
 %% terminate the workflow.
@@ -156,19 +159,21 @@ workflow(Fun, Opts) ->
         {ok, WorkId, Result}
     catch
         throw:Reason:Stacktrace ->
-            ?LOG_ERROR(
-                "Error while executing workflow; reason=~p, stacktrace=~p",
-                [Reason, Stacktrace]
-            ),
+            ?LOG_ERROR(#{
+                message => "Error while executing workflow",
+                reason => Reason,
+                stacktrace => Stacktrace
+            }),
             ok = on_terminate(Reason, Opts),
             maybe_throw(Reason);
         _:Reason:Stacktrace ->
             %% A user exception, we need to raise it again up the
             %% nested transation stack and out
-            ?LOG_ERROR(
-                "Error while executing workflow; reason=~p, stacktrace=~p",
-                [Reason, Stacktrace]
-            ),
+            ?LOG_ERROR(#{
+                message => "Error while executing workflow",
+                reason => Reason,
+                stacktrace => Stacktrace
+            }),
             ok = on_terminate(Reason, Opts),
             error(Reason)
     after
@@ -195,7 +200,9 @@ create_collection(BucketPrefix, Name) ->
     Collection = babel_index_collection:new(BucketPrefix, Name, []),
     CollectionId = {collection, babel_index_collection:id(Collection)},
 
-    ok = ensure_workflow_does_not_exist(CollectionId),
+    %% We need to avoid the situation were we create a collection we
+    %% have previously initialised in the workflow graph
+    ok = maybe_already_exists(CollectionId),
 
     WorkItem = babel_index_collection:to_work_item(Collection),
     ok = add_workflow_items([{CollectionId, WorkItem}]),
@@ -404,7 +411,7 @@ decrement_nested_count() ->
 
 %% -----------------------------------------------------------------------------
 %% @private
-%% @doc
+%% @doc Adds an
 %% @end
 %% -----------------------------------------------------------------------------
 add_workflow_items(L) ->
@@ -435,12 +442,12 @@ add_workflow_precedence(L, B) when is_list(L) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-ensure_workflow_does_not_exist(Id) ->
+maybe_already_exists(Id) ->
     case babel_digraph:vertex(get(?WORKFLOW_GRAPH), Id) of
-        false ->
-            ok;
         {Id, _} ->
-            throw(already_exists)
+            throw(already_exists);
+        false ->
+            ok
     end.
 
 
@@ -494,15 +501,6 @@ prepare_work() ->
 %% -----------------------------------------------------------------------------
 prepare_work([], _, _, Acc) ->
     {ok, lists:reverse(Acc)};
-
-prepare_work([{index, Id} = H|T], G, N, Acc) ->
-    case babel_digraph:out_neighbours(G, H) of
-        [] ->
-            %% Index has to be added to a collection
-            throw({dangling_index, Id});
-        _ ->
-            prepare_work(T, G, N, Acc)
-    end;
 
 prepare_work([{_, _} = H|T], G, N, Acc) ->
     {H, Work} = babel_digraph:vertex(G, H),

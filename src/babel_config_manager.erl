@@ -76,19 +76,30 @@ init([]) ->
 
 
 handle_call(Event, From, State) ->
-    _ = ?LOG_ERROR(
-        "Error handling call, reason=unsupported_event, event=~p, from=~p", [Event, From]),
+    ?LOG_ERROR(#{
+        message => "Error handling call",
+        reason => unsupported_event,
+        event => Event,
+        sender => From
+    }),
     {reply, {error, {unsupported_call, Event}}, State}.
 
 
 handle_cast(Event, State) ->
-    _ = ?LOG_ERROR(
-        "Error handling cast, reason=unsupported_event, event=~p", [Event]),
+    ?LOG_ERROR(#{
+        message => "Error handling cast",
+        reason => unsupported_event,
+        event => Event
+    }),
     {noreply, State}.
 
 
 handle_info(Info, State) ->
-    _ = ?LOG_DEBUG("Unexpected message, message=~p, state=~p", [Info, State]),
+    ?LOG_DEBUG(#{
+        message => "Unexpected message",
+        state => State,
+        message => Info
+    }),
     {noreply, State}.
 
 
@@ -121,7 +132,7 @@ do_init() ->
     apply_private_config(State).
 
 
-apply_reliable_config(State) ->
+apply_reliable_config(_State) ->
     case babel_config:get(reliable_instances, undefined) of
         undefined ->
             exit({missing_configuration, reliable_instances});
@@ -132,7 +143,7 @@ apply_reliable_config(State) ->
 
 %% @private
 apply_private_config(State) ->
-    % _ = ?LOG_DEBUG("Babel private configuration started"),
+    % ?LOG_DEBUG("Babel private configuration started"),
     try
         _ = [
             ok = application:set_env(App, Param, Val)
@@ -142,11 +153,11 @@ apply_private_config(State) ->
         {ok, State}
     catch
         error:Reason:Stacktrace ->
-            _ = ?LOG_ERROR(
-                "Error while applying private configuration options; "
-                " reason=~p, stacktrace=~p",
-                [Reason, Stacktrace]
-            ),
+            ?LOG_ERROR(#{
+                message => "Error while applying private configuration options",
+                reason => Reason,
+                stacktrace => Stacktrace
+            }),
             {stop, Reason}
     end.
 
