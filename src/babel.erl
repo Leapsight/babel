@@ -71,7 +71,7 @@ abort(Reason) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Equivalent to calling {@link workflow/2} with and empty list passed as
+%% @doc Equivalent to calling {@link workflow/2} with and empty map passed as
 %% the `Opts' argument.
 %% @end
 %% -----------------------------------------------------------------------------
@@ -79,7 +79,7 @@ abort(Reason) ->
     {ok, Id :: binary()} | {error, any()}.
 
 workflow(Fun) ->
-    workflow(Fun, []).
+    workflow(Fun, #{}).
 
 
 %% -----------------------------------------------------------------------------
