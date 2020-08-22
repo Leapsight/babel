@@ -36,7 +36,7 @@ end).
 
 %% Spec for maps_utils:validate/2,3
 -define(SPEC, #{
-    id => #{
+    name => #{
         required => true,
         datatype => binary
     },
@@ -125,12 +125,13 @@ end).
 -export([config/1]).
 -export([create_partitions/1]).
 -export([from_riak_object/1]).
--export([id/1]).
+-export([name/1]).
 -export([new/1]).
 -export([partition_identifiers/1]).
 -export([partition_identifiers/2]).
 -export([to_riak_object/1]).
--export([to_work_item/2]).
+-export([to_update_item/2]).
+-export([to_delete_item/2]).
 -export([type/1]).
 -export([typed_bucket/1]).
 -export([update/3]).
@@ -147,7 +148,7 @@ end).
 
 
 
--callback init(IndexId :: binary(), ConfigData :: map()) ->
+-callback init(Name :: binary(), ConfigData :: map()) ->
     {ok, Config :: config()}
     | {error, any()}.
 
@@ -185,7 +186,7 @@ end).
 %% A specification is map with the following fields (required fields are in
 %% bold):
 %%
-%% **id** :: binary() – a unique name for this index.
+%% **name** :: binary() – a unique name for this index within a collection.
 %% **bucket_type** :: binary() | atom() – the bucket type used to store the
 %% babel_index_partition:t() objects. This bucket type should have a datatype
 %% of `map`.
@@ -203,7 +204,7 @@ end).
 new(IndexData) ->
     Index0 = maps_utils:validate(IndexData, ?SPEC),
     #{
-        id := IndexId,
+        name := Name,
         type := Type,
         config := ConfigSpec,
         bucket_prefix := BucketPrefix
@@ -213,7 +214,7 @@ new(IndexData) ->
     Bucket = <<BucketPrefix/binary, ?PATH_SEPARATOR, ?BUCKET_SUFFIX>>,
     Index = Index1#{bucket => Bucket},
 
-    case Type:init(IndexId, ConfigSpec) of
+    case Type:init(Name, ConfigSpec) of
         {ok, Config} ->
             Index#{config => Config};
         {error, Reason} ->
@@ -229,7 +230,7 @@ new(IndexData) ->
 
 from_riak_object(Index) ->
     Id = babel_crdt:register_to_binary(
-        riakc_map:fetch({<<"id">>, register}, Index)
+        riakc_map:fetch({<<"name">>, register}, Index)
     ),
     BucketType = babel_crdt:register_to_binary(
         riakc_map:fetch({<<"bucket_type">>, register}, Index)
@@ -246,7 +247,7 @@ from_riak_object(Index) ->
     ),
 
     #{
-        id => Id,
+        name => Id,
         bucket_type => BucketType,
         bucket => Bucket,
         type => Type,
@@ -262,7 +263,7 @@ from_riak_object(Index) ->
 
 to_riak_object(Index) ->
     #{
-        id := Id,
+        name := Id,
         bucket_type := BucketType,
         bucket := Bucket,
         type := Type,
@@ -272,7 +273,7 @@ to_riak_object(Index) ->
     ConfigCRDT =  Type:to_riak_object(Config),
 
     Values = [
-        {{<<"id">>, register}, Id},
+        {{<<"name">>, register}, Id},
         {{<<"bucket_type">>, register}, BucketType},
         {{<<"bucket">>, register}, Bucket},
         {{<<"type">>, register}, atom_to_binary(Type, utf8)},
@@ -303,10 +304,10 @@ create_partitions(#{type := Type, config := Config}) ->
 %% @doc Returns
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_work_item(Index :: babel_index:t(), Partition :: t()) ->
+-spec to_update_item(Index :: babel_index:t(), Partition :: t()) ->
     babel:work_item().
 
-to_work_item(Index, Partition) ->
+to_update_item(Index, Partition) ->
     PartitionId = babel_index_partition:id(Partition),
     TypedBucket = babel_index:typed_bucket(Index),
     RiakOps = riakc_map:to_op(babel_index_partition:to_riak_object(Partition)),
@@ -314,14 +315,28 @@ to_work_item(Index, Partition) ->
     {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
 
 
-
 %% -----------------------------------------------------------------------------
-%% @doc Returns id of this index
+%% @doc Returns
 %% @end
 %% -----------------------------------------------------------------------------
--spec id(t()) -> binary().
+-spec to_delete_item(Index :: babel_index:t(), PartitionId :: binary()) ->
+    babel:work_item().
 
-id(#{id := Value}) -> Value.
+to_delete_item(Index, PartitionId) ->
+    TypedBucket = babel_index:typed_bucket(Index),
+    Args = [TypedBucket, PartitionId],
+    {node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]}.
+
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns name of this index
+%% @end
+%% -----------------------------------------------------------------------------
+-spec name(t()) -> binary().
+
+name(#{name := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------

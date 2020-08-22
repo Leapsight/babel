@@ -12,7 +12,8 @@ all() ->
     [
         nothing_test,
         error_test,
-        index_creation_1_test
+        index_creation_1_test,
+        scheduled_for_delete_test
     ].
 
 
@@ -56,6 +57,35 @@ index_creation_1_test(_) ->
             ok
     end),
 
+    Conf = index_conf(),
+
+    Fun = fun() ->
+        Index = babel_index:new(Conf),
+        Collection = babel_index_collection:new(<<"mytenant">>, <<"users">>),
+        ok = babel:create_index(Index, Collection),
+        ok
+    end,
+
+    {ok, _, _} =  babel:workflow(Fun),
+    ok.
+
+
+
+scheduled_for_delete_test(_) ->
+    Conf = index_conf(),
+    Fun = fun() ->
+        Index = babel_index:new(Conf),
+        Collection = babel_index_collection:new(<<"mytenant">>, <<"users">>),
+        ok = babel:delete_collection(Collection),
+        ok = babel:create_index(Index, Collection),
+        ok
+    end,
+
+    {error, {scheduled_for_delete, _Id}} = babel:workflow(Fun),
+    ok.
+
+
+index_conf() ->
     Sort = asc,
     N = 8,
     Algo = jch,
@@ -63,8 +93,8 @@ index_creation_1_test(_) ->
     IndexBy = [{<<"email">>, register}],
     Covered = [{<<"user_id">>, register}],
 
-    Conf = #{
-        id => <<"users_by_email">>,
+    #{
+        name => <<"users_by_email">>,
         bucket_type => <<"index_data">>,
         bucket_prefix => <<"lojack/johndoe">>,
         type => babel_hash_partitioned_index,
@@ -76,13 +106,4 @@ index_creation_1_test(_) ->
             index_by => IndexBy,
             covered_fields => Covered
         }
-    },
-    Fun = fun() ->
-        Index = babel_index:new(Conf),
-        Collection = babel_index_collection:new(<<"mytenant">>, <<"users">>),
-        ok = babel:create_index(Index, Collection),
-        ok
-    end,
-
-    {ok, _, _} =  babel:workflow(Fun),
-    ok.
+    }.

@@ -28,7 +28,7 @@ end_per_suite(Config) ->
 
 index_1_test(_) ->
     Conf = #{
-        id => <<"users_by_email">>,
+        name => <<"users_by_email">>,
         bucket_type => <<"map">>,
         bucket_prefix => <<"lojack/johndoe">>,
         type => babel_hash_partitioned_index,
@@ -53,7 +53,7 @@ index_1_test(_) ->
 
 index_2_test(_) ->
     Conf = #{
-        id => <<"users_by_email">>,
+        name => <<"users_by_email">>,
         bucket_type => <<"map">>,
         bucket_prefix => <<"lojack/johndoe">>,
         type => babel_hash_partitioned_index,
@@ -77,7 +77,7 @@ index_2_test(_) ->
 
 index_3_test(_) ->
     Conf = #{
-        id => <<"users_by_email">>,
+        name => <<"users_by_email">>,
         bucket_type => <<"map">>,
         bucket_prefix => <<"lojack/johndoe">>,
         type => babel_hash_partitioned_index,
@@ -99,7 +99,7 @@ index_3_test(_) ->
 
 index_4_test(_) ->
     Conf = #{
-        id => <<"users_by_email">>,
+        name => <<"users_by_email">>,
         bucket_type => <<"map">>,
         bucket_prefix => <<"lojack/johndoe">>,
         type => babel_hash_partitioned_index,

@@ -36,7 +36,7 @@ collection_1_test(_) ->
     Covered = [{<<"user_id">>, register}],
 
     Conf = #{
-        id => <<"users_by_email">>,
+        name => <<"users_by_email">>,
         bucket_type => <<"map">>,
         bucket_prefix => <<"lojack/johndoe">>,
         type => babel_hash_partitioned_index,
