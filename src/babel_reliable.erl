@@ -150,7 +150,7 @@ workflow(Fun) ->
 %% Example: Creating various babel objects and scheduling
 %%
 %% ```
-%% > babel_reliable:workflow(
+%% > babel:workflow(
 %%     fun() ->
 %%          CollectionX0 = babel_index_collection:new(<<"foo">>, <<"bar">>),
 %%          CollectionY0 = babel_index_collection:fetch(

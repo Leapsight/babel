@@ -15,7 +15,8 @@
 -export([delete_index/2]).
 -export([rebuild_index/4]).
 -export([update_indices/3]).
-
+-export([workflow/1]).
+-export([workflow/2]).
 
 
 %% =============================================================================
@@ -24,6 +25,89 @@
 
 
 
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Equivalent to calling {@link workflow/2} with and empty map passed as
+%% the `Opts' argument.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec workflow(Fun :: fun(() -> any())) ->
+    {ok, Id :: binary()} | {error, any()}.
+
+workflow(Fun) ->
+    workflow(Fun, #{}).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Executes the functional object `Fun' as a Reliable workflow, i.e.
+%% ordering and scheduling all resulting Riak KV object writes.
+%%
+%% The code that executes inside the workflow should call one or more functions
+%% in this module to schedule writes in Riak KV. For example, if you wanted to
+%% schedule an index creation you should use {@link create_index/2} instead of
+%% {@link babel_index_collection}, {@link babel_index} and {@link
+%% babel_index_partition} functions directly.
+%%
+%% Any other operation, including reading and writing from/to Riak KV directly
+%% or by using the API provided by other Babel modules will work as normal and
+%% will not affect the workflow, only the special functions in this module will
+%% add work items to the workflow.
+%%
+%% If something goes wrong inside the workflow as a result of a user
+%% error or general exception, the entire workflow is terminated and the
+%% function raises an exception. In case of an internal error, the function
+%% returns the tuple `{error, Reason}'.
+%%
+%% If everything goes well, the function returns the triple
+%% `{ok, WorkId, ResultOfFun}' where `WorkId' is the identifier for the
+%% workflow schedule by Reliable and `ResultOfFun' is the value of the last
+%% expression in `Fun'.
+%%
+%% > Notice that calling this function schedules the work to Reliable, you need
+%% to use the WorkId to check with Reliable the status of the workflow
+%% execution.
+%%
+%% Example: Creating various babel objects and scheduling
+%%
+%% ```
+%% > babel:workflow(
+%%     fun() ->
+%%          CollectionX0 = babel_index_collection:new(<<"foo">>, <<"bar">>),
+%%          CollectionY0 = babel_index_collection:fetch(
+%% Conn, <<"foo">>, <<"users">>),
+%%          IndexA = babel_index:new(ConfigA),
+%%          IndexB = babel_index:new(ConfigB),
+%%          ok = babel:create_index(IndexA, CollectionX0),
+%%          ok = babel:create_index(IndexB, CollectionY0),
+%%          ok
+%%     end).
+%% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
+%% '''
+%%
+%% The resulting workflow execution will schedule the writes in the order that
+%% results from the dependency graph constructed using the results of this
+%% module functions. This ensures partitions are created first and then
+%% collections.
+%%
+%% The `Opts' argument offers the following options:
+%%
+%% * `on_terminate` – a functional object `fun((Reason :: any()) -> ok)'. This
+%% function will be evaluated before the call terminates. In case of succesful
+%% termination the value `normal' is passed as argument. Otherwise, in case of
+%% error, the error reason will be passed as argument. This allows you to
+%% perform a cleanup after the workflow execution e.g. returning a riak
+%% connection object to a pool.
+%%
+%% @end
+%% -----------------------------------------------------------------------------
+-spec workflow(Fun ::fun(() -> any()), Opts :: babel_reliable:opts()) ->
+    {ok, WorkId :: binary(), ResultOfFun :: any()}
+    | {error, Reason :: any()}
+    | no_return().
+
+workflow(Fun, Opts) ->
+    babel_reliable:workflow(Fun, Opts).
 
 %% -----------------------------------------------------------------------------
 %% @doc Schedules the creation of an index collection using Reliable.
@@ -84,7 +168,7 @@ delete_collection(Collection) ->
 %% Example: Creating an index and adding it to an existing collection
 %%
 %% ```
-%% > babel_reliable:workflow(
+%% > babel:workflow(
 %%     fun() ->
 %%          Collection0 = babel_index_collection:fetch(Conn, BucketPrefix, Key),
 %%          Index = babel_index:new(Config),
