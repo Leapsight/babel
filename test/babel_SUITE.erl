@@ -38,13 +38,13 @@ end_per_suite(Config) ->
 
 
 nothing_test(_) ->
-    {ok, _, ok} = babel:workflow(fun() -> ok end, []).
+    {ok, _, ok} = babel_reliable:workflow(fun() -> ok end, []).
 
 
 error_test(_) ->
-    ?assertEqual({error, foo}, babel:workflow(fun() -> throw(foo) end, [])),
-    ?assertError(foo, babel:workflow(fun() -> error(foo) end, [])),
-    ?assertError(foo, babel:workflow(fun() -> exit(foo) end, [])).
+    ?assertEqual({error, foo}, babel_reliable:workflow(fun() -> throw(foo) end, [])),
+    ?assertError(foo, babel_reliable:workflow(fun() -> error(foo) end, [])),
+    ?assertError(foo, babel_reliable:workflow(fun() -> exit(foo) end, [])).
 
 
 index_creation_1_test(_) ->
@@ -66,7 +66,7 @@ index_creation_1_test(_) ->
         ok
     end,
 
-    {ok, _, _} =  babel:workflow(Fun),
+    {ok, _, _} =  babel_reliable:workflow(Fun),
     ok.
 
 
@@ -81,7 +81,7 @@ scheduled_for_delete_test(_) ->
         ok
     end,
 
-    {error, {scheduled_for_delete, _Id}} = babel:workflow(Fun),
+    {error, {scheduled_for_delete, _Id}} = babel_reliable:workflow(Fun),
     ok.
 
 
