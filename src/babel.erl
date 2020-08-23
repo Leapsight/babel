@@ -109,6 +109,7 @@ workflow(Fun) ->
 workflow(Fun, Opts) ->
     babel_reliable:workflow(Fun, Opts).
 
+
 %% -----------------------------------------------------------------------------
 %% @doc Schedules the creation of an index collection using Reliable.
 %% Fails if the collection already existed

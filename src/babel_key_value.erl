@@ -30,12 +30,15 @@
                         | binary()
                         | tuple()
                         | riakc_map:key()
-                        | [atom() | binary() | tuple() | riakc_map:key()].
+                        | path().
+
+-type path()        ::  [atom() | binary() | tuple() | riakc_map:key()].
 
 
 
 -export_type([t/0]).
 -export_type([key/0]).
+-export_type([path/0]).
 
 
 -export([collect/2]).

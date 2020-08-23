@@ -68,7 +68,7 @@
 }.
 
 -type action()      ::  {babel_index:action(), babel_index:data()}.
--type fields()      ::  [babel_key_value:key() | [babel_key_value:key()]].
+-type fields()      ::  [babel_key_value:key()].
 
 -export_type([action/0]).
 -export_type([fields/0]).
