@@ -17,7 +17,7 @@
   0},
  {<<"reliable">>,
   {git,"https://gitlab.com/leapsight-magenta/reliable.git",
-       {ref,"540e10cb14cb363f85dd42bb7e3b96291cfb6df1"}},
+       {ref,"7bdd850ffb950dbac1ec5947db2d2d4417fbbe67"}},
   0},
  {<<"riak_pb">>,
   {git,"https://github.com/basho/riak_pb",

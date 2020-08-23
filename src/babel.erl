@@ -3,8 +3,9 @@
 %% @end
 %% -----------------------------------------------------------------------------
 -module(babel).
+-include("babel.hrl").
+-include_lib("riakc/include/riakc.hrl").
 -include_lib("kernel/include/logger.hrl").
-
 
 
 %% -export([add_index/2]).
@@ -17,6 +18,8 @@
 -export([update_indices/3]).
 -export([workflow/1]).
 -export([workflow/2]).
+-export([validate_riak_opts/1]).
+-export([get_connection/1]).
 
 
 %% =============================================================================
@@ -101,7 +104,7 @@ workflow(Fun) ->
 %%
 %% @end
 %% -----------------------------------------------------------------------------
--spec workflow(Fun ::fun(() -> any()), Opts :: babel_reliable:opts()) ->
+-spec workflow(Fun ::fun(() -> any()), Opts :: babel_workflow:opts()) ->
     {ok, WorkId :: binary(), ResultOfFun :: any()}
     | {error, Reason :: any()}
     | no_return().
@@ -198,18 +201,9 @@ create_index(Index, Collection) ->
     case babel_index_collection:index(IndexName, Collection) of
         error ->
             Partitions = babel_index:create_partitions(Index),
-            PartitionItems = [
-                begin
-                    WorkItem = fun() ->
-                        babel_index:to_update_item(Index, P)
-                    end,
-                    %% We ensure the name of the partition is unique within the
-                    %% workflow graph
-                    Id = {CollectionId, IndexName, babel_index_partition:id(P)},
-                    {Id, {update, WorkItem}}
-
-                end || P <- Partitions
-            ],
+            PartitionItems = partition_update_items(
+                Collection, Index, Partitions, lazy
+            ),
 
             NewCollection = babel_index_collection:add_index(Index, Collection),
             CollWorkItem = fun() ->
@@ -234,45 +228,28 @@ create_index(Index, Collection) ->
     end.
 
 
+%% -----------------------------------------------------------------------------
+%% @doc Validates and returns the options in proplist format as expected by
+%% Riak KV.
+%% @end
+%% -----------------------------------------------------------------------------
+validate_riak_opts(#{'$validated' := true} = Opts) ->
+    Opts;
 
-%% %% -----------------------------------------------------------------------------
-%% %% @doc Adds
-%% %% @end
-%% %% -----------------------------------------------------------------------------
-%% -spec add_index(
-%%     Index :: babel_index:t(),
-%%     Collection :: babel_index_collection:t()) ->
-%%     babel_index_collection:t() | no_return().
-
-%% add_index(Index, Collection0) ->
-%%     Collection = babel_index_collection:add_index(Index, Collection0),
-%%     CollectionId = babel_index_collection:id(Collection),
-%%     WorkItem = babel_index_collection:to_update_item(Collection),
-%%     IndexName = {index, babel_index:name(Index)},
-
-%%     ok = add_workflow_items([{CollectionId, WorkItem}]),
-%%     ok = add_workflow_precedence([IndexName], CollectionId),
-
-%%     Collection.
+validate_riak_opts(Opts) ->
+    Opts1 = maps:to_list(maps_utils:validate(Opts, ?RIAK_OPTS_SPEC)),
+    Opts1#{'$validated' => true}.
 
 
-%% %% -----------------------------------------------------------------------------
-%% %% @doc Removes an index at identifier `IndexName' from collection `Collection'.
-%% %% @end
-%% %% -----------------------------------------------------------------------------
-%% -spec remove_index(
-%%     IndexName :: binary(),
-%%     Collection :: babel_index_collection:t()) ->
-%%     babel_index_collection:t() | no_return().
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+get_connection(#{connection := Conn}) when is_pid(Conn) ->
+    Conn;
 
-%% remove_index(IndexName, Collection0) ->
-%%     Collection = babel_index_collection:delete_index(IndexName, Collection0),
-%%     CollectionId = babel_index_collection:id(Collection),
-%%     WorkItem = babel_index_collection:to_update_item(Collection),
-
-%%     ok = add_workflow_items([{CollectionId, WorkItem}]),
-
-%%     Collection.
+get_connection(#{connection := Get}) when is_function(Get, 0) ->
+    Get().
 
 
 %% -----------------------------------------------------------------------------
@@ -283,7 +260,7 @@ create_index(Index, Collection) ->
     Index :: babel_index:t(),
     BucketType :: binary(),
     Bucket :: binary(),
-    Opts :: map()) -> ok | no_return().
+    Opts :: riak_opts()) -> ok | no_return().
 
 rebuild_index(_Index, _BucketType, _Bucket, _Opts) ->
     %% TODO call the manager
@@ -295,15 +272,46 @@ rebuild_index(_Index, _BucketType, _Bucket, _Opts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update_indices(
-    Collection :: babel_index_collection:t(),
-    Object :: key_value:t(),
-    Opts :: map()) ->
+    Actions :: [{babel_index:action(), babel_index:object()}],
+    CollectionOrIndices :: babel_index_collection:t(),
+    RiakOpts :: map()) ->
     ok | no_return().
 
-update_indices(_Collection, _Object, _Opts) ->
+update_indices(Actions, Collection, RiakOpts) when is_list(Actions) ->
     ok = babel_reliable:ensure_in_workflow(),
-    %% TODO
-    ok.
+
+    CollectionId = babel_index_collection:id(Collection),
+    Indices = babel_index_collection:indices(Collection),
+    ok = ensure_not_deleted(CollectionId),
+    Opts = validate_riak_opts(RiakOpts),
+
+    lists:foreach(
+        fun(Index) ->
+            Partitions = babel_index:update(Actions, Index, Opts),
+
+            %% Tradeoff between memory intensive (lazy) or CPU
+            %% intensive (eager) evaluation. We use eager here as we assume the
+            %% user is smart enough to aggregate all operations for a
+            %% collection and perform a single call to this function within a
+            %% workflow.
+            PartitionItems = partition_update_items(
+                Collection, Index, Partitions, eager
+            ),
+            %% We have not modified the collection
+            CollWorkflowItem = {CollectionId, undefined},
+
+            ok = babel_reliable:add_workflow_items(
+                [CollWorkflowItem | PartitionItems]
+            ),
+
+            %% If there is an update on the collection we want it to occur
+            %% before the partition updates
+            babel_reliable:add_workflow_precedence(
+                CollectionId, [Id || {Id, _} <- PartitionItems]
+            )
+        end,
+        Indices
+    ).
 
 
 %% -----------------------------------------------------------------------------
@@ -391,3 +399,32 @@ ensure_not_deleted(Id) ->
         error ->
             ok
     end.
+
+
+-spec partition_update_items(
+    babel_index_collection:t(),
+    babel_index:t(),
+    [babel_index_partition:t()],
+    Mode :: eager | lazy) ->
+    [babel_reliable:workflow_item()].
+
+partition_update_items(Collection, Index, Partitions, Mode) ->
+    [
+        begin
+            CollectionId = babel_index_collection:id(Collection),
+            IndexName = babel_index:name(Index),
+            %% We ensure the name of the partition is unique within the
+            %% workflow graph
+            Id = {CollectionId, IndexName, babel_index_partition:id(P)},
+
+            WorkItem = case Mode of
+                eager ->
+                    babel_index:to_update_item(Index, P);
+                lazy ->
+                    fun() -> babel_index:to_update_item(Index, P) end
+            end,
+
+            {Id, {update, WorkItem}}
+
+        end || P <- Partitions
+    ].

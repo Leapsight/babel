@@ -100,9 +100,7 @@ end).
 -type partition_key()           ::  binary().
 -type local_key()               ::  binary().
 -type action()                  ::  insert | delete.
--type data()                    ::  riakc_map:crdt_map()
-                                    | proplists:proplist()
-                                    | map().
+-type object()                  ::  babel_key_value:t().
 -type partition_iterator()      ::  #babel_index_partition_iter{}.
 -type element_iterator()        ::  #babel_element_iter{}.
 
@@ -114,7 +112,7 @@ end).
 -export_type([partition_key/0]).
 -export_type([local_key/0]).
 -export_type([action/0]).
--export_type([data/0]).
+-export_type([object/0]).
 -export_type([partition_iterator/0]).
 -export_type([element_iterator/0]).
 
@@ -127,6 +125,7 @@ end).
 -export([from_riak_object/1]).
 -export([name/1]).
 -export([new/1]).
+-export([partition_identifier/2]).
 -export([partition_identifiers/1]).
 -export([partition_identifiers/2]).
 -export([to_riak_object/1]).
@@ -136,7 +135,6 @@ end).
 -export([typed_bucket/1]).
 -export([update/3]).
 %% -export([get/4]).
-%% -export([remove_entry/4]).
 %% -export([match/4]).
 %% -export([list/4]).
 
@@ -162,12 +160,12 @@ end).
 
 -callback number_of_partitions(config()) -> pos_integer().
 
--callback partition_identifier(data(), config()) -> partition_id().
+-callback partition_identifier(object(), config()) -> partition_id().
 
 -callback partition_identifiers(asc | desc, config()) -> [partition_id()].
 
 -callback update_partition(
-    {action(), data()}, babel_index_partition:t(), config()) ->
+    {action(), object()}, babel_index_partition:t(), config()) ->
     babel_index_partition:t().
 
 
@@ -391,55 +389,37 @@ config(#{config := Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+-spec partition_identifier(Object :: object(), Index :: t()) -> binary().
+
+partition_identifier(Object, Index) ->
+    Mod = type(Index),
+    Config = config(Index),
+    Mod:partition_identifier(Config, Object).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
 -spec update(
-    Conn :: pid(), Index :: t(), {action(), data()} | [{action(), data()}]) ->
-    ok | {error, any()}.
+    Actions :: [{action(), object()}], Index :: t(), RiakOpts :: riak_opts()) ->
+    [babel_index_partition:t()] | no_return().
 
-update(Conn, Index, {_, Data} = Action) ->
+update(Actions, Index, RiakOpts) when is_list(Actions) ->
     Mod = type(Index),
     Config = config(Index),
     TypeBucket = {bucket_type(Index), bucket(Index)},
 
-    Key = Mod:partition_identifier(Config, Data),
-    Part0 = babel_index_partition:fetch(Conn, TypeBucket, Key),
-    Part1 = Mod:update_partition(Config, Part0, Action),
-
-    case babel_index_partition:store(Conn, TypeBucket, Key, Part1) of
-        ok ->
-            ok;
-        {error, Reason} ->
-            ?LOG_ERROR(#{
-                text => "Error while updating partition",
-                partition_id => Key,
-                type_bucket => TypeBucket,
-                reason => Reason
-            }),
-            ok
-    end;
-
-update(Conn, Index, List) when is_list(List) ->
-    Mod = type(Index),
-    Config = config(Index),
-    TypeBucket = {bucket_type(Index), bucket(Index)},
-
-    Update = fun({Key, Actions}) when is_list(Actions) ->
-        Part0 = babel_index_partition:fetch(Conn, TypeBucket, Key),
-        Part1 = Mod:update_partition(Config, Part0, Actions),
-
-        case babel_index_partition:store(Conn, TypeBucket, Key, Part1) of
-            ok ->
-                ok;
-            {error, Reason} ->
-                ?LOG_ERROR(#{
-                    text => "Error while updating partition",
-                    partition_id => Key,
-                    type_bucket => TypeBucket,
-                    reason => Reason
-                }),
-                ok
-        end
+    Update = fun({PartitionId, PActions}, Acc) ->
+        Part0 = babel_index_partition:fetch(TypeBucket, PartitionId, RiakOpts),
+        Part1 = Mod:update_partition(Config, Part0, PActions),
+        [Part1 | Acc]
     end,
-    lists:foreach(Update, actions_by_partition_id(Mod, Config, List)).
+    lists:foldl(
+        Update,
+        [],
+        objects_by_partition_id(Mod, Config, Actions)
+    ).
 
 
 
@@ -532,14 +512,14 @@ partition_identifiers(Index, Order) ->
 
 
 %% @private
-actions_by_partition_id(Mod, Config, List) ->
+objects_by_partition_id(Mod, Config, List) ->
     Tuples = [
-        %% We generate the tuple {partition_id(), {action(), data()}}.
+        %% We generate the tuple {partition_id(), {action(), object()}}.
         {Mod:partition_identifier(Config, Data), X}
         || {_, Data} = X <- List
     ],
 
-    %% We generate the list [ {partition_id(), [{action(), data()}]} ]
+    %% We generate the list [ {partition_id(), [{action(), object()}]} ]
     %% by grouping by the 1st element and collecting the 2nd element
     Proj = {1, {function, collect, [2]}},
     leap_tuples:summarize(Tuples, Proj, #{}).

@@ -28,13 +28,13 @@
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, tuple}
+        datatype => {list, [binary, tuple]}
     },
     index_by => #{
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, tuple},
+        datatype => {list, [binary, tuple]},
         validator => fun
             ([]) -> false;
             (_) -> true
@@ -45,13 +45,13 @@
         default => [],
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, tuple}
+        datatype => {list, [binary, tuple]}
     },
     covered_fields => #{
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, tuple}
+        datatype => {list, [binary, tuple]}
     }
 }).
 
@@ -225,7 +225,7 @@ from_riak_object(Object) ->
         riakc_map:fetch({<<"partition_identifier_prefix">>, register}, Object)
     ),
 
-    PartitionBy = decode_proplist(
+    PartitionBy = decode_fields(
         babel_crdt:register_to_binary(
             riakc_map:fetch({<<"partition_by">>, register}, Object)
         )
@@ -237,19 +237,19 @@ from_riak_object(Object) ->
         )
     ),
 
-    IndexBy = decode_proplist(
+    IndexBy = decode_fields(
         babel_crdt:register_to_binary(
             riakc_map:fetch({<<"index_by">>, register}, Object)
         )
     ),
 
-    AggregateBy = decode_proplist(
+    AggregateBy = decode_fields(
         babel_crdt:register_to_binary(
             riakc_map:fetch({<<"aggregate_by">>, register}, Object)
         )
     ),
 
-    CoveredFields = decode_proplist(
+    CoveredFields = decode_fields(
         babel_crdt:register_to_binary(
             riakc_map:fetch({<<"covered_fields">>, register}, Object)
         )
@@ -295,10 +295,10 @@ to_riak_object(Config) ->
         {{<<"partition_algorithm">>, register}, atom_to_binary(Algo, utf8)},
         {{<<"partition_identifier_prefix">>, register}, Prefix},
         {{<<"partition_identifiers">>, register}, encode_list(Identifiers)},
-        {{<<"partition_by">>, register}, encode_proplist(PartitionBy)},
-        {{<<"index_by">>, register}, encode_proplist(IndexBy)},
-        {{<<"aggregate_by">>, register}, encode_proplist(AggregateBy)},
-        {{<<"covered_fields">>, register}, encode_proplist(CoveredFields)}
+        {{<<"partition_by">>, register}, encode_fields(PartitionBy)},
+        {{<<"index_by">>, register}, encode_fields(IndexBy)},
+        {{<<"aggregate_by">>, register}, encode_fields(AggregateBy)},
+        {{<<"covered_fields">>, register}, encode_fields(CoveredFields)}
     ],
 
     lists:foldl(
@@ -525,7 +525,7 @@ decode_list(Data) ->
 %% programming languages.
 %% @end
 %% -----------------------------------------------------------------------------
-encode_proplist(List) ->
+encode_fields(List) ->
     jsx:encode(List).
 
 
@@ -535,7 +535,7 @@ encode_proplist(List) ->
 %% programming languages.
 %% @end
 %% -----------------------------------------------------------------------------
-decode_proplist(Data) ->
+decode_fields(Data) ->
     [
         {Key, binary_to_existing_atom(Type,  utf8)}
         || {Key, Type} <- jsx:decode(Data)

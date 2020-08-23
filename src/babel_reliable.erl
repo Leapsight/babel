@@ -5,9 +5,11 @@
 -define(WORKFLOW_ID, babel_workflow_id).
 -define(WORKFLOW_LEVEL, babel_workflow_count).
 -define(WORKFLOW_GRAPH, babel_digraph).
+-define(BABEL_PARTITION_KEY, babel_partition_key).
 
 
 -type opts()            ::  #{
+    partition_key => binary(),
     on_terminate => fun((Reason :: any()) -> any())
 }.
 
@@ -303,7 +305,7 @@ find_workflow_item(Id) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-init_workflow(_Opts) ->
+init_workflow(Opts) ->
     case get(?WORKFLOW_ID) of
         undefined ->
             %% We are initiating a new workflow
@@ -312,6 +314,10 @@ init_workflow(_Opts) ->
             undefined = put(?WORKFLOW_ID, Id),
             undefined = put(?WORKFLOW_LEVEL, 1),
             undefined = put(?WORKFLOW_GRAPH, babel_digraph:new()),
+            undefined = put(
+                ?BABEL_PARTITION_KEY,
+                maps:get(partition_key, Opts, undefined)
+            ),
             {ok, Id};
         Id ->
             %% This is a nested call, we are joining an existing workflow
@@ -371,9 +377,13 @@ maybe_schedule_workflow() ->
 %% @end
 %% -----------------------------------------------------------------------------
 schedule_workflow() ->
+    PartitionKey = get(?BABEL_PARTITION_KEY),
+
     case prepare_work() of
-        {ok, Work} ->
+        {ok, Work} when PartitionKey == undefined ->
             reliable:enqueue(get(?WORKFLOW_ID), Work);
+        {ok, Work} ->
+            reliable:enqueue(get(?WORKFLOW_ID), Work, PartitionKey);
         {error, _} = Error ->
             Error
     end.
@@ -402,10 +412,15 @@ prepare_work() ->
 prepare_work([], _, _, Acc) ->
     {ok, lists:reverse(Acc)};
 
-prepare_work([H|T], G, N, Acc) ->
+prepare_work([H|T], G, N0, Acc0) ->
     {_Id, {_, ItemOrFun}} = babel_digraph:vertex(G, H),
-    Work = to_work_item(ItemOrFun),
-    prepare_work(T, G, N + 1, [{N, Work}|Acc]).
+    {N1, Acc1} = case to_work_item(ItemOrFun) of
+        undefined ->
+            {N0, Acc0};
+        Work ->
+            {N0 + 1, [{N0, Work}|Acc0]}
+    end,
+    prepare_work(T, G, N1, Acc1).
 
 
 %% -----------------------------------------------------------------------------
@@ -413,6 +428,10 @@ prepare_work([H|T], G, N, Acc) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+
+to_work_item(undefined) ->
+    undefined;
+
 to_work_item(Fun) when is_function(Fun, 0) ->
     Fun();
 

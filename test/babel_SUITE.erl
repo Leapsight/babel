@@ -13,11 +13,29 @@ all() ->
         nothing_test,
         error_test,
         index_creation_1_test,
-        scheduled_for_delete_test
+        scheduled_for_delete_test,
+        update_indices_1_test
     ].
 
 
 init_per_suite(Config) ->
+    Env = [
+        {babel, [
+            {reliable_instances, ["test_1", "test_2", "test_3"]},
+            {bucket_types, [
+                {index_collection, <<"index_collection">>},
+                {index_data, <<"index_data">>}
+            ]}
+        ]},
+        {kernel, [
+            {logger, [
+                {handler, default, logger_std_h, #{
+                    formatter => {logger_formatter, #{ }}
+                }}
+            ]}
+        ]}
+    ],
+    application:set_env(Env),
 
     ok = babel_config:set(
         [bucket_types, index_collection], <<"index_collection">>),
@@ -28,6 +46,8 @@ init_per_suite(Config) ->
     application:ensure_all_started(reliable),
     application:ensure_all_started(babel),
     meck:unload(),
+
+    ct:pal("Config ~p", [application:get_all_env(reliable)]),
 
     Config.
 
@@ -57,7 +77,7 @@ index_creation_1_test(_) ->
             ok
     end),
 
-    Conf = index_conf(),
+    Conf = index_conf_crdt(),
 
     Fun = fun() ->
         Index = babel_index:new(Conf),
@@ -72,7 +92,7 @@ index_creation_1_test(_) ->
 
 
 scheduled_for_delete_test(_) ->
-    Conf = index_conf(),
+    Conf = index_conf_crdt(),
     Fun = fun() ->
         Index = babel_index:new(Conf),
         Collection = babel_index_collection:new(<<"mytenant">>, <<"users">>),
@@ -85,13 +105,82 @@ scheduled_for_delete_test(_) ->
     ok.
 
 
+update_indices_1_test(_) ->
+
+    Conf = index_conf(),
+    Object = #{
+        <<"email">> => <<"johndoe@me.com">>,
+        <<"user_id">> => <<"mrn:user:1">>,
+        <<"account_id">> => <<"mrn:account:1">>,
+        <<"name">> => <<"john">>
+    },
+
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    pong = riakc_pb_socket:ping(Conn),
+
+    RiakOpts = #{
+        connection => Conn
+    },
+
+
+    %% We schedule the creation of the indices in Riak
+    Fun = fun() ->
+        Index = babel_index:new(Conf),
+        Collection = babel_index_collection:new(<<"mytenant">>, <<"users">>),
+        ok = babel:create_index(Index, Collection),
+        ok
+    end,
+
+    {ok, _Id, ok} =  babel:workflow(Fun),
+
+    %% Sleep for 5 seconds for write to happen.
+    timer:sleep(5000),
+
+    Fun = fun() ->
+        Collection = babel_index_collection:fetch(
+            <<"mytenant">>, <<"users">>, RiakOpts
+        ),
+        ok = babel:update_indices([{update, Object}], Collection, RiakOpts),
+        ok
+    end,
+
+    {ok, _Id, ok} =  babel:workflow(Fun),
+
+
+    ok.
+
+
 index_conf() ->
+    Sort = asc,
+    N = 8,
+    Algo = jch,
+    PartBy = [<<"email">>],
+    IndexBy = [<<"email">>],
+    Covered = [<<"user_id">>, <<"account_id">>],
+
+    #{
+        name => <<"users_by_email">>,
+        bucket_type => <<"index_data">>,
+        bucket_prefix => <<"lojack/johndoe">>,
+        type => babel_hash_partitioned_index,
+        config => #{
+            sort_ordering => Sort,
+            number_of_partitions => N,
+            partition_algorithm => Algo,
+            partition_by => PartBy,
+            index_by => IndexBy,
+            covered_fields => Covered
+        }
+    }.
+
+
+index_conf_crdt() ->
     Sort = asc,
     N = 8,
     Algo = jch,
     PartBy = [{<<"email">>, register}],
     IndexBy = [{<<"email">>, register}],
-    Covered = [{<<"user_id">>, register}],
+    Covered = [{<<"user_id">>, register}, {<<"account_id">>, register}],
 
     #{
         name => <<"users_by_email">>,

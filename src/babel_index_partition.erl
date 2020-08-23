@@ -23,18 +23,17 @@
 
 -export([created_ts/1]).
 -export([data/1]).
--export([delete/5]).
+-export([delete/4]).
 -export([fetch/4]).
--export([fetch/5]).
+-export([from_riak_object/1]).
 -export([id/1]).
 -export([last_updated_ts/1]).
--export([lookup/5]).
+-export([lookup/4]).
 -export([new/1]).
 -export([size/1]).
--export([update_data/2]).
 -export([store/5]).
--export([from_riak_object/1]).
 -export([to_riak_object/1]).
+-export([update_data/2]).
 
 
 
@@ -185,26 +184,27 @@ update_data(Fun, #babel_index_partition{} = Partition) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec store(
-    Conn :: pid(),
     BucketType :: binary(),
     BucketPrefix :: binary(),
     Key :: binary(),
-    Partition :: t()) ->
+    Partition :: t(),
+    RiakOpts :: riak_opts()) ->
     ok | {error, any()}.
 
-store(Conn, BucketType, BucketPrefix, Key, Partition) ->
-    Opts = #{
+store(BucketType, BucketPrefix, Key, Partition, RiakOpts) ->
+    Opts0 = RiakOpts#{
         r => quorum,
         pr => quorum,
         notfound_ok => false,
         basic_quorum => true
     },
 
+    Opts1 = babel:validate_req_opts(Opts0),
+    Conn = babel:get_connection(Opts1),
+    TypeBucket = type_bucket(BucketType, BucketPrefix),
     Op = riakc_map:to_op(to_riak_object(Partition)),
 
-    TypeBucket = type_bucket(BucketType, BucketPrefix),
-
-    case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, Opts) of
+    case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, Opts1) of
         {error, _} = Error ->
             Error;
         _ ->
@@ -217,36 +217,20 @@ store(Conn, BucketType, BucketPrefix, Key, Partition) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec fetch(
-    Conn :: pid(),
     BucketType :: binary(),
     BucketPrefix :: binary(),
-    Key :: binary()) ->
+    Key :: binary(),
+    RiakOpts :: riak_opts()) ->
     t() | no_return().
 
-fetch(Conn, BucketType, BucketPrefix, Key) ->
-    Opts = #{
+fetch(BucketType, BucketPrefix, Key, RiakOpts) ->
+    Opts = RiakOpts#{
         r => quorum,
         pr => quorum,
         notfound_ok => false,
         basic_quorum => true
     },
-    fetch(Conn, BucketType, BucketPrefix, Key, Opts).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec fetch(
-    Conn :: pid(),
-    BucketType :: binary(),
-    BucketPrefix :: binary(),
-    Key :: binary(),
-    Opts :: req_opts()) ->
-    t() | no_return().
-
-fetch(Conn, BucketType, BucketPrefix, Key, ReqOpts) ->
-    case lookup(Conn, BucketType, BucketPrefix, Key, ReqOpts) of
+    case lookup(BucketType, BucketPrefix, Key, Opts) of
         {ok, Value} -> Value;
         {error, Reason} -> error(Reason)
     end.
@@ -257,15 +241,15 @@ fetch(Conn, BucketType, BucketPrefix, Key, ReqOpts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec lookup(
-    Conn :: pid(),
     BucketType :: binary(),
     BucketPrefix :: binary(),
     Key :: binary(),
-    Opts :: req_opts()) ->
+    Opts :: riak_opts()) ->
     {ok, t()} | {error, not_found | term()}.
 
-lookup(Conn, BucketType, BucketPrefix, Key, ReqOpts) ->
-    Opts = validate_req_opts(ReqOpts),
+lookup(BucketType, BucketPrefix, Key, RiakOpts) ->
+    Opts = babel:validate_req_opts(RiakOpts),
+    Conn = babel:get_connection(Opts),
     TypeBucket = type_bucket(BucketType, BucketPrefix),
 
     case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, Opts) of
@@ -283,16 +267,17 @@ lookup(Conn, BucketType, BucketPrefix, Key, ReqOpts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec delete(
-    Conn :: pid(),
     BucketType :: binary(),
     BucketPrefix :: binary(),
     Key :: binary(),
-    Opts :: req_opts()) ->
+    Opts :: riak_opts()) ->
     ok | {error, not_found | term()}.
 
-delete(Conn, BucketType, BucketPrefix, Key, ReqOpts) ->
-    Opts = validate_req_opts(ReqOpts),
+delete(BucketType, BucketPrefix, Key, RiakOpts) ->
+    Opts = babel:validate_req_opts(RiakOpts),
+    Conn = babel:get_connection(Opts),
     TypeBucket = type_bucket(BucketType, BucketPrefix),
+
     case riakc_pb_socket:delete(Conn, TypeBucket, Key, Opts) of
         ok -> ok;
         {error, {notfound, _}} -> {error, not_found};
@@ -304,17 +289,6 @@ delete(Conn, BucketType, BucketPrefix, Key, ReqOpts) ->
 %% =============================================================================
 %% PRIVATE
 %% =============================================================================
-
-
-
-%%-----------------------------------------------------------------------------
-%% @private
-%% @doc Validates and returns the options in proplist format as expected by
-%% Riak KV.
-%% @end
-%% -----------------------------------------------------------------------------
-validate_req_opts(Opts) ->
-    maps:to_list(maps_utils:validate(Opts, ?REQ_OPTS_SPEC)).
 
 
 %% @private

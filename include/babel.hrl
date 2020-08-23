@@ -16,7 +16,11 @@
 
 
 -define(RIAK_EC_TYPE, [non_neg_integer , {enum, [one, all, quorum, default]}]).
--define(REQ_OPTS_SPEC, #{
+-define(RIAK_OPTS_SPEC, #{
+    connection => #{
+        required => true,
+        datatype => [pid, function]
+    },
     r => #{
         alias => <<"r">>,
         key => r,
@@ -93,14 +97,16 @@
     }
 }).
 
--type req_opts()   :: #{
+-type riak_opts()   :: #{
+    connection := pid() | fun(() -> pid()),
     r => quorum(),
     pr => quorum(),
     w => quorum(),
     dw => quorum(),
     pw => quorum(),
     notfound_ok => boolean(),
-    basic_quorum => boolean()
+    basic_quorum => boolean(),
+    timeout => timeout()
 }.
 
 
