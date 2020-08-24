@@ -165,7 +165,7 @@ end).
 -callback partition_identifiers(asc | desc, config()) -> [partition_id()].
 
 -callback update_partition(
-    {action(), object()}, babel_index_partition:t(), config()) ->
+    [{action(), object()}], babel_index_partition:t(), config()) ->
     babel_index_partition:t().
 
 
@@ -227,25 +227,25 @@ new(IndexData) ->
 -spec from_riak_object(ConfigCRDT :: riak_object()) -> Index :: t().
 
 from_riak_object(Index) ->
-    Id = babel_crdt:register_to_binary(
-        riakc_map:fetch({<<"name">>, register}, Index)
+    Name = babel_crdt:register_to_binary(
+        orddict:fetch({<<"name">>, register}, Index)
     ),
     BucketType = babel_crdt:register_to_binary(
-        riakc_map:fetch({<<"bucket_type">>, register}, Index)
+        orddict:fetch({<<"bucket_type">>, register}, Index)
     ),
     Bucket = babel_crdt:register_to_binary(
-        riakc_map:fetch({<<"bucket">>, register}, Index)
+        orddict:fetch({<<"bucket">>, register}, Index)
     ),
     Type = babel_crdt:register_to_existing_atom(
-        riakc_map:fetch({<<"type">>, register}, Index),
+        orddict:fetch({<<"type">>, register}, Index),
         utf8
     ),
     Config = Type:from_riak_object(
-        riakc_map:fetch({<<"config">>, map}, Index)
+        orddict:fetch({<<"config">>, map}, Index)
     ),
 
     #{
-        name => Id,
+        name => Name,
         bucket_type => BucketType,
         bucket => Bucket,
         type => Type,
@@ -261,7 +261,7 @@ from_riak_object(Index) ->
 
 to_riak_object(Index) ->
     #{
-        name := Id,
+        name := Name,
         bucket_type := BucketType,
         bucket := Bucket,
         type := Type,
@@ -271,7 +271,7 @@ to_riak_object(Index) ->
     ConfigCRDT =  Type:to_riak_object(Config),
 
     Values = [
-        {{<<"name">>, register}, Id},
+        {{<<"name">>, register}, Name},
         {{<<"bucket_type">>, register}, BucketType},
         {{<<"bucket">>, register}, Bucket},
         {{<<"type">>, register}, atom_to_binary(Type, utf8)},
@@ -394,7 +394,7 @@ config(#{config := Value}) -> Value.
 partition_identifier(Object, Index) ->
     Mod = type(Index),
     Config = config(Index),
-    Mod:partition_identifier(Config, Object).
+    Mod:partition_identifier(Object, Config).
 
 
 %% -----------------------------------------------------------------------------
@@ -412,7 +412,7 @@ update(Actions, Index, RiakOpts) when is_list(Actions) ->
 
     Update = fun({PartitionId, PActions}, Acc) ->
         Part0 = babel_index_partition:fetch(TypeBucket, PartitionId, RiakOpts),
-        Part1 = Mod:update_partition(Config, Part0, PActions),
+        Part1 = Mod:update_partition(PActions, Part0, Config),
         [Part1 | Acc]
     end,
     lists:foldl(
@@ -515,7 +515,7 @@ partition_identifiers(Index, Order) ->
 objects_by_partition_id(Mod, Config, List) ->
     Tuples = [
         %% We generate the tuple {partition_id(), {action(), object()}}.
-        {Mod:partition_identifier(Config, Data), X}
+        {Mod:partition_identifier(Data, Config), X}
         || {_, Data} = X <- List
     ],
 

@@ -413,8 +413,8 @@ prepare_work([], _, _, Acc) ->
     {ok, lists:reverse(Acc)};
 
 prepare_work([H|T], G, N0, Acc0) ->
-    {_Id, {_, ItemOrFun}} = babel_digraph:vertex(G, H),
-    {N1, Acc1} = case to_work_item(ItemOrFun) of
+    {_Id, Action} = babel_digraph:vertex(G, H),
+    {N1, Acc1} = case to_work_item(Action) of
         undefined ->
             {N0, Acc0};
         Work ->
@@ -432,10 +432,10 @@ prepare_work([H|T], G, N0, Acc0) ->
 to_work_item(undefined) ->
     undefined;
 
-to_work_item(Fun) when is_function(Fun, 0) ->
+to_work_item({_, Fun}) when is_function(Fun, 0) ->
     Fun();
 
-to_work_item(WorkItem) when tuple_size(WorkItem) == 4 ->
+to_work_item({_, WorkItem}) when tuple_size(WorkItem) == 4 ->
     WorkItem.
 
 

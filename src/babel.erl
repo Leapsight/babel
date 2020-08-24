@@ -237,7 +237,7 @@ validate_riak_opts(#{'$validated' := true} = Opts) ->
     Opts;
 
 validate_riak_opts(Opts) ->
-    Opts1 = maps:to_list(maps_utils:validate(Opts, ?RIAK_OPTS_SPEC)),
+    Opts1 = maps_utils:validate(Opts, ?RIAK_OPTS_SPEC),
     Opts1#{'$validated' => true}.
 
 

@@ -12,11 +12,12 @@
     id                      ::  binary(),
     created_ts              ::  non_neg_integer(),
     last_updated_ts         ::  non_neg_integer(),
-    data                    ::  riakc_map:crdt_map()
+    object                  ::  riak_object()
 }).
 
 -type t()                   ::  #babel_index_partition{}.
 -type riak_object()         ::  riakc_map:crdt_map().
+-type data()                ::  riakc_map:crdt_map().
 
 -export_type([t/0]).
 -export_type([riak_object/0]).
@@ -24,10 +25,12 @@
 -export([created_ts/1]).
 -export([data/1]).
 -export([delete/4]).
+-export([fetch/3]).
 -export([fetch/4]).
 -export([from_riak_object/1]).
 -export([id/1]).
 -export([last_updated_ts/1]).
+-export([lookup/3]).
 -export([lookup/4]).
 -export([new/1]).
 -export([size/1]).
@@ -51,12 +54,15 @@
 
 new(Id) ->
     Ts = erlang:system_time(millisecond),
+    Object = riakc_map:update(
+        {<<"data">>, map}, fun(Data) -> Data end, riakc_map:new()
+    ),
 
     #babel_index_partition{
         id = Id,
         created_ts = Ts,
         last_updated_ts = Ts,
-        data = riakc_map:new()
+        object = Object
     }.
 
 
@@ -77,13 +83,12 @@ from_riak_object(Object) ->
     LastUpdated = babel_crdt:register_to_integer(
         riakc_map:fetch({<<"last_updated_ts">>, register}, Object)
     ),
-    Data = riakc_map:fetch({<<"data">>, map}, Object),
 
     #babel_index_partition{
         id = Id,
         created_ts = Created,
         last_updated_ts = LastUpdated,
-        data = Data
+        object = Object
     }.
 
 
@@ -98,19 +103,19 @@ to_riak_object(#babel_index_partition{} = Partition) ->
         id = Id,
         created_ts = Created,
         last_updated_ts = LastUpdated,
-        data = Data
+        object = Object
     } = Partition,
 
     Values = [
         {{<<"id">>, register}, Id},
         {{<<"created_ts">>, register}, integer_to_binary(Created)},
-        {{<<"last_updated_ts">>, register}, integer_to_binary(LastUpdated)},
-        {{<<"config">>, map}, Data}
+        {{<<"last_updated_ts">>, register}, integer_to_binary(LastUpdated)}
     ],
+
 
     lists:foldl(
         fun({K, V}, Acc) -> babel_key_value:set(K, V, Acc) end,
-        riakc_map:new(),
+        Object,
         Values
     ).
 
@@ -157,9 +162,10 @@ last_updated_ts(#babel_index_partition{last_updated_ts = Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec data(Partition :: t()) -> riakc_map:crdt_map().
+-spec data(Partition :: t()) -> data().
 
-data(#babel_index_partition{data = Value}) -> Value.
+data(#babel_index_partition{object = Object}) ->
+    babel_crdt:dirty_fetch({<<"data">>, map}, Object).
 
 
 %% -----------------------------------------------------------------------------
@@ -170,12 +176,13 @@ data(#babel_index_partition{data = Value}) -> Value.
 
 update_data(Fun, #babel_index_partition{} = Partition) ->
     Ts = erlang:system_time(millisecond),
-    Data0 = Partition#babel_index_partition.data,
-    Data1 = riakc_map:update({<<"data">>, map}, Fun, Data0),
+    Object = riakc_map:update(
+        {<<"data">>, map}, Fun, Partition#babel_index_partition.object
+    ),
 
     Partition#babel_index_partition{
         last_updated_ts = Ts,
-        data = Data1
+        object = Object
     }.
 
 
@@ -199,16 +206,40 @@ store(BucketType, BucketPrefix, Key, Partition, RiakOpts) ->
         basic_quorum => true
     },
 
-    Opts1 = babel:validate_req_opts(Opts0),
+    Opts1 = babel:validate_riak_opts(Opts0),
+    ReqOpts = maps:to_list(maps:without([connection], Opts1)),
     Conn = babel:get_connection(Opts1),
     TypeBucket = type_bucket(BucketType, BucketPrefix),
     Op = riakc_map:to_op(to_riak_object(Partition)),
 
-    case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, Opts1) of
+    case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, ReqOpts) of
         {error, _} = Error ->
             Error;
         _ ->
             ok
+    end.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec fetch(
+    TypedBucket :: {binary(), binary()},
+    Key :: binary(),
+    RiakOpts :: riak_opts()) ->
+    t() | no_return().
+
+fetch(TypedBucket, Key, RiakOpts) ->
+    Opts = RiakOpts#{
+        r => quorum,
+        pr => quorum,
+        notfound_ok => false,
+        basic_quorum => true
+    },
+    case lookup(TypedBucket, Key, Opts) of
+        {ok, Value} -> Value;
+        {error, Reason} -> error(Reason)
     end.
 
 
@@ -236,6 +267,33 @@ fetch(BucketType, BucketPrefix, Key, RiakOpts) ->
     end.
 
 
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec lookup(
+    TypedBucket :: {binary(), binary()},
+    Key :: binary(),
+    Opts :: riak_opts()) ->
+    {ok, t()} | {error, not_found | term()}.
+
+lookup(TypedBucket, Key, RiakOpts) ->
+    Opts = babel:validate_riak_opts(RiakOpts),
+    ReqOpts = maps:to_list(maps:without([connection], Opts)),
+    Conn = babel:get_connection(Opts),
+
+    case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, ReqOpts) of
+        {ok, Object} ->
+            {ok, from_riak_object(Object)};
+        {error, {notfound, _}} ->
+            {error, not_found};
+        {error, _} = Error ->
+            Error
+    end.
+
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -248,18 +306,8 @@ fetch(BucketType, BucketPrefix, Key, RiakOpts) ->
     {ok, t()} | {error, not_found | term()}.
 
 lookup(BucketType, BucketPrefix, Key, RiakOpts) ->
-    Opts = babel:validate_req_opts(RiakOpts),
-    Conn = babel:get_connection(Opts),
-    TypeBucket = type_bucket(BucketType, BucketPrefix),
-
-    case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, Opts) of
-        {ok, Object} ->
-            {ok, from_riak_object(Object)};
-        {error, {notfound, _}} ->
-            {error, not_found};
-        {error, _} = Error ->
-            Error
-    end.
+    TypedBucket = type_bucket(BucketType, BucketPrefix),
+    lookup(TypedBucket, Key, RiakOpts).
 
 
 %% -----------------------------------------------------------------------------
@@ -274,11 +322,12 @@ lookup(BucketType, BucketPrefix, Key, RiakOpts) ->
     ok | {error, not_found | term()}.
 
 delete(BucketType, BucketPrefix, Key, RiakOpts) ->
-    Opts = babel:validate_req_opts(RiakOpts),
+    Opts = babel:validate_riak_opts(RiakOpts),
+    ReqOpts = maps:to_list(maps:without([connection], Opts)),
     Conn = babel:get_connection(Opts),
     TypeBucket = type_bucket(BucketType, BucketPrefix),
 
-    case riakc_pb_socket:delete(Conn, TypeBucket, Key, Opts) of
+    case riakc_pb_socket:delete(Conn, TypeBucket, Key, ReqOpts) of
         ok -> ok;
         {error, {notfound, _}} -> {error, not_found};
         {error, _} = Error -> Error

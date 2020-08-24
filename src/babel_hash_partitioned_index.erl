@@ -209,49 +209,49 @@ init(IndexId, ConfigData0) ->
 
 from_riak_object(Object) ->
     Sort = babel_crdt:register_to_existing_atom(
-        riakc_map:fetch({<<"sort_ordering">>, register}, Object),
+        orddict:fetch({<<"sort_ordering">>, register}, Object),
         utf8
     ),
     N = babel_crdt:register_to_integer(
-        riakc_map:fetch({<<"number_of_partitions">>, register}, Object)
+        orddict:fetch({<<"number_of_partitions">>, register}, Object)
     ),
 
     Algo = babel_crdt:register_to_existing_atom(
-        riakc_map:fetch({<<"partition_algorithm">>, register}, Object),
+        orddict:fetch({<<"partition_algorithm">>, register}, Object),
         utf8
     ),
 
     Prefix = babel_crdt:register_to_binary(
-        riakc_map:fetch({<<"partition_identifier_prefix">>, register}, Object)
+        orddict:fetch({<<"partition_identifier_prefix">>, register}, Object)
     ),
 
     PartitionBy = decode_fields(
         babel_crdt:register_to_binary(
-            riakc_map:fetch({<<"partition_by">>, register}, Object)
+            orddict:fetch({<<"partition_by">>, register}, Object)
         )
     ),
 
     Identifiers = decode_list(
         babel_crdt:register_to_binary(
-            riakc_map:fetch({<<"partition_identifiers">>, register}, Object)
+            orddict:fetch({<<"partition_identifiers">>, register}, Object)
         )
     ),
 
     IndexBy = decode_fields(
         babel_crdt:register_to_binary(
-            riakc_map:fetch({<<"index_by">>, register}, Object)
+            orddict:fetch({<<"index_by">>, register}, Object)
         )
     ),
 
     AggregateBy = decode_fields(
         babel_crdt:register_to_binary(
-            riakc_map:fetch({<<"aggregate_by">>, register}, Object)
+            orddict:fetch({<<"aggregate_by">>, register}, Object)
         )
     ),
 
     CoveredFields = decode_fields(
         babel_crdt:register_to_binary(
-            riakc_map:fetch({<<"covered_fields">>, register}, Object)
+            orddict:fetch({<<"covered_fields">>, register}, Object)
         )
     ),
 
@@ -387,16 +387,16 @@ partition_size(_, Partition) ->
     Config :: t()
     ) -> babel_index_partition:t() | no_return().
 
-update_partition({insert, Data}, Partition, Config) ->
+update_partition({update, Data}, Partition, Config) ->
     IndexKey = gen_index_key(index_by(Config), Data),
     Value = gen_index_key(covered_fields(Config), Data),
 
     case aggregate_by(Config) of
         [] ->
-            insert_data(IndexKey, Value, Partition);
+            update_data(IndexKey, Value, Partition);
         Fields ->
             AggregateKey = gen_index_key(Fields, Data),
-            insert_data({AggregateKey, IndexKey}, Value, Partition)
+            update_data({AggregateKey, IndexKey}, Value, Partition)
     end;
 
 update_partition({delete, Data}, Partition, Config) ->
@@ -414,7 +414,7 @@ update_partition([H|T], Partition0, Config) ->
     Partition1 = update_partition(H, Partition0, Config),
     update_partition(T, Partition1, Config);
 
-update_partition(_, Partition, []) ->
+update_partition([], Partition, _) ->
     Partition.
 
 
@@ -440,7 +440,7 @@ gen_index_key(Keys, Data) ->
     binary_utils:join(babel_key_value:collect(Keys, Data)).
 
 %% @private
-insert_data({AggregateKey, IndexKey}, Value, Partition) ->
+update_data({AggregateKey, IndexKey}, Value, Partition) ->
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -458,7 +458,7 @@ insert_data({AggregateKey, IndexKey}, Value, Partition) ->
         Partition
     );
 
-insert_data(IndexKey, Value, Partition) ->
+update_data(IndexKey, Value, Partition) ->
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -537,6 +537,11 @@ encode_fields(List) ->
 %% -----------------------------------------------------------------------------
 decode_fields(Data) ->
     [
-        {Key, binary_to_existing_atom(Type,  utf8)}
-        || {Key, Type} <- jsx:decode(Data)
+        case X of
+            {Key, Type} ->
+                {Key, binary_to_existing_atom(Type,  utf8)};
+            Key ->
+                Key
+        end
+        || X <- jsx:decode(Data)
     ].

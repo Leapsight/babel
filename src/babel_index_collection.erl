@@ -54,7 +54,7 @@
 -record(babel_index_collection, {
     id      ::  binary(),
     bucket  ::  binary(),
-    data    ::  data()
+    object  ::  riak_object()
 }).
 
 -type t()           ::  #babel_index_collection{}.
@@ -80,7 +80,6 @@
 -export([indices/1]).
 -export([lookup/3]).
 -export([new/2]).
--export([new/3]).
 -export([size/1]).
 -export([store/2]).
 -export([to_delete_item/1]).
@@ -101,29 +100,15 @@
 -spec new(BucketPrefix :: binary(), Name :: binary()) -> t().
 
 new(BucketPrefix, Name) ->
-    new(BucketPrefix, Name, []).
+    Object = riakc_map:update(
+        {<<"data">>, map}, fun(Data) -> Data end, riakc_map:new()
+    ),
 
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec new(
-    BucketPrefix :: binary(),
-    Name :: binary(),
-    Indices :: [{binary(), babel_index:t()}]) -> t().
-
-new(BucketPrefix, Name, Indices) when is_list(Indices) ->
-    Values = [babel_crdt:map_entry(map, K, V) || {K, V} <- Indices],
     #babel_index_collection{
         id = Name,
-        bucket = BucketPrefix,
-        data = riakc_map:new(Values, undefined)
-    };
-
-new(BucketPrefix, Name, Indices) when is_map(Indices) ->
-    new(BucketPrefix, Name, maps:to_list(Indices)).
-
+        bucket = <<BucketPrefix/binary, ?PATH_SEPARATOR, ?BUCKET_SUFFIX>>,
+        object = Object
+    }.
 
 
 %% -----------------------------------------------------------------------------
@@ -139,12 +124,11 @@ from_riak_object(Object) ->
     Bucket = babel_crdt:register_to_binary(
         riakc_map:fetch({<<"bucket">>, register}, Object)
     ),
-    Data = riakc_map:fetch({<<"data">>, map}, Object),
 
     #babel_index_collection{
         id = Id,
         bucket = Bucket,
-        data = Data
+        object = Object
     }.
 
 
@@ -158,18 +142,17 @@ to_riak_object(#babel_index_collection{} = Collection) ->
     #babel_index_collection{
         id = Id,
         bucket = Bucket,
-        data = Data
+        object = Object
     } = Collection,
 
     Values = [
         {{<<"id">>, register}, Id},
-        {{<<"bucket">>, register}, Bucket},
-        {{<<"data">>, map}, Data}
+        {{<<"bucket">>, register}, Bucket}
     ],
 
     lists:foldl(
         fun({K, V}, Acc) -> babel_key_value:set(K, V, Acc) end,
-        riakc_map:new(),
+        Object,
         Values
     ).
 
@@ -181,7 +164,7 @@ to_riak_object(#babel_index_collection{} = Collection) ->
 -spec size(Collection :: t()) -> non_neg_integer().
 
 size(Collection) ->
-    riakc_map:size(data(Collection)).
+    orddict:size(data(Collection)).
 
 
 %% -----------------------------------------------------------------------------
@@ -208,7 +191,8 @@ bucket(#babel_index_collection{bucket = Value}) -> Value.
 %% -----------------------------------------------------------------------------
 -spec data(Collection :: t()) -> data().
 
-data(#babel_index_collection{data = Value}) -> Value.
+data(#babel_index_collection{object = Object}) ->
+    riakc_map:fetch({<<"data">>, map}, Object).
 
 
 %% -----------------------------------------------------------------------------
@@ -222,10 +206,11 @@ data(#babel_index_collection{data = Value}) -> Value.
 
 index(IndexName, #babel_index_collection{} = Collection)
 when is_binary(IndexName) ->
-    Data = Collection#babel_index_collection.data,
-    try babel_crdt:dirty_fetch({IndexName, map}, Data) of
-        Object ->
-            babel_index:from_riak_object(Object)
+
+    try
+        Data = data(Collection),
+        Object = orddict:fetch({IndexName, map}, Data),
+        babel_index:from_riak_object(Object)
     catch
         _:_ ->
             error
@@ -240,12 +225,18 @@ when is_binary(IndexName) ->
 -spec indices(Collection :: t()) -> [babel_index:t()].
 
 indices(#babel_index_collection{} = Collection) ->
-    Data = Collection#babel_index_collection.data,
-    Keys = babel_crdt:dirty_fetch_keys(Data),
-    [
-        babel_index:from_riak_object(babel_crdt:dirty_fetch(Key, Data))
-        || Key <- Keys
-    ].
+    try data(Collection) of
+        Data ->
+            Fun = fun(_, V, Acc) ->
+                E = babel_index:from_riak_object(V),
+                [E | Acc]
+            end,
+            lists:reverse(orddict:fold(Fun, [], Data))
+    catch
+        error:function_clause ->
+            []
+    end.
+
 
 
 %% -----------------------------------------------------------------------------
@@ -257,11 +248,16 @@ indices(#babel_index_collection{} = Collection) ->
 
 add_index(Index, #babel_index_collection{} = Collection) ->
     IndexId = babel_index:name(Index),
-    Object = babel_index:to_riak_object(Index),
-    Data0 = Collection#babel_index_collection.data,
-    Data = riakc_map:update({IndexId, map}, fun(_) -> Object end, Data0),
+    IndexObject = babel_index:to_riak_object(Index),
+    Object = riakc_map:update(
+        {<<"data">>, map},
+        fun(Data) ->
+            riakc_map:update({IndexId, map}, fun(_) -> IndexObject end, Data)
+        end,
+        Collection#babel_index_collection.object
+    ),
 
-    Collection#babel_index_collection{data = Data}.
+    Collection#babel_index_collection{object = Object}.
 
 
 %% -----------------------------------------------------------------------------
@@ -271,9 +267,14 @@ add_index(Index, #babel_index_collection{} = Collection) ->
 -spec delete_index(Id :: binary(), Collection :: t()) ->
     t() | no_return().
 
-delete_index(Id, #babel_index_collection{} = Collection) ->
-    Data = Collection#babel_index_collection.data,
-    Collection#babel_index_collection{data = riakc_map:erase({Id, map}, Data)}.
+delete_index(IndexId, #babel_index_collection{} = Collection) ->
+    Object = riakc_map:update(
+        {<<"data">>, map},
+        fun(Data) -> riakc_map:erase({IndexId, map}, Data) end,
+        Collection#babel_index_collection.object
+    ),
+
+    Collection#babel_index_collection{object = Object}.
 
 
 
@@ -286,9 +287,9 @@ delete_index(Id, #babel_index_collection{} = Collection) ->
 
 to_update_item(#babel_index_collection{} = Collection) ->
     Key = Collection#babel_index_collection.id,
-    Data = Collection#babel_index_collection.data,
+    Object = to_riak_object(Collection),
     TypedBucket = typed_bucket(Collection),
-    Args = [TypedBucket, Key, riakc_map:to_op(Data)],
+    Args = [TypedBucket, Key, riakc_map:to_op(Object)],
     {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
 
 
@@ -322,13 +323,15 @@ to_delete_item(#babel_index_collection{} = Collection) ->
 store(Collection, RiakOpts) ->
     Opts = babel:validate_riak_opts(RiakOpts),
     Conn = babel:get_connection(Opts),
+    ReqOpts = maps:to_list(maps:without([connection], Opts)),
 
     Key = Collection#babel_index_collection.id,
-    Data = Collection#babel_index_collection.data,
+    Object = Collection#babel_index_collection.object,
     TypeBucket = typed_bucket(Collection),
-    Op = riakc_map:to_op(Data),
+    Op = riakc_map:to_op(Object),
 
-    case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, Opts) of
+
+    case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, ReqOpts) of
         {error, _} = Error ->
             Error;
         _ ->
@@ -377,10 +380,11 @@ when is_binary(BucketPrefix) andalso is_binary(Key) ->
         r => quorum,
         pr => quorum
     },
+    ReqOpts = maps:to_list(maps:without([connection], Opts1)),
     TypeBucket = typed_bucket(BucketPrefix),
 
-    case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, Opts1) of
-        {ok, _} = OK -> from_riak_object(OK);
+    case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, ReqOpts) of
+        {ok, Object} -> {ok, from_riak_object(Object)};
         {error, {notfound, _}} -> {error, not_found};
         {error, _} = Error -> Error
     end.
@@ -406,9 +410,10 @@ when is_binary(BucketPrefix) andalso is_binary(Key) ->
         pr => quorum,
         pw => quorum
     },
+    ReqOpts = maps:to_list(maps:without([connection], Opts1)),
     TypeBucket = typed_bucket(BucketPrefix),
 
-    case riakc_pb_socket:delete(Conn, TypeBucket, Key, Opts1) of
+    case riakc_pb_socket:delete(Conn, TypeBucket, Key, ReqOpts) of
         ok -> ok;
         {error, {notfound, _}} -> {error, not_found};
         {error, _} = Error -> Error

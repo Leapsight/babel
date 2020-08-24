@@ -58,13 +58,13 @@ end_per_suite(Config) ->
 
 
 nothing_test(_) ->
-    {ok, _, ok} = babel:workflow(fun() -> ok end, []).
+    {ok, _, ok} = babel:workflow(fun() -> ok end).
 
 
 error_test(_) ->
-    ?assertEqual({error, foo}, babel:workflow(fun() -> throw(foo) end, [])),
-    ?assertError(foo, babel:workflow(fun() -> error(foo) end, [])),
-    ?assertError(foo, babel:workflow(fun() -> exit(foo) end, [])).
+    ?assertEqual({error, foo}, babel:workflow(fun() -> throw(foo) end)),
+    ?assertError(foo, babel:workflow(fun() -> error(foo) end)),
+    ?assertError(foo, babel:workflow(fun() -> exit(foo) end)).
 
 
 index_creation_1_test(_) ->
@@ -124,27 +124,36 @@ update_indices_1_test(_) ->
 
 
     %% We schedule the creation of the indices in Riak
-    Fun = fun() ->
+    Fun1 = fun() ->
         Index = babel_index:new(Conf),
         Collection = babel_index_collection:new(<<"mytenant">>, <<"users">>),
         ok = babel:create_index(Index, Collection),
         ok
     end,
 
-    {ok, _Id, ok} =  babel:workflow(Fun),
+    {ok, _, ok} =  babel:workflow(Fun1),
 
     %% Sleep for 5 seconds for write to happen.
     timer:sleep(5000),
 
-    Fun = fun() ->
+    dbg:tracer(), dbg:p(all,c),
+    %% dbg:tpl(riakc_map, fetch, x),
+    %% dbg:tpl(riakc_pb_socket, fetch_type, x),
+    %% dbg:tpl(babel_index, 'update', x),
+    %% dbg:tpl(babel_hash_partitioned_index, 'update_data', x),
+    %% dbg:tpl(babel_index, 'to_update_item', x),
+    %% dbg:tpl(babel_digraph, 'topsort', x),
+
+    Fun2 = fun() ->
         Collection = babel_index_collection:fetch(
             <<"mytenant">>, <<"users">>, RiakOpts
         ),
         ok = babel:update_indices([{update, Object}], Collection, RiakOpts),
+        %% babel_worflow:abort(testing),
         ok
     end,
 
-    {ok, _Id, ok} =  babel:workflow(Fun),
+    {ok, _, ok} =  babel:workflow(Fun2),
 
 
     ok.

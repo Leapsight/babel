@@ -21,6 +21,9 @@
 %% API
 %% =============================================================================
 
+to_integer(Unwrapped) when is_binary(Unwrapped) ->
+    binary_to_integer(Unwrapped);
+
 to_integer(Object) ->
     try riakc_datatype:module_for_type(Object) of
         riakc_register ->
@@ -37,7 +40,11 @@ to_integer(Object) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec register_to_binary(riakc_register:register()) -> binary() | no_return().
+-spec register_to_binary(riakc_register:register() | binary()) ->
+    binary() | no_return().
+
+register_to_binary(Unwrapped) when is_binary(Unwrapped) ->
+    Unwrapped;
 
 register_to_binary(Object) ->
     riakc_register:value(Object).
@@ -47,7 +54,11 @@ register_to_binary(Object) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec register_to_integer(riakc_register:register()) -> integer() | no_return().
+-spec register_to_integer(riakc_register:register() | binary()) ->
+    integer() | no_return().
+
+register_to_integer(Unwrapped) when is_binary(Unwrapped) ->
+    binary_to_integer(Unwrapped);
 
 register_to_integer(Object) ->
     binary_to_integer(riakc_register:value(Object)).
@@ -57,8 +68,12 @@ register_to_integer(Object) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec register_to_integer(riakc_register:register(), Base :: 2..36) ->
+-spec register_to_integer(
+    riakc_register:register() | binary(), Base :: 2..36) ->
     integer() | no_return().
+
+register_to_integer(Unwrapped, Base) when is_binary(Unwrapped) ->
+    binary_to_integer(Unwrapped, Base);
 
 register_to_integer(Object, Base) ->
     binary_to_integer(riakc_register:value(Object), Base).
@@ -69,8 +84,12 @@ register_to_integer(Object, Base) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec register_to_atom(
-    riakc_register:register(), Encoding :: latin1 | unicode | utf8) ->
+    riakc_register:register() | binary(),
+    Encoding :: latin1 | unicode | utf8) ->
     atom() | no_return().
+
+register_to_atom(Unwrapped, Encoding) when is_binary(Unwrapped) ->
+    binary_to_atom(Unwrapped, Encoding);
 
 register_to_atom(Object, Encoding) ->
     binary_to_atom(riakc_register:value(Object), Encoding).
@@ -81,8 +100,12 @@ register_to_atom(Object, Encoding) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec register_to_existing_atom(
-    riakc_register:register(), Encoding :: latin1 | unicode | utf8) ->
+    riakc_register:register() | binary(),
+    Encoding :: latin1 | unicode | utf8) ->
     atom() | no_return().
+
+register_to_existing_atom(Unwrapped, Encoding) when is_binary(Unwrapped) ->
+    binary_to_existing_atom(Unwrapped, Encoding);
 
 register_to_existing_atom(Object, Encoding) ->
     binary_to_existing_atom(riakc_register:value(Object), Encoding).
@@ -92,7 +115,11 @@ register_to_existing_atom(Object, Encoding) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec register_to_term(riakc_register:register()) -> term() | no_return().
+-spec register_to_term(riakc_register:register() | binary()) ->
+    term() | no_return().
+
+register_to_term(Unwrapped) when is_binary(Unwrapped) ->
+    binary_to_term(Unwrapped);
 
 register_to_term(Object) ->
     binary_to_term(riakc_register:value(Object)).
@@ -121,7 +148,10 @@ dirty_fetch(Key, {map, _, Updates, Removes, _} = Map) ->
                 error ->
                     riakc_map:fetch(Key, Map)
             end
-    end.
+    end;
+
+dirty_fetch(Key, Unwrapped) ->
+    riakc_map:fetch(Key, Unwrapped).
 
 
 %% -----------------------------------------------------------------------------
@@ -135,7 +165,10 @@ dirty_fetch_keys({map, _, Updates, Removes, _} = Map) ->
     Updated = sets:from_list(orddict:fetch_keys(Updates)),
     Values = sets:from_list(riakc_map:fetch_keys(Map)),
 
-    sets:to_list(sets:subtract(sets:union(Values, Updated), Removed)).
+    sets:to_list(sets:subtract(sets:union(Values, Updated), Removed));
+
+dirty_fetch_keys(Unwrapped) ->
+    riakc_map:fetch_keys(Unwrapped).
 
 
 

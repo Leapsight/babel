@@ -165,7 +165,7 @@ collect(Keys, KVTerm) ->
 
 collect([Key], KVTerm, Default) ->
     try
-        get(Key, KVTerm, Default)
+        [get(Key, KVTerm, Default)]
     catch
         error:badkey ->
             error({badkey, Key})
