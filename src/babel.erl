@@ -36,7 +36,9 @@
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun :: fun(() -> any())) ->
-    {ok, Id :: binary()} | {error, any()}.
+    {ok, WorkId :: binary(), ResultOfFun :: any()}
+    | {error, Reason :: any()}
+    | no_return().
 
 workflow(Fun) ->
     workflow(Fun, #{}).

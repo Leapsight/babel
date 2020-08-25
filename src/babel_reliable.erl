@@ -114,7 +114,9 @@ abort(Reason) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun :: fun(() -> any())) ->
-    {ok, Id :: binary()} | {error, any()}.
+    {ok, WorkId :: binary(), ResultOfFun :: any()}
+    | {error, Reason :: any()}
+    | no_return().
 
 workflow(Fun) ->
     workflow(Fun, #{}).
@@ -380,6 +382,8 @@ schedule_workflow() ->
     PartitionKey = get(?BABEL_PARTITION_KEY),
 
     case prepare_work() of
+        {ok, []} ->
+            ok;
         {ok, Work} when PartitionKey == undefined ->
             reliable:enqueue(get(?WORKFLOW_ID), Work);
         {ok, Work} ->
@@ -490,7 +494,7 @@ maybe_throw(Reason) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-on_terminate(Reason, #{on_terminate := Fun}) when is_function(Fun, 0) ->
+on_terminate(Reason, #{on_terminate := Fun}) when is_function(Fun, 1) ->
     _ = Fun(Reason),
     ok;
 
