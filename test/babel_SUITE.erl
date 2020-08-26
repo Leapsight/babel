@@ -81,8 +81,8 @@ index_creation_1_test(_) ->
 
     Fun = fun() ->
         Index = babel_index:new(Conf),
-        Collection = babel_index_collection:new(<<"mytenant">>, <<"users">>),
-        ok = babel:create_index(Index, Collection),
+        Collection0 = babel_index_collection:new(<<"mytenant">>, <<"users">>),
+        _Collection1 = babel:create_index(Index, Collection0),
         ok
     end,
 
@@ -95,9 +95,9 @@ scheduled_for_delete_test(_) ->
     Conf = index_conf_crdt(),
     Fun = fun() ->
         Index = babel_index:new(Conf),
-        Collection = babel_index_collection:new(<<"mytenant">>, <<"users">>),
-        ok = babel:delete_collection(Collection),
-        ok = babel:create_index(Index, Collection),
+        Collection0 = babel_index_collection:new(<<"mytenant">>, <<"users">>),
+        ok = babel:delete_collection(Collection0),
+        _Collection1 = babel:create_index(Index, Collection0),
         ok
     end,
 
@@ -126,8 +126,8 @@ update_indices_1_test(_) ->
     %% We schedule the creation of the indices in Riak
     Fun1 = fun() ->
         Index = babel_index:new(Conf),
-        Collection = babel_index_collection:new(<<"mytenant">>, <<"users">>),
-        ok = babel:create_index(Index, Collection),
+        Collection0 = babel_index_collection:new(<<"mytenant">>, <<"users">>),
+        _Collection1 = babel:create_index(Index, Collection0),
         ok
     end,
 
@@ -136,25 +136,16 @@ update_indices_1_test(_) ->
     %% Sleep for 5 seconds for write to happen.
     timer:sleep(5000),
 
-    dbg:tracer(), dbg:p(all,c),
-    %% dbg:tpl(riakc_map, fetch, x),
-    %% dbg:tpl(riakc_pb_socket, fetch_type, x),
-    %% dbg:tpl(babel_index, 'update', x),
-    %% dbg:tpl(babel_hash_partitioned_index, 'update_data', x),
-    %% dbg:tpl(babel_index, 'to_update_item', x),
-    %% dbg:tpl(babel_digraph, 'topsort', x),
-
     Fun2 = fun() ->
+        %% We fetch the collection from Riak KV
         Collection = babel_index_collection:fetch(
             <<"mytenant">>, <<"users">>, RiakOpts
         ),
         ok = babel:update_indices([{update, Object}], Collection, RiakOpts),
-        %% babel_worflow:abort(testing),
         ok
     end,
 
     {ok, _, ok} =  babel:workflow(Fun2),
-
 
     ok.
 

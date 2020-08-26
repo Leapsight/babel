@@ -22,11 +22,10 @@
 -export([get_connection/1]).
 
 
+
 %% =============================================================================
 %% API
 %% =============================================================================
-
-
 
 
 
@@ -83,8 +82,8 @@ workflow(Fun) ->
 %% Conn, <<"foo">>, <<"users">>),
 %%          IndexA = babel_index:new(ConfigA),
 %%          IndexB = babel_index:new(ConfigB),
-%%          ok = babel:create_index(IndexA, CollectionX0),
-%%          ok = babel:create_index(IndexB, CollectionY0),
+%%          _CollectionX1 = babel:create_index(IndexA, CollectionX0),
+%%          _CollextionY1 = babel:create_index(IndexB, CollectionY0),
 %%          ok
 %%     end).
 %% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
@@ -188,7 +187,7 @@ delete_collection(Collection) ->
 %% -----------------------------------------------------------------------------
 -spec create_index(
     Index :: babel_index:t(), Collection :: babel_index_collection:t()) ->
-    ok | no_return().
+    babel_index_collection:t() | no_return().
 
 create_index(Index, Collection) ->
     ok = babel_reliable:ensure_in_workflow(),
@@ -220,9 +219,11 @@ create_index(Index, Collection) ->
             %% write so that if the index is present in a subsequent read of
             %% the collection, it means its partitions have been already
             %% written to Riak.
-            babel_reliable:add_workflow_precedence(
+            ok = babel_reliable:add_workflow_precedence(
                 [Id || {Id, _} <- PartitionItems], CollectionId
-            );
+            ),
+
+            NewCollection;
         _ ->
             %% The index already exists so we should not create its partitions
             %% to protect data already stored

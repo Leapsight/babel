@@ -161,8 +161,8 @@ workflow(Fun) ->
 %% Conn, <<"foo">>, <<"users">>),
 %%          IndexA = babel_index:new(ConfigA),
 %%          IndexB = babel_index:new(ConfigB),
-%%          ok = babel:create_index(IndexA, CollectionX0),
-%%          ok = babel:create_index(IndexB, CollectionY0),
+%%          CollectionX1 = babel:create_index(IndexA, CollectionX0),
+%%          CollectionY1 = babel:create_index(IndexB, CollectionY0),
 %%          ok
 %%     end).
 %% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
