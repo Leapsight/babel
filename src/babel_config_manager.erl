@@ -1,5 +1,5 @@
 %% =============================================================================
-%%  babel_config_manager.erl -
+%%  babel.erl -
 %%
 %%  Copyright (c) 2020 Leapsight Holdings Limited. All rights reserved.
 %%
