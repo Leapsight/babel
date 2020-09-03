@@ -120,10 +120,6 @@ update_indices_1_test(_) ->
 
     Conf = index_conf_crdt(),
 
-    %% dbg:tracer(), dbg:p(all, c),
-    %% dbg:tpl(babel_hash_partitioned_index, '_', x),
-
-
     Fun = fun() ->
         Index = babel_index:new(Conf),
         Collection0 = babel_index_collection:new(
@@ -168,11 +164,11 @@ match_1_test(_) ->
     ),
     Index = babel_index_collection:index(<<"users_by_email">>, Collection),
     Res = babel_index:match(
-        #{<<"email">> => <<"johndoe@me.com">>}, Index, RiakOpts),
+        #{{<<"email">>, register} => <<"johndoe@me.com">>}, Index, RiakOpts),
     Expected = [
         #{
-        <<"user_id">> => <<"mrn:user:1">>,
-        <<"account_id">> => <<"mrn:account:1">>
+            {<<"user_id">>, register} => <<"mrn:user:1">>,
+            {<<"account_id">>, register} => <<"mrn:account:1">>
         }
     ],
     ?assertEqual(Expected, Res).

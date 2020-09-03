@@ -321,8 +321,8 @@ update_indices(Actions, Collection, RiakOpts) when is_list(Actions) ->
 delete_index(Index, Collection0) ->
     IndexName = babel_index:name(Index),
 
-    %% We validate the collection has this index
     try
+        %% We validate the collection has this index
         Index = babel_index_collection:index(IndexName, Collection0),
         Collection = babel_index_collection:delete_index(Index, Collection0),
         CollectionId = babel_index_collection:id(Collection),
