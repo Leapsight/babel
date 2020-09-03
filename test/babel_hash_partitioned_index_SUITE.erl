@@ -86,7 +86,6 @@ index_3_test(_) ->
             number_of_partitions => 8,
             partition_algorithm => jch,
             partition_by => [{<<"email">>, register}],
-            aggregate_by => [{<<"email">>, register}],
             index_by => [{<<"email">>, register}],
             covered_fields => [{<<"user_id">>, register}]
         }
@@ -108,7 +107,7 @@ index_4_test(_) ->
             number_of_partitions => 8,
             partition_algorithm => jch,
             partition_by => [{<<"email">>, register}],
-            aggregate_by => [{<<"email">>, register}],
+            aggregate_by => [{<<"post_code">>, register}],
             index_by => [
                 {<<"post_code">>, register},
                 {<<"email">>, register}

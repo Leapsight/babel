@@ -25,13 +25,18 @@ This will produce an index partition equivalent(*) to the following Erlang term.
 ```erlang
 #{
     meta => #{},
-    data => [
-        {<<"johndoe@example.com">>, <<"mrn:user:...">>}
-    ]
+    data => #{{<<"johndoe@example.com">>, register} => <<"mrn:user:...">>}
 }
 ```
 
 (*) This is not the actual representation as we will use RIAK KV CRDT datatypes, but it would be the case if we implemented a function to represent the CRDT in erlang terms.
+
+Then:
+
+```erlang
+> babel_index:match(<<"johndoe@example.com">>, Index, Opts).
+#{<<"user_id">>> => <<"mrn:user:...">>}
+```
 
 ## Example 2 - Covering multiple fields
 
@@ -57,9 +62,19 @@ This will produce an index partition equivalent(*) to the following Erlang term.
 ```erlang
 #{
     meta => #{},
-    data => [
-        {<<"johndoe@example.com">>, {<<"mrn:user:...">>,  <<"mrn:account:...">>}}
-    ]
+    data => #{
+        {<<"johndoe@example.com">>, register} => {<<"mrn:user:...">>,  <<"mrn:account:...">>}
+    }
+}
+```
+
+Then:
+
+```erlang
+> babel_index:match(<<"johndoe@example.com">>, Index, Opts).
+#{
+    <<"user_id">>> => <<"mrn:user:...">>,
+    <<"account_id">> =>  <<"mrn:account:...">>
 }
 ```
 
@@ -79,8 +94,8 @@ Index = #{
         number_of_partitions => 8,
         partition_algorithm => jch,
         partition_by => [email],
-        aggregate_by => [email],
         index_by => [email],
+        aggregate_by => [email],
         covered_fields => [user_id]
     }
 }.
@@ -92,12 +107,22 @@ This will produce an index partition that looks like the following
 #{
     meta => #{},
     data => #{
-        "johndoe@example.com" => [
+        {<<"johndoe@example.com">>, register} => [
             <<"mrn:user:..X">>,
             <<"mrn:user:..Y">>
         ]
     }
 }
+```
+
+Then:
+
+```erlang
+> babel_index:match(<<"johndoe@example.com">>, Index, Opts).
+[
+    #{<<"user_id">>> => <<"mrn:user:..X">>},
+    #{<<"user_id">>> => <<"mrn:user:..Y">>}
+]
 ```
 
 ## Case
@@ -116,8 +141,8 @@ Index = #{
         number_of_partitions => 8,
         partition_algorithm => jch,
         partition_by => [email],
+        index_by => [email, account_id],
         aggregate_by => [email],
-        index_by => [email],
         covered_fields => [account_id, user_id]
     }
 }.
@@ -129,12 +154,28 @@ This will produce an index partition that looks like the following
 #{
     meta => #{},
     data => #{
-        "johndoe@example.com" => [
-            {<<"mrn:account:..A">>, <<"mrn:user:...X">>},
-            {<<"mrn:account:..B">>, <<"mrn:user:...Y">>},
-        ]
+        "johndoe@example.com" => #{
+            <<"mrn:account:..A">> => <<"mrn:user:...X">>,
+            <<"mrn:account:..B">> => <<"mrn:user:...Y">>,
+        }
     }
 }
+```
+
+Then:
+
+```erlang
+> babel_index:match(<<"johndoe@example.com">>, Index, Opts).
+[
+    #{
+        <<"user_id">>> => <<"mrn:user:..X">>,
+        <<"account_id">> =>  <<"mrn:account:...A">>
+    },
+    #{
+        <<"user_id">>> => <<"mrn:user:..Y">>,
+        <<"account_id">> =>  <<"mrn:account:...B">>
+    }
+]
 ```
 
 ## Case - Complex
@@ -154,8 +195,8 @@ Index = #{
         number_of_partitions => 8,
         partition_algorithm => jch,
         partition_by => [post_code],
-        aggregate_by => [post_code, last_name],
         index_by => [post_code, last_name, first_name],
+        aggregate_by => [post_code, last_name],
         covered_fields => [account_id, user_id]
     }
 }.
@@ -168,8 +209,30 @@ This will produce an index partition that looks like the following
     meta => #{},
     data => #{
         <<"KT122DU", "DOE">> => #{
-            <<"JOHN">> => {<<"mrn:account:..B">>, <<"mrn:user:...Y">>}
+            <<"JOHN">> => encode({<<"mrn:account:..B">>, <<"mrn:user:...X">>}),
+            <<"LUCY">> => encode({<<"mrn:account:..B">>, <<"mrn:user:...Y">>})
         }
     }
 }
+```
+
+```erlang
+1> babel_index:match(<<"KT122DU", "DOE">>, Index, Opts).
+[
+    #{
+        <<"user_id">>> => <<"mrn:user:..X">>,
+        <<"account_id">> =>  <<"mrn:account:...B">>
+    },
+    #{
+        <<"user_id">>> => <<"mrn:user:..Y">>,
+        <<"account_id">> =>  <<"mrn:account:...B">>
+    }
+]
+2> babel_index:match(<<"KT122DU", "DOE", "LUCY">>, Index, Opts).
+[
+    #{
+        <<"user_id">>> => <<"mrn:user:..Y">>,
+        <<"account_id">> =>  <<"mrn:account:...B">>
+    }
+]
 ```

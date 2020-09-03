@@ -14,7 +14,8 @@ all() ->
         error_test,
         index_creation_1_test,
         scheduled_for_delete_test,
-        update_indices_1_test
+        update_indices_1_test,
+        match_1_test
     ].
 
 
@@ -148,6 +149,28 @@ update_indices_1_test(_) ->
     {ok, _, ok} =  babel:workflow(Fun2),
 
     ok.
+
+
+match_1_test(_) ->
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    pong = riakc_pb_socket:ping(Conn),
+
+    RiakOpts = #{
+        connection => Conn
+    },
+    Collection = babel_index_collection:fetch(
+        <<"mytenant">>, <<"users">>, RiakOpts
+    ),
+    Index = babel_index_collection:index(<<"users_by_email">>, Collection),
+    Res = babel_index:match(
+        #{<<"email">> => <<"johndoe@me.com">>}, Index, RiakOpts),
+    Expected = [
+        #{
+        <<"user_id">> => <<"mrn:user:1">>,
+        <<"account_id">> => <<"mrn:account:1">>
+        }
+    ],
+    ?assertEqual(Expected, Res).
 
 
 index_conf() ->

@@ -39,6 +39,7 @@
 -include_lib("riakc/include/riakc.hrl").
 -include_lib("kernel/include/logger.hrl").
 
+-define(BUCKET_SUFFIX, "index_data").
 
 %% Validator for maps_utils:validate/2,3
 -define(BINARY_VALIDATOR, fun
@@ -49,8 +50,6 @@
     (_) ->
         false
 end).
-
--define(BUCKET_SUFFIX, "index_data").
 
 %% Spec for maps_utils:validate/2,3
 -define(SPEC, #{
@@ -94,21 +93,6 @@ end).
     }
 }).
 
--record(babel_index_partition_iter, {
-    partition_identifiers   ::  [partition_id()],
-    current_id              ::  partition_id(),
-    bucket_type             ::  bucket_type(),
-    bucket                  ::  bucket(),
-    done = false            ::  boolean()
-}).
-
--record(babel_element_iter, {
-    partition_iter          ::  partition_iterator(),
-    key                     ::  binary(),
-    bucket_type             ::  bucket_type(),
-    bucket                  ::  bucket(),
-    done = false            ::  boolean()
-}).
 
 -type t()                       ::  map().
 -type riak_object()             ::  riakc_map:crdt_map().
@@ -118,9 +102,30 @@ end).
 -type partition_key()           ::  binary().
 -type local_key()               ::  binary().
 -type action()                  ::  insert | delete.
--type object()                  ::  babel_key_value:t().
--type partition_iterator()      ::  #babel_index_partition_iter{}.
--type element_iterator()        ::  #babel_element_iter{}.
+-type key_value()               ::  babel_key_value:t().
+-type index_key()               ::  binary().
+-type index_values()            ::  map().
+-type iterator_action()         ::  first | last | next | prev | binary().
+-type fold_opts()               ::  #{
+    first => binary(),
+    sort_ordering => asc | desc
+}.
+-type fold_fun()                ::  fun(
+                                        (index_key(), index_values(), any()) ->
+                                        any()
+                                    ).
+-type foreach_fun()             ::  fun(
+                                        (index_key(), index_values()) ->
+                                        any()
+                                    ).
+-type query_opts()              ::  #{
+    max_results => non_neg_integer() | all,
+    continuation => any(),
+    return_body => any(),
+    timeout => timeout() ,
+    pagination_sort => boolean(),
+    stream => boolean()
+}.
 
 -export_type([t/0]).
 -export_type([riak_object/0]).
@@ -130,31 +135,34 @@ end).
 -export_type([partition_key/0]).
 -export_type([local_key/0]).
 -export_type([action/0]).
--export_type([object/0]).
--export_type([partition_iterator/0]).
--export_type([element_iterator/0]).
-
+-export_type([key_value/0]).
+-export_type([index_key/0]).
+-export_type([index_values/0]).
+-export_type([riak_opts/0]).
 
 %% API
+%% -export([get/4]).
+%% -export([list/4]).
 -export([bucket/1]).
 -export([bucket_type/1]).
 -export([config/1]).
 -export([create_partitions/1]).
+%% -export([fold/3]).
+%% -export([fold/4]).
+-export([foreach/2]).
 -export([from_riak_object/1]).
+-export([match/3]).
 -export([name/1]).
 -export([new/1]).
 -export([partition_identifier/2]).
 -export([partition_identifiers/1]).
 -export([partition_identifiers/2]).
+-export([to_delete_item/2]).
 -export([to_riak_object/1]).
 -export([to_update_item/2]).
--export([to_delete_item/2]).
 -export([type/1]).
 -export([typed_bucket/1]).
 -export([update/3]).
-%% -export([get/4]).
-%% -export([match/4]).
-%% -export([list/4]).
 
 
 
@@ -178,14 +186,29 @@ end).
 
 -callback number_of_partitions(config()) -> pos_integer().
 
--callback partition_identifier(object(), config()) -> partition_id().
+-callback partition_identifier(key_value(), config()) -> partition_id().
 
 -callback partition_identifiers(asc | desc, config()) -> [partition_id()].
 
 -callback update_partition(
-    [{action(), object()}], babel_index_partition:t(), config()) ->
+    [{action(), key_value()}], babel_index_partition:t(), config()) ->
     babel_index_partition:t().
 
+-callback match(Pattern :: key_value(), babel_index_partition:t(), config()) ->
+    [{index_key(), index_values()}] | no_return().
+
+-callback iterator(Index :: t(), Config :: config(), Opts :: map()) ->
+    Iterator :: any().
+
+-callback iterator_move(
+    Action :: iterator_action(), Iterator :: any(), config()) ->
+    any().
+
+-callback iterator_done(Iterator :: any()) -> boolean().
+
+-callback iterator_key(Iterator :: any()) -> Key :: index_key().
+
+-callback iterator_values(Iterator :: any()) -> Key :: index_values().
 
 
 
@@ -325,7 +348,7 @@ create_partitions(#{type := Type, config := Config}) ->
 
 to_update_item(Index, Partition) ->
     PartitionId = babel_index_partition:id(Partition),
-    TypedBucket = babel_index:typed_bucket(Index),
+    TypedBucket = typed_bucket(Index),
     RiakOps = riakc_map:to_op(babel_index_partition:to_riak_object(Partition)),
     Args = [TypedBucket, PartitionId, RiakOps],
     {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
@@ -339,7 +362,7 @@ to_update_item(Index, Partition) ->
     babel:work_item().
 
 to_delete_item(Index, PartitionId) ->
-    TypedBucket = babel_index:typed_bucket(Index),
+    TypedBucket = typed_bucket(Index),
     Args = [TypedBucket, PartitionId],
     {node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]}.
 
@@ -377,7 +400,7 @@ bucket_type(#{bucket_type := Value}) -> Value.
 %% @doc Returns the Riak KV `type_bucket()' associated with this index.
 %% @end
 %% -----------------------------------------------------------------------------
--spec typed_bucket(t()) -> maybe_error(binary()).
+-spec typed_bucket(t()) -> maybe_error({binary(), binary()}).
 
 typed_bucket(#{bucket_type := Type, bucket := Bucket}) ->
     {Type, Bucket}.
@@ -407,12 +430,12 @@ config(#{config := Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_identifier(Object :: object(), Index :: t()) -> binary().
+-spec partition_identifier(KeyValue :: key_value(), Index :: t()) -> binary().
 
-partition_identifier(Object, Index) ->
+partition_identifier(KeyValue, Index) ->
     Mod = type(Index),
     Config = config(Index),
-    Mod:partition_identifier(Object, Config).
+    Mod:partition_identifier(KeyValue, Config).
 
 
 %% -----------------------------------------------------------------------------
@@ -420,13 +443,13 @@ partition_identifier(Object, Index) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update(
-    Actions :: [{action(), object()}], Index :: t(), RiakOpts :: riak_opts()) ->
+    Actions :: [{action(), key_value()}], Index :: t(), RiakOpts :: riak_opts()) ->
     [babel_index_partition:t()] | no_return().
 
 update(Actions, Index, RiakOpts) when is_list(Actions) ->
     Mod = type(Index),
     Config = config(Index),
-    TypeBucket = {bucket_type(Index), bucket(Index)},
+    TypeBucket = typed_bucket(Index),
 
     Update = fun({PartitionId, PActions}, Acc) ->
         Part0 = babel_index_partition:fetch(TypeBucket, PartitionId, RiakOpts),
@@ -438,6 +461,9 @@ update(Actions, Index, RiakOpts) when is_list(Actions) ->
         [],
         objects_by_partition_id(Mod, Config, Actions)
     ).
+
+
+
 
 
 
@@ -466,25 +492,38 @@ partition_identifiers(Index, Order) ->
     Mod:partition_identifiers(Config, Order).
 
 
+
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-%% -spec get(
-%%     Conn :: pid(),
-%%     IndexNameOrSpec :: binary() | spec(),
-%%     Pattern :: binary(),
-%%     Opts :: get_options()) ->
-%%     {ok, t()} | {error, term()} | unchanged.
+%% -spec fold(fold_fun(), any(), Index :: t()) -> any().
 
-%% get(Conn, IndexName, Pattern, Opts) when is_binary(IndexName) ->
-%%     Spec = get_index_metadata(IndexName),
-%%     get(Conn, Spec, Pattern, Opts);
+%% fold(Fun, Acc, Index) ->
+%%     fold(Fun, Acc, Index, #{}).
 
-%% get(Conn, Spec, Pattern, Opts) when is_map(Spec) ->
-%%     TB = type_bucket(Spec),
-%%     Key = partition_key(Spec, Pattern),
-%%     riakc_pb_socket:get(Conn, TB, Key, Opts).
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+%% -spec fold(fold_fun(), any(), Index :: t(), Opts :: fold_opts()) -> any().
+
+%% fold(Fun, Acc, Index, Opts) ->
+%%     Mod = type(Index),
+%%     Config = config(Index),
+%%     Iter = Mod:iterator(Config, Opts),
+%%     do_fold(Fun, Acc, {Mod, Iter}).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec foreach(foreach_fun(), Index :: t()) -> any().
+
+foreach(_Fun, _Index) ->
+    ok.
 
 
 
@@ -492,34 +531,18 @@ partition_identifiers(Index, Order) ->
 %% @doc Returns a list of matching index entries
 %% @end
 %% -----------------------------------------------------------------------------
-%% -spec match(Index :: t(), Pattern :: binary(), Opts :: get_options()) ->
-%%     [entry()].
+-spec match(
+    Index :: t(),
+    Pattern :: babel_index:key_value(),
+    RiakOpts :: riak_opts()) -> [{index_key(), index_values()}] | no_return().
 
-%% match(_Index, _Pattern, _Opts) ->
-%%     %% riakc_set:fold()
-%%     error(not_implemented).
-
-
-
-%% -----------------------------------------------------------------------------
-%% @doc Returns a list of matching index entries
-%% @end
-%% -----------------------------------------------------------------------------
-%% -spec match(
-%%     Conn :: pid(),
-%%     IndexNameOrSpec :: binary() | spec(),
-%%     Pattern :: binary(),
-%%     Opts :: get_options()) ->
-%%     [entry()].
-
-%% match(Conn, IndexName, Pattern, Opts) when is_binary(IndexName) ->
-%%     Spec = get_spec(IndexName),
-%%     Index = get(Conn, Spec, Opts),
-%%     match(Index, Pattern, Opts);
-
-%% match(_Conn, Spec, _Pattern, _Opts)  when is_map(Spec) ->
-%%     error(not_implemented).
-
+match(Pattern, Index, RiakOpts) ->
+    Mod = type(Index),
+    Config = config(Index),
+    PartitionId = Mod:partition_identifier(Pattern, Config),
+    TypeBucket = typed_bucket(Index),
+    Partition = babel_index_partition:fetch(TypeBucket, PartitionId, RiakOpts),
+    Mod:match(Pattern, Partition, Config).
 
 
 
@@ -532,12 +555,32 @@ partition_identifiers(Index, Order) ->
 %% @private
 objects_by_partition_id(Mod, Config, List) ->
     Tuples = [
-        %% We generate the tuple {partition_id(), {action(), object()}}.
+        %% We generate the tuple {partition_id(), {action(), key_value()}}.
         {Mod:partition_identifier(Data, Config), X}
         || {_, Data} = X <- List
     ],
 
-    %% We generate the list [ {partition_id(), [{action(), object()}]} ]
+    %% We generate the list [ {partition_id(), [{action(), key_value()}]} ]
     %% by grouping by the 1st element and collecting the 2nd element
     Proj = {1, {function, collect, [2]}},
     leap_tuples:summarize(Tuples, Proj, #{}).
+
+
+%% @private
+%% iterator(Index, Opts) ->
+%%     Mod = type(Index),
+%%     Config = config(Index),
+%%     Mod:iterator(Config, Opts).
+
+
+%% do_fold(Fun, Acc, {Mod, Iter}) ->
+%%     case Mod:iterator_done(Iter) of
+%%         true ->
+%%             Acc;
+%%         false ->
+%%             Acc1 = Fun(Mod:iterator_key(Iter), Mod:iterator_values(Iter), Acc),
+%%             do_fold(Fun, Acc1, iterator(Iter))
+%%     end.
+
+
+

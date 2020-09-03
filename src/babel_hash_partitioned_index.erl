@@ -64,6 +64,7 @@
     },
     aggregate_by => #{
         required => true,
+        description => <<"A list of keys that will be use to compute the aggregate. It has to be a subset of the index_by value.">>,
         default => [],
         allow_null => false,
         allow_undefined => false,
@@ -89,8 +90,23 @@
     covered_fields := fields()
 }.
 
--type action()      ::  {babel_index:action(), babel_index:data()}.
+
+-record(babel_hash_partitioned_index_iter, {
+    partition                   ::  babel_index_partition:t(),
+    sort_ordering               ::  asc | desc,
+    key                         ::  binary() | undefined,
+    values                      ::  map() | undefined,
+    typed_bucket                ::  {binary(), binary()},
+    first                       ::  binary() | undefined,
+    keys = []                   ::  [binary()],
+    partition_identifiers = []  ::  [babel_index:partition_id()],
+    riak_opts                   ::  babel_index:riak_opts(),
+    done = false                ::  boolean()
+}).
+
+-type action()      ::  {babel_index:action(), babel_index:key_value()}.
 -type fields()      ::  [babel_key_value:key()].
+-type iterator()    ::  #babel_hash_partitioned_index_iter{}.
 
 -export_type([action/0]).
 -export_type([fields/0]).
@@ -110,13 +126,18 @@
 -export([from_riak_object/1]).
 -export([init/2]).
 -export([init_partitions/1]).
+-export([iterator/3]).
+-export([iterator_done/1]).
+-export([iterator_key/1]).
+-export([iterator_move/3]).
+-export([iterator_values/1]).
+-export([match/3]).
 -export([number_of_partitions/1]).
 -export([partition_identifier/2]).
 -export([partition_identifiers/2]).
 -export([partition_size/2]).
 -export([to_riak_object/1]).
 -export([update_partition/3]).
-
 
 
 %% =============================================================================
@@ -213,7 +234,7 @@ partition_identifiers(#{partition_identifiers := Value}) -> Value.
     {ok, t()} | {error, any()}.
 
 init(IndexId, ConfigData0) ->
-    Config0 = maps_utils:validate(ConfigData0, ?SPEC),
+    Config0 = validate(ConfigData0),
     N = maps:get(number_of_partitions, Config0),
     Prefix = <<IndexId/binary, "_partition">>,
     Identifiers = gen_partition_identifiers(Prefix, N),
@@ -356,14 +377,14 @@ number_of_partitions(#{number_of_partitions := Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_identifier(babel_index:data(), t()) ->
+-spec partition_identifier(babel_index:key_value(), t()) ->
     babel_index:partition_id().
 
-partition_identifier(Data, Config) ->
+partition_identifier(KeyValue, Config) ->
     N = number_of_partitions(Config),
     Algo = partition_algorithm(Config),
 
-    PKey = gen_index_key(partition_by(Config), Data),
+    PKey = gen_index_key(partition_by(Config), KeyValue),
 
     Bucket = babel_consistent_hashing:bucket(PKey, N, Algo),
 
@@ -410,12 +431,16 @@ partition_size(_, Partition) ->
     ) -> babel_index_partition:t() | no_return().
 
 update_partition({update, Data}, Partition, Config) ->
-    IndexKey = gen_index_key(index_by(Config), Data),
+    AggregateKey = aggregate_by(Config),
+    IndexBy = index_by(Config),
+    IndexKey = gen_index_key(IndexBy, Data),
     Value = gen_index_key(covered_fields(Config), Data),
 
-    case aggregate_by(Config) of
+    case AggregateKey of
         [] ->
             update_data(IndexKey, Value, Partition);
+        IndexBy ->
+            update_data({IndexKey, IndexKey}, Value, Partition);
         Fields ->
             AggregateKey = gen_index_key(Fields, Data),
             update_data({AggregateKey, IndexKey}, Value, Partition)
@@ -441,10 +466,113 @@ update_partition([], Partition, _) ->
 
 
 
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+match(Pattern, Partition, Config) ->
+    IndexBy = index_by(Config),
+    AggregateBy = aggregate_by(Config),
+    Data = babel_index_partition:data(Partition),
+
+    IndexKey = {gen_index_key(IndexBy, Pattern), register},
+    Result = case AggregateBy of
+        [] ->
+            babel_key_value:get(IndexKey, Data, nomatch);
+        AggregateKey when IndexKey == <<>> ->
+            %% The user only provided values for the AggregateBy part
+            %% so we return the whole aggregate
+            babel_key_value:get(AggregateKey, Data, nomatch);
+        _ ->
+            AggregateKey = {gen_index_key(AggregateBy, Pattern), map},
+            babel_key_value:get([AggregateKey, IndexKey], Data, nomatch)
+    end,
+
+    match_output(IndexBy, covered_fields(Config), Result).
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec iterator(babel_index:t(), babel_index:config(), Opts :: map()) -> Iterator :: iterator().
+
+iterator(Index, Config, Opts) ->
+    First = maps:get(first, Opts, undefined),
+    Sort = iterator_sort_ordering(Config, Opts),
+
+    #babel_hash_partitioned_index_iter{
+        sort_ordering = Sort,
+        partition_identifiers = partition_identifiers(Sort, Config),
+        first = First,
+        typed_bucket = babel_index:typed_bucket(Index)
+    }.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec iterator_move(
+     Action :: babel_index:iterator_action(), Iterator :: iterator(), t()) ->
+    iterator().
+
+iterator_move(_Action, _Iterator, _Config) ->
+    %% TODO
+    error(not_implemented).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec iterator_done(Iterator :: any()) -> boolean().
+
+iterator_done(#babel_hash_partitioned_index_iter{done = Value}) ->
+    Value.
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec iterator_key(Iterator :: any()) -> Key :: babel_index:index_key().
+
+iterator_key(#babel_hash_partitioned_index_iter{key = Value}) ->
+    Value.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec iterator_values(Iterator :: any()) -> Key :: babel_index:index_values().
+
+iterator_values(#babel_hash_partitioned_index_iter{values = Values}) ->
+    Values.
+
+
+
 %% =============================================================================
 %% PRIVATE
 %% =============================================================================
 
+
+%% @private
+validate(Config0) ->
+    Config = maps_utils:validate(Config0, ?SPEC),
+    AggregateBy = aggregate_by(Config),
+    IndexBy = index_by(Config),
+
+    case lists:sublist(IndexBy, length(AggregateBy)) of
+        AggregateBy ->
+            Rest = lists:subtract(IndexBy, AggregateBy),
+            Config#{index_by => Rest};
+        _ ->
+            error({validation_error, #{key => <<"aggregate_by">>}})
+    end.
 
 
 %% @private
@@ -461,17 +589,18 @@ gen_identifier(Prefix, N) ->
 gen_index_key(Keys, Data) ->
     binary_utils:join(babel_key_value:collect(Keys, Data)).
 
+
 %% @private
 update_data({AggregateKey, IndexKey}, Value, Partition) ->
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
                 {AggregateKey, map},
-                fun(AMap) ->
+                fun(AggregateMap) ->
                     riakc_map:update(
                         {IndexKey, register},
                         fun(R) -> riakc_register:set(Value, R) end,
-                        AMap
+                        AggregateMap
                     )
                 end,
                 Data
@@ -567,3 +696,40 @@ decode_fields(Data) ->
         end
         || X <- jsx:decode(Data)
     ].
+
+
+%% @private
+iterator_sort_ordering(_, #{sort_ordering := Value}) ->
+    Value;
+
+iterator_sort_ordering(#{sort_ordering := Value}, _) ->
+    Value.
+
+
+%% @private
+%% sorted_keys(Order, #{sort_ordering := Order}, L) ->
+%%     L;
+
+%% sorted_keys(_, _, L) ->
+%%     lists:reverse(L).
+
+
+%% @private
+match_output(_, _, nomatch) ->
+    [];
+
+match_output(_, CoveredFields, Bin) when is_binary(Bin) ->
+    Values = binary:split(Bin, <<$\31>>),
+    [maps:from_list(lists:zip(CoveredFields, Values))];
+
+match_output(IndexBy, CoveredFields, AggregateMap) when is_list(AggregateMap) ->
+    Fun = fun(Key, Values, Acc) ->
+        Map1 = maps:from_list(
+            lists:zip(IndexBy, binary:split(Key, <<$\31>>))
+        ),
+        Map2 = maps:from_list(
+            lists:zip(CoveredFields, binary:split(Values, <<$\31>>))
+        ),
+        [maps:merge(Map1, Map2) | Acc]
+    end,
+    orddict:fold(Fun, [], AggregateMap).

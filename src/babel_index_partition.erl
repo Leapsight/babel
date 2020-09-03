@@ -183,7 +183,7 @@ last_updated_ts(#babel_index_partition{last_updated_ts = Value}) -> Value.
 -spec data(Partition :: t()) -> data().
 
 data(#babel_index_partition{object = Object}) ->
-    babel_crdt:dirty_fetch({<<"data">>, map}, Object).
+    riakc_map:fetch({<<"data">>, map}, Object).
 
 
 %% -----------------------------------------------------------------------------
@@ -356,6 +356,7 @@ delete(BucketType, BucketPrefix, Key, RiakOpts) ->
 %% =============================================================================
 %% PRIVATE
 %% =============================================================================
+
 
 
 %% @private
