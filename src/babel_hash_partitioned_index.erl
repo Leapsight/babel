@@ -431,18 +431,18 @@ partition_size(_, Partition) ->
     ) -> babel_index_partition:t() | no_return().
 
 update_partition({update, Data}, Partition, Config) ->
-    AggregateKey = aggregate_by(Config),
+    AggregateBy = aggregate_by(Config),
     IndexBy = index_by(Config),
     IndexKey = gen_index_key(IndexBy, Data),
     Value = gen_index_key(covered_fields(Config), Data),
 
-    case AggregateKey of
+    case AggregateBy of
         [] ->
             update_data(IndexKey, Value, Partition);
         IndexBy ->
             update_data({IndexKey, IndexKey}, Value, Partition);
-        Fields ->
-            AggregateKey = gen_index_key(Fields, Data),
+        AggregateBy ->
+            AggregateKey = gen_index_key(AggregateBy, Data),
             update_data({AggregateKey, IndexKey}, Value, Partition)
     end;
 
