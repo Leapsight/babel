@@ -489,7 +489,7 @@ partition_identifiers(Index) ->
 partition_identifiers(Index, Order) ->
     Mod = type(Index),
     Config = config(Index),
-    Mod:partition_identifiers(Config, Order).
+    Mod:partition_identifiers(Order, Config).
 
 
 
