@@ -220,7 +220,7 @@ data(#babel_index_collection{object = Object}) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec index(IndexName :: binary(), Collection :: t()) ->
-    babel_index:t() | error.
+    babel_index:t() | no_return().
 
 index(IndexName, #babel_index_collection{} = Collection)
 when is_binary(IndexName) ->
@@ -231,7 +231,7 @@ when is_binary(IndexName) ->
         babel_index:from_riak_object(Object)
     catch
         _:_ ->
-            error
+            error(badindex)
     end.
 
 
@@ -282,17 +282,21 @@ add_index(Index, #babel_index_collection{} = Collection) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec delete_index(Id :: binary(), Collection :: t()) ->
+-spec delete_index(Id :: binary() | babel_index:t(), Collection :: t()) ->
     t() | no_return().
 
-delete_index(IndexId, #babel_index_collection{} = Collection) ->
+delete_index(IndexId, #babel_index_collection{} = Collection)
+when is_binary(IndexId) ->
     Object = riakc_map:update(
         {<<"data">>, map},
         fun(Data) -> riakc_map:erase({IndexId, map}, Data) end,
         Collection#babel_index_collection.object
     ),
 
-    Collection#babel_index_collection{object = Object}.
+    Collection#babel_index_collection{object = Object};
+
+delete_index(Index, Collection) ->
+    delete_index(babel_index:name(Index), Collection).
 
 
 

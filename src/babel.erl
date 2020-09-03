@@ -208,42 +208,19 @@ delete_collection(Collection) ->
 create_index(Index, Collection) ->
     ok = babel_reliable:ensure_in_workflow(),
 
-    CollectionId = babel_index_collection:id(Collection),
-
     %% It is an error add and index to a collection scheduled to be deleted
-    ok = ensure_not_deleted(CollectionId),
+    ok = ensure_not_deleted(babel_index_collection:id(Collection)),
 
     IndexName = babel_index:name(Index),
 
-    case babel_index_collection:index(IndexName, Collection) of
-        error ->
-            Partitions = babel_index:create_partitions(Index),
-            PartitionItems = partition_update_items(
-                Collection, Index, Partitions, lazy
-            ),
-
-            NewCollection = babel_index_collection:add_index(Index, Collection),
-            CollWorkItem = fun() ->
-                babel_index_collection:to_update_item(NewCollection)
-            end,
-            CollWorkflowItem = {CollectionId, {update, CollWorkItem}},
-            ok = babel_reliable:add_workflow_items(
-                [CollWorkflowItem | PartitionItems]
-            ),
-
-            %% Index partitions write will be scheduled prior to the collection
-            %% write so that if the index is present in a subsequent read of
-            %% the collection, it means its partitions have been already
-            %% written to Riak.
-            ok = babel_reliable:add_workflow_precedence(
-                [Id || {Id, _} <- PartitionItems], CollectionId
-            ),
-
-            NewCollection;
-        _ ->
-            %% The index already exists so we should not create its partitions
-            %% to protect data already stored
-            throw({already_exists, IndexName})
+    try
+        _ = babel_index_collection:index(IndexName, Collection),
+        %% The index already exists so we should not create its partitions
+        %% to protect data already stored
+        throw({already_exists, IndexName})
+    catch
+        error:badindex ->
+            do_create_index(Index, Collection)
     end.
 
 
@@ -339,48 +316,51 @@ update_indices(Actions, Collection, RiakOpts) when is_list(Actions) ->
 %% -----------------------------------------------------------------------------
 -spec delete_index(
     Index :: babel_index:t(), Collection0 :: babel_index_collection:t()) ->
-    babel_index_collection:t() | no_return().
+    babel_index_collection:t().
 
 delete_index(Index, Collection0) ->
     IndexName = babel_index:name(Index),
 
     %% We validate the collection has this index
-    Index = babel_index_collection:index(IndexName, Collection0),
-    Index =/= error orelse throw(not_found),
-
-    Collection = babel_index_collection:delete_index(Index, Collection0),
-
-    CollectionId = babel_index_collection:id(Collection),
-
-    CollectionItem = {
-        CollectionId,
-        {
-            update,
-            fun() -> babel_index_collection:to_update_item(Collection) end
-        }
-    },
-
-    PartitionItems = [
-        {
-            {CollectionId, IndexName, X},
+    try
+        Index = babel_index_collection:index(IndexName, Collection0),
+        Collection = babel_index_collection:delete_index(Index, Collection0),
+        CollectionId = babel_index_collection:id(Collection),
+        CollectionItem = {
+            CollectionId,
             {
-                delete,
-                fun() -> babel_index:to_delete_item(Index, X) end
+                update,
+                fun() -> babel_index_collection:to_update_item(Collection) end
             }
-        }
-        || X <- babel_index:partition_identifiers(Index)
-    ],
+        },
+        PartitionItems = [
+            {
+                {CollectionId, IndexName, X},
+                {
+                    delete,
+                    fun() -> babel_index:to_delete_item(Index, X) end
+                }
+            }
+            || X <- babel_index:partition_identifiers(Index)
+        ],
 
-    ok = babel_reliable:add_workflow_items([CollectionItem | PartitionItems]),
+        ok = babel_reliable:add_workflow_items(
+            [CollectionItem | PartitionItems]
+        ),
 
-    %% We need to first remove the index from the collection so that no more
-    %% entries are added to the partitions, then we need to remove the partition
-    _ = [
-        babel_reliable:add_workflow_precedence([CollectionId], X)
-        || {X, _} <- PartitionItems
-    ],
+        %% We need to first remove the index from the collection so that no more
+        %% entries are added to the partitions, then we need to remove the partition
+        _ = [
+            babel_reliable:add_workflow_precedence([CollectionId], X)
+            || {X, _} <- PartitionItems
+        ],
 
-    ok.
+        Collection
+
+    catch
+        error:badindex ->
+            Collection0
+    end.
 
 
 
@@ -388,6 +368,39 @@ delete_index(Index, Collection0) ->
 %% =============================================================================
 %% PRIVATE
 %% =============================================================================
+
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+do_create_index(Index, Collection) ->
+    CollectionId = babel_index_collection:id(Collection),
+    Partitions = babel_index:create_partitions(Index),
+    PartitionItems = partition_update_items(
+        Collection, Index, Partitions, lazy
+    ),
+
+    NewCollection = babel_index_collection:add_index(Index, Collection),
+    CollWorkItem = fun() ->
+        babel_index_collection:to_update_item(NewCollection)
+    end,
+    CollWorkflowItem = {CollectionId, {update, CollWorkItem}},
+    ok = babel_reliable:add_workflow_items(
+        [CollWorkflowItem | PartitionItems]
+    ),
+
+    %% Index partitions write will be scheduled prior to the collection
+    %% write so that if the index is present in a subsequent read of
+    %% the collection, it means its partitions have been already
+    %% written to Riak.
+    ok = babel_reliable:add_workflow_precedence(
+        [Id || {Id, _} <- PartitionItems], CollectionId
+    ),
+
+    NewCollection.
 
 
 %% -----------------------------------------------------------------------------
