@@ -12,6 +12,7 @@ all() ->
     [
         nothing_test,
         error_test,
+        delete_index_test,
         index_creation_1_test,
         scheduled_for_delete_test,
         update_indices_1_test,
@@ -72,7 +73,6 @@ index_creation_1_test(_) ->
     meck:new(reliable, [passthrough]),
     meck:expect(reliable, enqueue, fun
         (_, Work) ->
-            ct:pal("Work being scheduled is ~p", [Work]),
             %% 8 partitions + 1 collection
             ?assertEqual(9, length(Work)),
             ok
@@ -82,12 +82,14 @@ index_creation_1_test(_) ->
 
     Fun = fun() ->
         Index = babel_index:new(Conf),
-        Collection0 = babel_index_collection:new(<<"mytenant">>, <<"users">>),
+        Collection0 = babel_index_collection:new(
+            <<"babel_SUITE">>, <<"users">>),
         _Collection1 = babel:create_index(Index, Collection0),
         ok
     end,
 
     {ok, _, _} =  babel:workflow(Fun),
+    timer:sleep(5000),
     ok.
 
 
@@ -96,7 +98,8 @@ scheduled_for_delete_test(_) ->
     Conf = index_conf_crdt(),
     Fun = fun() ->
         Index = babel_index:new(Conf),
-        Collection0 = babel_index_collection:new(<<"mytenant">>, <<"users">>),
+        Collection0 = babel_index_collection:new(
+            <<"babel_SUITE">>, <<"users">>),
         ok = babel:delete_collection(Collection0),
         _Collection1 = babel:create_index(Index, Collection0),
         ok
@@ -108,14 +111,6 @@ scheduled_for_delete_test(_) ->
 
 update_indices_1_test(_) ->
 
-    Conf = index_conf(),
-    Object = #{
-        <<"email">> => <<"johndoe@me.com">>,
-        <<"user_id">> => <<"mrn:user:1">>,
-        <<"account_id">> => <<"mrn:account:1">>,
-        <<"name">> => <<"john">>
-    },
-
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
@@ -123,24 +118,34 @@ update_indices_1_test(_) ->
         connection => Conn
     },
 
+    Conf = index_conf_crdt(),
 
-    %% We schedule the creation of the indices in Riak
-    Fun1 = fun() ->
+    dbg:tracer(), dbg:p(all, c),
+    dbg:tpl(babel_hash_partitioned_index, '_', x),
+
+
+    Fun = fun() ->
         Index = babel_index:new(Conf),
-        Collection0 = babel_index_collection:new(<<"mytenant">>, <<"users">>),
+        Collection0 = babel_index_collection:new(
+            <<"babel_SUITE">>, <<"users">>),
         _Collection1 = babel:create_index(Index, Collection0),
         ok
     end,
 
-    {ok, _, ok} =  babel:workflow(Fun1),
-
-    %% Sleep for 5 seconds for write to happen.
+    {ok, _, _} =  babel:workflow(Fun),
     timer:sleep(5000),
+
+    Object = #{
+        {<<"email">>, register} => <<"johndoe@me.com">>,
+        {<<"user_id">>, register} => <<"mrn:user:1">>,
+        {<<"account_id">>, register} => <<"mrn:account:1">>,
+        {<<"name">>, register} => <<"john">>
+    },
 
     Fun2 = fun() ->
         %% We fetch the collection from Riak KV
         Collection = babel_index_collection:fetch(
-            <<"mytenant">>, <<"users">>, RiakOpts
+            <<"babel_SUITE">>, <<"users">>, RiakOpts
         ),
         ok = babel:update_indices([{update, Object}], Collection, RiakOpts),
         ok
@@ -159,7 +164,7 @@ match_1_test(_) ->
         connection => Conn
     },
     Collection = babel_index_collection:fetch(
-        <<"mytenant">>, <<"users">>, RiakOpts
+        <<"babel_SUITE">>, <<"users">>, RiakOpts
     ),
     Index = babel_index_collection:index(<<"users_by_email">>, Collection),
     Res = babel_index:match(
@@ -173,6 +178,30 @@ match_1_test(_) ->
     ?assertEqual(Expected, Res).
 
 
+delete_index_test(_) ->
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    pong = riakc_pb_socket:ping(Conn),
+
+    RiakOpts = #{
+        connection => Conn
+    },
+
+    Fun = fun() ->
+        Collection = babel_index_collection:fetch(
+            <<"mytenant">>, <<"users">>, RiakOpts
+        ),
+        Index = babel_index_collection:index(<<"users_by_email">>, Collection),
+        _Collection1 = babel:delete_index(Index, Collection),
+        ok
+    end,
+
+    {ok, _, _} =  babel:workflow(Fun),
+
+    %% Sleep for 5 seconds for write to happen.
+    timer:sleep(5000),
+    ok.
+
+
 index_conf() ->
     Sort = asc,
     N = 8,
@@ -184,7 +213,7 @@ index_conf() ->
     #{
         name => <<"users_by_email">>,
         bucket_type => <<"index_data">>,
-        bucket_prefix => <<"lojack/johndoe">>,
+        bucket_prefix => <<"babel_SUITE/johndoe">>,
         type => babel_hash_partitioned_index,
         config => #{
             sort_ordering => Sort,
@@ -208,7 +237,7 @@ index_conf_crdt() ->
     #{
         name => <<"users_by_email">>,
         bucket_type => <<"index_data">>,
-        bucket_prefix => <<"lojack/johndoe">>,
+        bucket_prefix => <<"babel_SUITE/johndoe">>,
         type => babel_hash_partitioned_index,
         config => #{
             sort_ordering => Sort,
