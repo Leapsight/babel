@@ -472,20 +472,33 @@ update_partition([], Partition, _) ->
 %% -----------------------------------------------------------------------------
 match(Pattern, Partition, Config) ->
     IndexBy = index_by(Config),
-    AggregateBy = aggregate_by(Config),
-    Data = babel_index_partition:data(Partition),
+    IndexKey = safe_gen_index_key(IndexBy, Pattern),
+    AggregateKey = safe_gen_index_key(aggregate_by(Config), Pattern),
 
-    IndexKey = {gen_index_key(IndexBy, Pattern), register},
-    Result = case AggregateBy of
-        [] ->
-            babel_key_value:get(IndexKey, Data, nomatch);
-        AggregateKey when IndexKey == <<>> ->
+    Result = case {AggregateKey, IndexKey} of
+        {error, error} ->
+            %% At least an aggregate key is required to match
+            error(badpattern);
+        {_, undefined} ->
+            %% This should be imposible, we could not have created an index
+            %% with IndexKey = []
+            error(badarg);
+        {undefined, error} ->
+            %% At least an aggregate key is required to match
+            error(badpattern);
+        {undefined, IndexKey} ->
+            Data = babel_index_partition:data(Partition),
+            babel_key_value:get({IndexKey, register}, Data, nomatch);
+        {AggregateKey, error} ->
             %% The user only provided values for the AggregateBy part
-            %% so we return the whole aggregate
-            babel_key_value:get(AggregateKey, Data, nomatch);
-        _ ->
-            AggregateKey = {gen_index_key(AggregateBy, Pattern), map},
-            babel_key_value:get([AggregateKey, IndexKey], Data, nomatch)
+            %% in Pattern, so we return the whole aggregate object
+            Data = babel_index_partition:data(Partition),
+            babel_key_value:get({AggregateKey, map}, Data, nomatch);
+        {AggregateKey, IndexKey} ->
+            Data = babel_index_partition:data(Partition),
+            babel_key_value:get(
+                [{AggregateKey, map}, {IndexKey, register}], Data, nomatch
+            )
     end,
 
     match_output(IndexBy, covered_fields(Config), Result).
@@ -588,6 +601,20 @@ gen_identifier(Prefix, N) ->
 %% @private
 gen_index_key(Keys, Data) ->
     binary_utils:join(babel_key_value:collect(Keys, Data)).
+
+
+%% @private
+safe_gen_index_key([], _) ->
+    undefined;
+
+safe_gen_index_key(Keys, Data) ->
+    try
+        binary_utils:join(babel_key_value:collect(Keys, Data))
+    catch
+        error:{badkey, _} ->
+            error
+    end.
+
 
 
 %% @private
@@ -723,7 +750,7 @@ match_output(_, CoveredFields, Bin) when is_binary(Bin) ->
     [maps:from_list(lists:zip(CoveredFields, Values))];
 
 match_output(IndexBy, CoveredFields, AggregateMap) when is_list(AggregateMap) ->
-    Fun = fun(Key, Values, Acc) ->
+    Fun = fun({Key, register}, Values, Acc) ->
         Map1 = maps:from_list(
             lists:zip(IndexBy, binary:split(Key, <<$\31>>))
         ),

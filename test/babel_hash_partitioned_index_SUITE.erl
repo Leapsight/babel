@@ -169,10 +169,13 @@ huge_index_test(_) ->
 
     Actions = [
         begin
-            UserId = integer_to_binary(X),
-            AccId = integer_to_binary(Y),
+            UserId = integer_to_binary(Y),
+            AccId = integer_to_binary(X),
             %% PostCode = integer_to_binary(rand:uniform(100)),
-            PostCode = UserId,
+            PostCode = AccId,
+
+            %% Not a CRDT but becuase we use babel_key_value we can get away
+            %% with it
             Obj = #{
                 {<<"email">>, register} => <<UserId/binary, "@example.com">>,
                 {<<"user_id">>, register} => <<"mrn:user:", UserId/binary>>,
@@ -194,17 +197,30 @@ huge_index_test(_) ->
 
     {ok, _, ok} =  babel:workflow(Fun2),
 
-    timer:sleep(5000),
+    timer:sleep(15000),
 
     Collection = babel_index_collection:fetch(
         <<"mytenant">>, <<"users">>, RiakOpts
     ),
     Index = babel_index_collection:index(
         <<"users_by_post_code_and_email">>, Collection),
-    Pattern = #{
+
+    Pattern1 = #{
         {<<"post_code">>, register} => <<"PC1">>
     },
-    Res = babel_index:match(Pattern, Index, RiakOpts),
-    ?assertEqual(2, length(Res)),
+    Res1 = babel_index:match(Pattern1, Index, RiakOpts),
+    ?assertEqual(5000, length(Res1)),
+
+    Pattern2 = #{
+        {<<"post_code">>, register} => <<"PC1">>,
+        {<<"email">>, register} => <<"1@example.com">>
+    },
+    Res2 = babel_index:match(Pattern2, Index, RiakOpts),
+    ?assertEqual(1, length(Res2)),
+
+    ?assertEqual(
+        [{<<"account_id">>, register}, {<<"user_id">>, register}],
+        maps:keys(hd(Res2))
+    ),
 
     ok.
