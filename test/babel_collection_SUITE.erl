@@ -37,7 +37,7 @@ collection_1_test(_) ->
 
     Conf = #{
         name => <<"users_by_email">>,
-        bucket_type => <<"map">>,
+        bucket_type => <<"index_data">>,
         bucket_prefix => <<"babel_collection_SUITE/johndoe">>,
         type => babel_hash_partitioned_index,
         config => #{

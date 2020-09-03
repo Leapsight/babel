@@ -30,7 +30,7 @@ end_per_suite(Config) ->
 index_1_test(_) ->
     Conf = #{
         name => <<"users_by_email">>,
-        bucket_type => <<"map">>,
+        bucket_type => <<"index_data">>,
         bucket_prefix => <<"babel_hash_partitioned_index_SUITE/johndoe">>,
         type => babel_hash_partitioned_index,
         config => #{
@@ -55,7 +55,7 @@ index_1_test(_) ->
 index_2_test(_) ->
     Conf = #{
         name => <<"users_by_email">>,
-        bucket_type => <<"map">>,
+        bucket_type => <<"index_data">>,
         bucket_prefix => <<"babel_hash_partitioned_index_SUITE/johndoe">>,
         type => babel_hash_partitioned_index,
         config => #{
@@ -79,7 +79,7 @@ index_2_test(_) ->
 index_3_test(_) ->
     Conf = #{
         name => <<"users_by_email">>,
-        bucket_type => <<"map">>,
+        bucket_type => <<"index_data">>,
         bucket_prefix => <<"babel_hash_partitioned_index_SUITE/johndoe">>,
         type => babel_hash_partitioned_index,
         config => #{
@@ -100,7 +100,7 @@ index_3_test(_) ->
 index_4_test(_) ->
     Conf = #{
         name => <<"users_by_post_code_and_email">>,
-        bucket_type => <<"map">>,
+        bucket_type => <<"index_data">>,
         bucket_prefix => <<"babel_hash_partitioned_index_SUITE/johndoe">>,
         type => babel_hash_partitioned_index,
         config => #{
@@ -128,7 +128,7 @@ index_4_test(_) ->
 huge_index_test(_) ->
     Conf = #{
         name => <<"users_by_post_code_and_email">>,
-        bucket_type => <<"map">>,
+        bucket_type => <<"index_data">>,
         bucket_prefix => <<"babel_hash_partitioned_index_SUITE/johndoe">>,
         type => babel_hash_partitioned_index,
         config => #{
@@ -202,8 +202,7 @@ huge_index_test(_) ->
     Index = babel_index_collection:index(
         <<"users_by_post_code_and_email">>, Collection),
     Pattern = #{
-
-        <<"post_code">> => <<"PC1">>
+        {<<"post_code">>, register} => <<"PC1">>
     },
     Res = babel_index:match(Pattern, Index, RiakOpts),
     ?assertEqual(2, length(Res)),
