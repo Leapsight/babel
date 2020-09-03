@@ -70,6 +70,8 @@ error_test(_) ->
 
 
 index_creation_1_test(_) ->
+    %% Not really storing the index, we intercept the reliable enqueue call
+    %% here to validate we are getting the right struct
     meck:new(reliable, [passthrough]),
     meck:expect(reliable, enqueue, fun
         (_, Work) ->
@@ -204,49 +206,45 @@ delete_index_test(_) ->
     ok.
 
 
-index_conf() ->
-    Sort = asc,
-    N = 8,
-    Algo = jch,
-    PartBy = [<<"email">>],
-    IndexBy = [<<"email">>],
-    Covered = [<<"user_id">>, <<"account_id">>],
-
-    #{
-        name => <<"users_by_email">>,
-        bucket_type => <<"index_data">>,
-        bucket_prefix => <<"babel_SUITE/johndoe">>,
-        type => babel_hash_partitioned_index,
-        config => #{
-            sort_ordering => Sort,
-            number_of_partitions => N,
-            partition_algorithm => Algo,
-            partition_by => PartBy,
-            index_by => IndexBy,
-            covered_fields => Covered
-        }
-    }.
-
 
 index_conf_crdt() ->
-    Sort = asc,
-    N = 8,
-    Algo = jch,
-    PartBy = [{<<"email">>, register}],
-    IndexBy = [{<<"email">>, register}],
-    Covered = [{<<"user_id">>, register}, {<<"account_id">>, register}],
-
     #{
         name => <<"users_by_email">>,
         bucket_type => <<"index_data">>,
         bucket_prefix => <<"babel_SUITE/johndoe">>,
         type => babel_hash_partitioned_index,
         config => #{
-            sort_ordering => Sort,
-            number_of_partitions => N,
-            partition_algorithm => Algo,
-            partition_by => PartBy,
-            index_by => IndexBy,
-            covered_fields => Covered
+            sort_ordering => asc,
+            number_of_partitions => 8,
+            partition_algorithm => jch,
+            partition_by => [{<<"email">>, register}],
+            index_by => [{<<"email">>, register}],
+            covered_fields => [
+                {<<"user_id">>, register}, {<<"account_id">>, register}
+            ]
         }
     }.
+
+
+%% index_conf() ->
+%%     Sort = asc,
+%%     N = 8,
+%%     Algo = jch,
+%%     PartBy = [<<"email">>],
+%%     IndexBy = [<<"email">>],
+%%     Covered = [<<"user_id">>, <<"account_id">>],
+
+%%     #{
+%%         name => <<"users_by_email">>,
+%%         bucket_type => <<"index_data">>,
+%%         bucket_prefix => <<"babel_SUITE/johndoe">>,
+%%         type => babel_hash_partitioned_index,
+%%         config => #{
+%%             sort_ordering => Sort,
+%%             number_of_partitions => N,
+%%             partition_algorithm => Algo,
+%%             partition_by => PartBy,
+%%             index_by => IndexBy,
+%%             covered_fields => Covered
+%%         }
+%%     }.

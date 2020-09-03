@@ -197,7 +197,7 @@ huge_index_test(_) ->
 
     {ok, _, ok} =  babel:workflow(Fun2),
 
-    timer:sleep(15000),
+    timer:sleep(5000),
 
     Collection = babel_index_collection:fetch(
         <<"mytenant">>, <<"users">>, RiakOpts

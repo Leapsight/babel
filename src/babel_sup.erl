@@ -33,9 +33,9 @@
     modules => [Id]
 }).
 
--define(WORKER(Id, Args, Restart, Timeout), #{
+-define(WORKER(Id, Mod, Args, Restart, Timeout), #{
     id => Id,
-    start => {Id, start_link, Args},
+    start => {Mod, start_link, Args},
     restart => Restart,
     shutdown => Timeout,
     type => worker,
@@ -77,16 +77,26 @@ start_link() ->
 
 
 init([]) ->
+    TTL = babel_config:get(cache_ttl_secs, 60),
+
     Children = [
         %% babel_config_manager should be first process to be started
-        ?WORKER(babel_config_manager, [], permanent, 30000),
-        cache()
+        ?WORKER(
+            babel_config_manager, babel_config_manager, [], permanent, 30000
+        ),
+        ?WORKER(
+            babel_index_collection,
+            cache,
+            [babel_index_collection, [{n, 10}, {ttl, TTL}]],
+            permanent,
+            5000
+        ),
+        ?WORKER(
+            babel_index_partition,
+            cache,
+            [babel_index_partition, [{n, 10}, {ttl, TTL}]],
+            permanent,
+            5000
+        )
     ],
     {ok, {{one_for_one, 1, 5}, Children}}.
-
-
-cache() ->
-    TTL = babel_config:get(cache_ttl_secs, 60),
-    Args = [babel_index_collection, [{n, 10}, {ttl, TTL}]],
-
-    ?WORKER(cache, Args, permanent, 5000).
