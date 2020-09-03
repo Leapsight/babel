@@ -345,10 +345,10 @@ delete_index(Index, Collection0) ->
     IndexName = babel_index:name(Index),
 
     %% We validate the collection has this index
-    Index = babel_index_collection:index(IndexName),
+    Index = babel_index_collection:index(IndexName, Collection0),
     Index =/= error orelse throw(not_found),
 
-    Collection = babel_index_collection:remove_index(Index, Collection0),
+    Collection = babel_index_collection:delete_index(Index, Collection0),
 
     CollectionId = babel_index_collection:id(Collection),
 
