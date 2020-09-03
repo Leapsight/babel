@@ -120,8 +120,8 @@ update_indices_1_test(_) ->
 
     Conf = index_conf_crdt(),
 
-    dbg:tracer(), dbg:p(all, c),
-    dbg:tpl(babel_hash_partitioned_index, '_', x),
+    %% dbg:tracer(), dbg:p(all, c),
+    %% dbg:tpl(babel_hash_partitioned_index, '_', x),
 
 
     Fun = fun() ->
@@ -190,9 +190,15 @@ delete_index_test(_) ->
         Collection = babel_index_collection:fetch(
             <<"mytenant">>, <<"users">>, RiakOpts
         ),
-        Index = babel_index_collection:index(<<"users_by_email">>, Collection),
-        _Collection1 = babel:delete_index(Index, Collection),
-        ok
+        try
+            Index = babel_index_collection:index(
+                <<"users_by_email">>, Collection),
+            _Collection1 = babel:delete_index(Index, Collection),
+            ok
+        catch
+            error:badindex ->
+                ok
+        end
     end,
 
     {ok, _, _} =  babel:workflow(Fun),
