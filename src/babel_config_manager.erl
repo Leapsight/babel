@@ -122,7 +122,7 @@ code_change(_OldVsn, State, _Extra) ->
 do_init() ->
 
     logger:set_application_level(babel, info),
-    logger:set_application_level(reliable, info),
+    logger:set_application_level(reliable, error),
     %% We initialised the Babel app config
     ok = babel_config:init(),
 

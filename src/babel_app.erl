@@ -28,8 +28,6 @@
 
 
 start(_StartType, _StartArgs) ->
-    ok = babel_config:init(),
-
     case babel_sup:start_link() of
         {ok, _} = OK ->
             OK;
