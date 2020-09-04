@@ -227,13 +227,14 @@ store(BucketType, BucketPrefix, Key, Partition, RiakOpts) ->
     Opts1 = babel:validate_riak_opts(Opts0),
     ReqOpts = maps:to_list(maps:without([connection], Opts1)),
     Conn = babel:get_connection(Opts1),
-    TypeBucket = type_bucket(BucketType, BucketPrefix),
+    TypedBucket = typed_bucket(BucketType, BucketPrefix),
     Op = riakc_map:to_op(to_riak_object(Partition)),
 
-    case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, ReqOpts) of
+    case riakc_pb_socket:update_type(Conn, TypedBucket, Key, Op, ReqOpts) of
         {error, _} = Error ->
             Error;
         _ ->
+            ok = on_update(TypedBucket, Key),
             ok
     end.
 
@@ -316,7 +317,7 @@ lookup(TypedBucket, Key, RiakOpts) ->
     {ok, t()} | {error, not_found | term()}.
 
 lookup(BucketType, BucketPrefix, Key, RiakOpts) ->
-    TypedBucket = type_bucket(BucketType, BucketPrefix),
+    TypedBucket = typed_bucket(BucketType, BucketPrefix),
     lookup(TypedBucket, Key, RiakOpts).
 
 
@@ -335,13 +336,18 @@ delete(BucketType, BucketPrefix, Key, RiakOpts) ->
     Opts = babel:validate_riak_opts(RiakOpts),
     ReqOpts = maps:to_list(maps:without([connection], Opts)),
     Conn = babel:get_connection(Opts),
-    TypeBucket = type_bucket(BucketType, BucketPrefix),
+    TypedBucket = typed_bucket(BucketType, BucketPrefix),
 
-    ok = cache:delete(?MODULE, {TypeBucket, Key}),
-    case riakc_pb_socket:delete(Conn, TypeBucket, Key, ReqOpts) of
-        ok -> ok;
-        {error, {notfound, _}} -> {error, not_found};
-        {error, _} = Error -> Error
+    ok = cache:delete(?MODULE, {TypedBucket, Key}),
+
+    case riakc_pb_socket:delete(Conn, TypedBucket, Key, ReqOpts) of
+        ok ->
+            ok = on_delete(TypedBucket, Key),
+            ok;
+        {error, {notfound, _}} ->
+            {error, not_found};
+        {error, _} = Error ->
+            Error
     end.
 
 
@@ -353,7 +359,7 @@ delete(BucketType, BucketPrefix, Key, RiakOpts) ->
 
 
 %% @private
-type_bucket(Type, Prefix) ->
+typed_bucket(Type, Prefix) ->
     Bucket = <<Prefix/binary, ?PATH_SEPARATOR, ?BUCKET_SUFFIX>>,
     {Type, Bucket}.
 
@@ -363,13 +369,16 @@ maybe_lookup(TypedBucket, Key, RiakOpts, undefined) ->
     Opts = babel:validate_riak_opts(RiakOpts),
     ReqOpts = maps:to_list(maps:without([connection], Opts)),
     Conn = babel:get_connection(Opts),
+
     case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, ReqOpts) of
         {ok, Object} ->
             Partition = from_riak_object(Object),
             ok = cache:put(?MODULE, {TypedBucket, Key}, Partition),
             {ok, Partition};
+
         {error, {notfound, _}} ->
             {error, not_found};
+
         {error, _} = Error ->
             Error
     end;
@@ -377,3 +386,18 @@ maybe_lookup(TypedBucket, Key, RiakOpts, undefined) ->
 maybe_lookup(_, _, _, Partition) ->
     {ok, Partition}.
 
+
+%% @private
+on_delete(TypedBucket, Key) ->
+    %% TODO WAMP Publication
+    _URI = <<"org.babel.index_partition.deleted">>,
+    _Args = [TypedBucket, Key],
+    ok.
+
+
+%% @private
+on_update(TypedBucket, Key) ->
+    %% TODO WAMP Publication
+    _URI = <<"org.babel.index_partition.updated">>,
+    _Args = [TypedBucket, Key],
+    ok.

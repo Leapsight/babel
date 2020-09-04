@@ -17,20 +17,17 @@
 %% =============================================================================
 
 %% -----------------------------------------------------------------------------
-%% @doc An object that specifies the type and configuration of a Riak KV index
-%% and the location `({bucket_type(), bucket()}, key()})' of its partitions
-%% in Riak KV.
+%% @doc An object that specifies the type and configuration of an application
+%% maintained index in Riak KV and the location
+%% `({bucket_type(), bucket()}, key()})' of its partitions
+%% {@link babel_index_partition} in Riak KV.
 %%
-%% Every index has one or more partition objects which are modelled as Riak KV
+%% Every Index has one or more partition objects which are modelled as Riak KV
 %% maps.
 %%
-%% An index is persisted as a read-only CRDT Map as part of an index collection
-%% {@link babel_index_collection}. An index collection aggregates all indices
-%% for a topic e.g. domain model entity.
-%%
-%% As this object is read-only we turn it into an Erlang map as soon as we read
-%% it from the collection for enhanced performance. So loosing its CRDT context
-%% it not an issue.
+%% An Index is persisted as a read-only CRDT Map as part of an Index Collection
+%% {@link babel_index_collection}. An Index Collection aggregates all indices
+%% for a domain entity or resource e.g. accounts.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
@@ -340,7 +337,8 @@ create_partitions(#{type := Type, config := Config}) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns
+%% @doc Returns the representation of this object as a Reliable Update work
+%% item.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec to_update_item(Index :: babel_index:t(), Partition :: t()) ->
@@ -355,7 +353,8 @@ to_update_item(Index, Partition) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns
+%% @doc Returns the representation of this object as a Reliable Delete work
+%% item.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec to_delete_item(Index :: babel_index:t(), PartitionId :: binary()) ->
@@ -382,7 +381,7 @@ name(#{name := Value}) -> Value.
 %% @doc Returns the Riak KV bucket were this index partitions are stored.
 %% @end
 %% -----------------------------------------------------------------------------
--spec bucket(t()) -> maybe_error(binary()).
+-spec bucket(t()) -> maybe_no_return(binary()).
 
 bucket(#{bucket := Value}) -> Value.
 
@@ -391,16 +390,16 @@ bucket(#{bucket := Value}) -> Value.
 %% @doc Returns the Riak KV bucket type associated with this index.
 %% @end
 %% -----------------------------------------------------------------------------
--spec bucket_type(t()) -> maybe_error(binary()).
+-spec bucket_type(t()) -> maybe_no_return(binary()).
 
 bucket_type(#{bucket_type := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns the Riak KV `type_bucket()' associated with this index.
+%% @doc Returns the Riak KV `typed_bucket()' associated with this index.
 %% @end
 %% -----------------------------------------------------------------------------
--spec typed_bucket(t()) -> maybe_error({binary(), binary()}).
+-spec typed_bucket(t()) -> maybe_no_return({binary(), binary()}).
 
 typed_bucket(#{bucket_type := Type, bucket := Bucket}) ->
     {Type, Bucket}.
@@ -408,10 +407,10 @@ typed_bucket(#{bucket_type := Type, bucket := Bucket}) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns the type of this index. A type is a module name implementing
-%% the babel behaviour.
+%% the babel_index behaviour i.e. a type of index.
 %% @end
 %% -----------------------------------------------------------------------------
--spec type(t()) -> maybe_error(module()).
+-spec type(t()) -> maybe_no_return(module()).
 
 type(#{type := Value}) -> Value.
 
@@ -421,7 +420,7 @@ type(#{type := Value}) -> Value.
 %% The configuration depends on the index type {@link babel:type/1}.
 %% @end
 %% -----------------------------------------------------------------------------
--spec config(t()) -> maybe_error(riakc_map:crdt_map()).
+-spec config(t()) -> maybe_no_return(riakc_map:crdt_map()).
 
 config(#{config := Value}) -> Value.
 
@@ -443,8 +442,10 @@ partition_identifier(KeyValue, Index) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update(
-    Actions :: [{action(), key_value()}], Index :: t(), RiakOpts :: riak_opts()) ->
-    [babel_index_partition:t()] | no_return().
+    Actions :: [{action(), key_value()}],
+    Index :: t(),
+    RiakOpts :: riak_opts()) ->
+    maybe_no_return([babel_index_partition:t()]).
 
 update(Actions, Index, RiakOpts) when is_list(Actions) ->
     Mod = type(Index),
@@ -473,7 +474,7 @@ update(Actions, Index, RiakOpts) when is_list(Actions) ->
 %% This is equivalent to the call `partition_identifiers(Index, asc)'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_identifiers(t()) -> maybe_error([binary()]).
+-spec partition_identifiers(t()) -> maybe_no_return([binary()]).
 
 partition_identifiers(Index) ->
     partition_identifiers(Index, asc).
@@ -484,7 +485,7 @@ partition_identifiers(Index) ->
 %% in a defined order i.e. `asc' or `desc'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec partition_identifiers(t(), asc | desc) -> maybe_error([binary()]).
+-spec partition_identifiers(t(), asc | desc) -> maybe_no_return([binary()]).
 
 partition_identifiers(Index, Order) ->
     Mod = type(Index),

@@ -106,7 +106,8 @@
     pw => quorum(),
     notfound_ok => boolean(),
     basic_quorum => boolean(),
-    timeout => timeout()
+    timeout => timeout(),
+    '$validated' => boolean()
 }.
 
 
@@ -117,5 +118,6 @@
 %% =============================================================================
 
 
--type maybe_error(T)    ::  T | no_return().
--type type_bucket()     ::   bucket_and_type().
+-type maybe_no_return(T)    ::  T | no_return().
+-type maybe_error(T)        ::  T | {error, Reason :: any()}.
+-type typed_bucket()        ::  bucket_and_type().

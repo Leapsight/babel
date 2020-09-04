@@ -145,7 +145,7 @@ workflow(Fun, Opts) ->
 create_collection(BucketPrefix, Name) ->
     ok = babel_reliable:ensure_in_workflow(),
 
-    Collection = babel_index_collection:new(BucketPrefix, Name, []),
+    Collection = babel_index_collection:new(BucketPrefix, Name),
     CollectionId = babel_index_collection:id(Collection),
 
     %% We need to avoid the situation were we create a collection we
@@ -229,6 +229,8 @@ create_index(Index, Collection) ->
 %% Riak KV.
 %% @end
 %% -----------------------------------------------------------------------------
+-spec validate_riak_opts(map()) -> maybe_no_return(map()).
+
 validate_riak_opts(#{'$validated' := true} = Opts) ->
     Opts;
 

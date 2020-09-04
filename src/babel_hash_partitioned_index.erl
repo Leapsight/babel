@@ -298,6 +298,9 @@ from_riak_object(Object) ->
         )
     ),
 
+    %% As this object is read-only and embeded in an Index Collection we turn it
+    %% into an Erlang map as soon as we read it from the collection for enhanced
+    %% performance. So loosing its CRDT context it not an issue.
     #{
         sort_ordering => Sort,
         number_of_partitions => N,

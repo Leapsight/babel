@@ -17,17 +17,18 @@
 %% =============================================================================
 
 %% -----------------------------------------------------------------------------
-%% @doc A babel_index_collection is a Riak Map, that maps
-%% binary keys to {@link babel_index} objects (also a Riak Map).
+%% @doc A babel_index_collection is a Riak Map representing a mapping from
+%% binary keys to {@link babel_index} objects, where keys are the value of the
+%% {@link babel_index:name/1} property.
 %%
-%% Keys typically represent a resource (or entity) name in your domain model
-%% e.g. accounts, users.
+%% An Index Collection has a name that typically represents the name of a
+%% resource (or entity) name in your domain model e.g. accounts, users.
 %%
 %% A babel collection object is stored in Riak KV under a bucket_type that
 %% should be defined through configuration using the
 %% `index_collection_bucket_type' configuration option; and a bucket name which
 %% results from concatenating a prefix provided as argument in this module
-%% functions a key separator and the suffix "_index_collection".
+%% functions and the suffix "/index_collection".
 %%
 %% ## Configuring the bucket type
 %%
@@ -38,15 +39,15 @@
 %% The following example shows how to configure and activate the
 %% bucket type with the recommeded default replication
 %% properties, for the example we asume the application property
-%% `index_collection_bucket_type' maps to "my_index_collection" bucket type
-%% name.
+%% `index_collection_bucket_type' maps to "index_collection"
+%% bucket type name.
 %%
 %% ```shell
-%% riak-admin bucket-type create my_index_collection '{"props":
+%% riak-admin bucket-type create index_collection '{"props":
 %% {"datatype":"map",
 %% "n_val":3, "pw":"quorum", "pr":"quorum", "notfound_ok":false,
 %% "basic_quorum":true}}'
-%% riak-admin bucket-type activate my_index_collection
+%% riak-admin bucket-type activate index_collection
 %% '''
 %%
 %% ## Default replication properties
@@ -458,3 +459,19 @@ typed_bucket(Prefix) ->
     Type = babel_config:get([bucket_types, index_collection]),
     Bucket = <<Prefix/binary, ?PATH_SEPARATOR, ?BUCKET_SUFFIX>>,
     {Type, Bucket}.
+
+
+%% @private
+on_delete(TypedBucket, Key) ->
+    %% TODO WAMP Publication
+    _URI = <<"org.babel.index_collection.deleted">>,
+    _Args = [TypedBucket, Key],
+    ok.
+
+
+%% @private
+on_update(TypedBucket, Key) ->
+    %% TODO WAMP Publication
+    _URI = <<"org.babel.index_collection.updated">>,
+    _Args = [TypedBucket, Key],
+    ok.

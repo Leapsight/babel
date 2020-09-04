@@ -22,6 +22,8 @@
 %% -----------------------------------------------------------------------------
 
 -module(babel_crdt).
+-include_lib("riakc/include/riakc.hrl").
+-include("babel.hrl").
 
 -define(BADKEY, '$error_badkey').
 
@@ -44,6 +46,12 @@
 %% API
 %% =============================================================================
 
+
+
+-spec to_integer(
+    binary() | riakc_register:register() | riakc_counter:counter()) ->
+    maybe_no_return(integer()).
+
 to_integer(Unwrapped) when is_binary(Unwrapped) ->
     binary_to_integer(Unwrapped);
 
@@ -52,7 +60,7 @@ to_integer(Object) ->
         riakc_register ->
             binary_to_integer(riakc_register:value(Object));
         riakc_counter ->
-            riakc_register:value(Object)
+            riakc_counter:value(Object)
     catch
         error:function_clause ->
             error(badarg)
