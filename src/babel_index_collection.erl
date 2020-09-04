@@ -113,7 +113,9 @@
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Creates a new index collection object.
+%% The value for `bucket' is computed by concatenating `BucketPrefix' with the
+%% suffix `/index_collection'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec new(BucketPrefix :: binary(), Name :: binary()) -> t().
@@ -334,9 +336,11 @@ to_delete_item(#babel_index_collection{} = Collection) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Stores an index collection in Riak KV under a bucket name which results
-%% from contenating the prefix `BucketPrefix' to suffix "/index_collection" and
-%% key `Key'.
+%% @doc Stores an index collection in Riak KV.
+%% The collection will be stored under the bucket type configured
+%% for the application option `index_collection_bucket_type', bucket name
+%% will be the value returned by {@link bucket/1}, and the key will be the
+%% value returned by {@link id/1}.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec store(Collection :: t(), RiakOpts :: riak_opts()) ->

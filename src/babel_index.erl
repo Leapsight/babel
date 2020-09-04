@@ -91,7 +91,13 @@ end).
 }).
 
 
--type t()                       ::  map().
+-type t()                       ::  #{
+    bucket := binary(),
+    bucket_type := binary(),
+    config := _,
+    name := binary(),
+    type := atom()
+}.
 -type riak_object()             ::  riakc_map:crdt_map().
 -type config()                  ::  map().
 -type config_object()           ::  riakc_map:crdt_map().
@@ -264,22 +270,22 @@ new(IndexData) ->
 %% -----------------------------------------------------------------------------
 -spec from_riak_object(ConfigCRDT :: riak_object()) -> Index :: t().
 
-from_riak_object(Index) ->
+from_riak_object(Object) ->
     Name = babel_crdt:register_to_binary(
-        orddict:fetch({<<"name">>, register}, Index)
+        orddict:fetch({<<"name">>, register}, Object)
     ),
     BucketType = babel_crdt:register_to_binary(
-        orddict:fetch({<<"bucket_type">>, register}, Index)
+        orddict:fetch({<<"bucket_type">>, register}, Object)
     ),
     Bucket = babel_crdt:register_to_binary(
-        orddict:fetch({<<"bucket">>, register}, Index)
+        orddict:fetch({<<"bucket">>, register}, Object)
     ),
     Type = babel_crdt:register_to_existing_atom(
-        orddict:fetch({<<"type">>, register}, Index),
+        orddict:fetch({<<"type">>, register}, Object),
         utf8
     ),
     Config = Type:from_riak_object(
-        orddict:fetch({<<"config">>, map}, Index)
+        orddict:fetch({<<"config">>, map}, Object)
     ),
 
     #{

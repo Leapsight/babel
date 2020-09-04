@@ -131,8 +131,13 @@ workflow(Fun, Opts) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Schedules the creation of an index collection using Reliable.
-%% Fails if the collection already existed
+%% @doc Schedules the creation of an empty index collection using Reliable.
+%% Fails if the collection already exists.
+%%
+%% The collection will be stored in Riak KV under the bucket type configured
+%% for the application option `index_collection_bucket_type', bucket name
+%% resulting from concatenating the value of `BucketPrefix' to the suffix `/
+%% index_collection' and the key will be the value of `Name'.
 %%
 %% > This function needs to be called within a workflow functional object,
 %% see {@link workflow/1}.
