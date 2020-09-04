@@ -34,7 +34,7 @@ This will produce an index partition equivalent(*) to the following Erlang term.
 Then:
 
 ```erlang
-> babel_index:match(<<"johndoe@example.com">>, Index, Opts).
+> babel_index:match(#{{<<"email">>, register} => <<"johndoe@example.com">>}, Index, Opts).
 #{<<"user_id">>> => <<"mrn:user:...">>}
 ```
 
@@ -71,7 +71,7 @@ This will produce an index partition equivalent(*) to the following Erlang term.
 Then:
 
 ```erlang
-> babel_index:match(<<"johndoe@example.com">>, Index, Opts).
+> babel_index:match(#{{<<"email">>, register} => <<"johndoe@example.com">>}, Index, Opts).
 #{
     <<"user_id">>> => <<"mrn:user:...">>,
     <<"account_id">> =>  <<"mrn:account:...">>
@@ -118,7 +118,7 @@ This will produce an index partition that looks like the following
 Then:
 
 ```erlang
-> babel_index:match(<<"johndoe@example.com">>, Index, Opts).
+> babel_index:match(#{{<<"email">>, register} => <<"johndoe@example.com">>}, Index, Opts).
 [
     #{<<"user_id">>> => <<"mrn:user:..X">>},
     #{<<"user_id">>> => <<"mrn:user:..Y">>}
@@ -165,7 +165,7 @@ This will produce an index partition that looks like the following
 Then:
 
 ```erlang
-> babel_index:match(<<"johndoe@example.com">>, Index, Opts).
+> babel_index:match(#{{<<"email">>, register} => <<"johndoe@example.com">>}, Index, Opts).
 [
     #{
         <<"user_id">>> => <<"mrn:user:..X">>,
@@ -217,7 +217,13 @@ This will produce an index partition that looks like the following
 ```
 
 ```erlang
-1> babel_index:match(<<"KT122DU", "DOE">>, Index, Opts).
+1> babel_index:match(
+    #{
+        {<<"post_code">>, register} => <<"KT122DU">>,
+        {<<"last_name">>, register} => <<"DOE">>},
+    },
+    Index,
+    Opts).
 [
     #{
         <<"user_id">>> => <<"mrn:user:..X">>,
@@ -228,7 +234,14 @@ This will produce an index partition that looks like the following
         <<"account_id">> =>  <<"mrn:account:...B">>
     }
 ]
-2> babel_index:match(<<"KT122DU", "DOE", "LUCY">>, Index, Opts).
+2> babel_index:match(
+    #{
+        {<<"post_code">>, register} => <<"KT122DU">>,
+        {<<"last_name">>, register} => <<"DOE">>,
+        {<<"firstname">>, register} => <<"LUCY">>
+    },
+    Index,
+    Opts).
 [
     #{
         <<"user_id">>> => <<"mrn:user:..Y">>,
