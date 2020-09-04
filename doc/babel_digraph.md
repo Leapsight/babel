@@ -11,12 +11,16 @@ An implementation of digraph.erl using dict instead of ets tables.
 <a name="description"></a>
 
 ## Description ##
+
 The idea is to use this implementation when the data structure needs to be
 passed between processes and | or is required to be persisted as a binary.
+
 Use Cases that require this data module:
+
 * Generation and storage of a datalog programme dependency graph
 * Generation and storage of a datalog programme QSQ Net Structure (QSQN)
-Notes:
+
+**Notes**:
 The API is not strictly compatible with digraph.erl as all operations return
 a new version of the graph which is not the case in digraph.erl as it uses
 an ets table e.g. add_vertex/1 and add_edge/3 return a new babel_digraph as

@@ -1,68 +1,24 @@
 
 
 # Module babel #
-* [Data Types](#types)
 * [Function Index](#index)
 * [Function Details](#functions)
-
-<a name="types"></a>
-
-## Data Types ##
-
-
-
-
-### <a name="type-context">context()</a> ###
-
-
-<pre><code>
-context() = map()
-</code></pre>
-
-
-
-
-### <a name="type-opts">opts()</a> ###
-
-
-<pre><code>
-opts() = #{on_terminate =&gt; fun((Reason::any()) -&gt; any())}
-</code></pre>
-
-
-
-
-### <a name="type-work_item">work_item()</a> ###
-
-
-<pre><code>
-work_item() = <a href="reliable_storage_backend.md#type-work_item">reliable_storage_backend:work_item()</a>
-</code></pre>
 
 <a name="index"></a>
 
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_index-2">add_index/2</a></td><td>Adds.</td></tr><tr><td valign="top"><a href="#create_collection-2">create_collection/2</a></td><td>Schedules the creation of an index collection.</td></tr><tr><td valign="top"><a href="#create_index-1">create_index/1</a></td><td>Schedules the creation of an index and its partitions according to
-<code>Config</code>.</td></tr><tr><td valign="top"><a href="#is_in_workflow-0">is_in_workflow/0</a></td><td>Returns true if the process has a workflow context.</td></tr><tr><td valign="top"><a href="#remove_index-2">remove_index/2</a></td><td>Removes an index at identifier <code>IndexId</code> from collection <code>Collection</code>.</td></tr><tr><td valign="top"><a href="#workflow-1">workflow/1</a></td><td>Equivalent to calling <a href="#workflow-2"><code>workflow/2</code></a> with and empty list passed as
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#create_collection-2">create_collection/2</a></td><td>Schedules the creation of an index collection using Reliable.</td></tr><tr><td valign="top"><a href="#create_index-2">create_index/2</a></td><td>Schedules the creation of an index and its partitions according to
+<code>Config</code> using Reliable.</td></tr><tr><td valign="top"><a href="#delete_collection-1">delete_collection/1</a></td><td>Schedules the delete of a collection, all its indices and their
+partitions.</td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#get_connection-1">get_connection/1</a></td><td></td></tr><tr><td valign="top"><a href="#rebuild_index-4">rebuild_index/4</a></td><td></td></tr><tr><td valign="top"><a href="#update_indices-3">update_indices/3</a></td><td></td></tr><tr><td valign="top"><a href="#validate_riak_opts-1">validate_riak_opts/1</a></td><td>Validates and returns the options in proplist format as expected by
+Riak KV.</td></tr><tr><td valign="top"><a href="#workflow-1">workflow/1</a></td><td>Equivalent to calling <a href="#workflow-2"><code>workflow/2</code></a> with and empty map passed as
 the <code>Opts</code> argument.</td></tr><tr><td valign="top"><a href="#workflow-2">workflow/2</a></td><td>Executes the functional object <code>Fun</code> as a Reliable workflow, i.e.</td></tr></table>
 
 
 <a name="functions"></a>
 
 ## Function Details ##
-
-<a name="add_index-2"></a>
-
-### add_index/2 ###
-
-<pre><code>
-add_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; <a href="babel_index_collection.md#type-t">babel_index_collection:t()</a> | no_return()
-</code></pre>
-<br />
-
-Adds
 
 <a name="create_collection-2"></a>
 
@@ -73,19 +29,24 @@ create_collection(BucketPrefix::binary(), Name::binary()) -&gt; <a href="babel_i
 </code></pre>
 <br />
 
-Schedules the creation of an index collection.
+Schedules the creation of an index collection using Reliable.
+Fails if the collection already existed
 
-<a name="create_index-1"></a>
+> This function needs to be called within a workflow functional object,
+see [`workflow/1`](#workflow-1).
 
-### create_index/1 ###
+<a name="create_index-2"></a>
+
+### create_index/2 ###
 
 <pre><code>
-create_index(Config::map()) -&gt; <a href="babel_index.md#type-t">babel_index:t()</a> | no_return()
+create_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; <a href="babel_index_collection.md#type-t">babel_index_collection:t()</a> | no_return()
 </code></pre>
 <br />
 
 Schedules the creation of an index and its partitions according to
-`Config`.
+`Config` using Reliable.
+
 > This function needs to be called within a workflow functional object,
 see [`workflow/1`](#workflow-1).
 
@@ -95,46 +56,81 @@ Example: Creating an index and adding it to an existing collection
   > babel:workflow(
       fun() ->
            Collection0 = babel_index_collection:fetch(Conn, BucketPrefix, Key),
-           Index = babel:create_index(Config),
-           _Collection1 = babel:add_index(Index, Collection0),
+           Index = babel_index:new(Config),
+           ok = babel:create_index(Index, Collection0),
            ok
       end).
   > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
 ```
 
 
-<a name="is_in_workflow-0"></a>
+<a name="delete_collection-1"></a>
 
-### is_in_workflow/0 ###
+### delete_collection/1 ###
 
 <pre><code>
-is_in_workflow() -&gt; boolean()
+delete_collection(Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; ok | no_return()
 </code></pre>
 <br />
 
-Returns true if the process has a workflow context.
+Schedules the delete of a collection, all its indices and their
+partitions.
 
-<a name="remove_index-2"></a>
+<a name="delete_index-2"></a>
 
-### remove_index/2 ###
+### delete_index/2 ###
 
 <pre><code>
-remove_index(IndexId::binary(), Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; <a href="babel_index_collection.md#type-t">babel_index_collection:t()</a> | no_return()
+delete_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection0::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; <a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>
 </code></pre>
 <br />
 
-Removes an index at identifier `IndexId` from collection `Collection`.
+<a name="get_connection-1"></a>
+
+### get_connection/1 ###
+
+`get_connection(X1) -> any()`
+
+<a name="rebuild_index-4"></a>
+
+### rebuild_index/4 ###
+
+<pre><code>
+rebuild_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, BucketType::binary(), Bucket::binary(), Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; ok | no_return()
+</code></pre>
+<br />
+
+<a name="update_indices-3"></a>
+
+### update_indices/3 ###
+
+<pre><code>
+update_indices(Actions::[{<a href="babel_index.md#type-action">babel_index:action()</a>, <a href="babel_index.md#type-object">babel_index:object()</a>}], CollectionOrIndices::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, RiakOpts::map()) -&gt; ok | no_return()
+</code></pre>
+<br />
+
+<a name="validate_riak_opts-1"></a>
+
+### validate_riak_opts/1 ###
+
+<pre><code>
+validate_riak_opts(Opts::map()) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>(map())
+</code></pre>
+<br />
+
+Validates and returns the options in proplist format as expected by
+Riak KV.
 
 <a name="workflow-1"></a>
 
 ### workflow/1 ###
 
 <pre><code>
-workflow(Fun::fun(() -&gt; any())) -&gt; {ok, Id::binary()} | {error, any()}
+workflow(Fun::fun(() -&gt; any())) -&gt; {ok, WorkId::binary(), ResultOfFun::any()} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
-Equivalent to calling [`workflow/2`](#workflow-2) with and empty list passed as
+Equivalent to calling [`workflow/2`](#workflow-2) with and empty map passed as
 the `Opts` argument.
 
 <a name="workflow-2"></a>
@@ -142,7 +138,7 @@ the `Opts` argument.
 ### workflow/2 ###
 
 <pre><code>
-workflow(Fun::fun(() -&gt; any()), Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorkId::binary(), ResultOfFun::any()} | {error, Reason::any()} | no_return()
+workflow(Fun::fun(() -&gt; any()), Opts::<a href="babel_workflow.md#type-opts">babel_workflow:opts()</a>) -&gt; {ok, WorkId::binary(), ResultOfFun::any()} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -178,26 +174,22 @@ Example: Creating various babel objects and scheduling
 ```
   > babel:workflow(
       fun() ->
-           CollectionX0 = create_collection(<<"foo">>, <<"bar">>),
+           CollectionX0 = babel_index_collection:new(<<"foo">>, <<"bar">>),
            CollectionY0 = babel_index_collection:fetch(
-               Conn, <<"foo">>, <<"users">>),
-           IndexA = babel:create_index(ConfigA),
-           IndexB = babel:create_index(ConfigB),
-           CollectionX1 = babel:add_index(IndexA, CollectionX0),
-           CollectionY1 = babel:add_index(IndexB, CollectionY0),
+  Conn, <<"foo">>, <<"users">>),
+           IndexA = babel_index:new(ConfigA),
+           IndexB = babel_index:new(ConfigB),
+           _CollectionX1 = babel:create_index(IndexA, CollectionX0),
+           _CollextionY1 = babel:create_index(IndexB, CollectionY0),
            ok
       end).
-  > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
+  > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
 ```
 
 The resulting workflow execution will schedule the writes in the order that
-results from the dependency graph constructed using the index partitions and
-index resulting from the [`create_index/1`](#create_index-1) call and the collection
-resulting from the [`create_collection/2`](#create_collection-2) and {@link add_index/2}.
-This ensures partitions are created first and then collections. Notice that
-indices are not persisted per se and need to be added to a collection, the
-workflow will fail with a `{dangling, IndexId}` exception if that is the
-case.
+results from the dependency graph constructed using the results of this
+module functions. This ensures partitions are created first and then
+collections.
 
 The `Opts` argument offers the following options:
 

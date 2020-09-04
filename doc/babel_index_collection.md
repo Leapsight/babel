@@ -6,21 +6,22 @@
 * [Function Index](#index)
 * [Function Details](#functions)
 
-A babel_index_collection is a Riak Map, that maps
-binary keys to [`babel_index`](babel_index.md) objects (also a Riak Map).
+A babel_index_collection is a Riak Map representing a mapping from
+binary keys to [`babel_index`](babel_index.md) objects, where keys are the value of the
+[`babel_index:name/1`](babel_index.md#name-1) property.
 
 <a name="description"></a>
 
 ## Description ##
 
-Keys typically represent a resource (or entity) name in your domain model
-e.g. accounts, users.
+An Index Collection has a name that typically represents the name of a
+resource (or entity) name in your domain model e.g. accounts, users.
 
 A babel collection object is stored in Riak KV under a bucket_type that
 should be defined through configuration using the
 `index_collection_bucket_type` configuration option; and a bucket name which
 results from concatenating a prefix provided as argument in this module
-functions a key separator and the suffix "_index_collection".
+functions and the suffix "/index_collection".
 
 ## Configuring the bucket type
 
@@ -31,16 +32,16 @@ type should be configured to `map`.
 The following example shows how to configure and activate the
 bucket type with the recommeded default replication
 properties, for the example we asume the application property
-`index_collection_bucket_type` maps to "my_index_collection" bucket type
-name.
+`index_collection_bucket_type` maps to "index_collection"
+bucket type name.
 
 ```
      shell
-  riak-admin bucket-type create my_index_collection '{"props":
+  riak-admin bucket-type create index_collection '{"props":
   {"datatype":"map",
   "n_val":3, "pw":"quorum", "pr":"quorum", "notfound_ok":false,
   "basic_quorum":true}}'
-  riak-admin bucket-type activate my_index_collection
+  riak-admin bucket-type activate index_collection
 ```
 
 ## Default replication properties
@@ -67,11 +68,21 @@ data() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 
 
 
+### <a name="type-riak_object">riak_object()</a> ###
+
+
+<pre><code>
+riak_object() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
+</code></pre>
+
+
+
+
 ### <a name="type-t">t()</a> ###
 
 
 <pre><code>
-t() = #babel_index_collection{id = binary(), bucket = binary(), data = <a href="#type-data">data()</a>}
+t() = #babel_index_collection{id = binary(), bucket = binary(), object = <a href="#type-riak_object">riak_object()</a>}
 </code></pre>
 
 <a name="index"></a>
@@ -79,14 +90,10 @@ t() = #babel_index_collection{id = binary(), bucket = binary(), data = <a href="
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_index-2">add_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#bucket-1">bucket/1</a></td><td></td></tr><tr><td valign="top"><a href="#data-1">data/1</a></td><td></td></tr><tr><td valign="top"><a href="#delete-3">delete/3</a></td><td></td></tr><tr><td valign="top"><a href="#delete-4">delete/4</a></td><td></td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#fetch-3">fetch/3</a></td><td></td></tr><tr><td valign="top"><a href="#fetch-4">fetch/4</a></td><td></td></tr><tr><td valign="top"><a href="#id-1">id/1</a></td><td></td></tr><tr><td valign="top"><a href="#index-2">index/2</a></td><td>Returns the babel index associated with key <code>Key</code> in collection
-<code>Collection</code>.</td></tr><tr><td valign="top"><a href="#lookup-3">lookup/3</a></td><td></td></tr><tr><td valign="top"><a href="#lookup-4">lookup/4</a></td><td></td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td>Takes a list of pairs (property list) or map of binary keys to values
-of type <code>babel_index:t()</code> and returns an index collection.</td></tr><tr><td valign="top"><a href="#new-3">new/3</a></td><td>Takes a list of pairs (property list) or map of binary keys to values
-of type <code>babel_index:t()</code> and returns an index collection.</td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>Returns the number of elements in the collection <code>Collection</code>.</td></tr><tr><td valign="top"><a href="#store-2">store/2</a></td><td>Stores an index collection in Riak KV under a bucket name which results
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_index-2">add_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#bucket-1">bucket/1</a></td><td></td></tr><tr><td valign="top"><a href="#data-1">data/1</a></td><td></td></tr><tr><td valign="top"><a href="#delete-3">delete/3</a></td><td></td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#fetch-3">fetch/3</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_object-1">from_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#id-1">id/1</a></td><td></td></tr><tr><td valign="top"><a href="#index-2">index/2</a></td><td>Returns the babel index associated with name <code>IndexName</code> in collection
+<code>Collection</code>.</td></tr><tr><td valign="top"><a href="#indices-1">indices/1</a></td><td>Returns all the indices in the collection.</td></tr><tr><td valign="top"><a href="#lookup-3">lookup/3</a></td><td></td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td></td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>Returns the number of elements in the collection <code>Collection</code>.</td></tr><tr><td valign="top"><a href="#store-2">store/2</a></td><td>Stores an index collection in Riak KV under a bucket name which results
 from contenating the prefix <code>BucketPrefix</code> to suffix "/index_collection" and
-key <code>Key</code>.</td></tr><tr><td valign="top"><a href="#store-3">store/3</a></td><td>Stores an index collection in Riak KV under a bucket name which results
-from contenating the prefix <code>BucketPrefix</code> to suffix "/index_collection" and
-key <code>Key</code>.</td></tr><tr><td valign="top"><a href="#to_work_item-1">to_work_item/1</a></td><td>Returns.</td></tr></table>
+key <code>Key</code>.</td></tr><tr><td valign="top"><a href="#to_delete_item-1">to_delete_item/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_update_item-1">to_update_item/1</a></td><td></td></tr></table>
 
 
 <a name="functions"></a>
@@ -125,16 +132,7 @@ data(Collection::<a href="#type-t">t()</a>) -&gt; <a href="#type-data">data()</a
 ### delete/3 ###
 
 <pre><code>
-delete(Conn::pid(), BucketPrefix::binary(), Key::binary()) -&gt; ok | {error, not_found | term()}
-</code></pre>
-<br />
-
-<a name="delete-4"></a>
-
-### delete/4 ###
-
-<pre><code>
-delete(Conn::pid(), BucketPrefix::binary(), Key::binary(), Opts::<a href="#type-req_opts">req_opts()</a>) -&gt; ok | {error, not_found | term()}
+delete(BucketPrefix::binary(), Key::binary(), Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; ok | {error, not_found | term()}
 </code></pre>
 <br />
 
@@ -143,7 +141,7 @@ delete(Conn::pid(), BucketPrefix::binary(), Key::binary(), Opts::<a href="#type-
 ### delete_index/2 ###
 
 <pre><code>
-delete_index(Id::binary(), Collection::<a href="#type-t">t()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
+delete_index(Id::binary() | <a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="#type-t">t()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
 </code></pre>
 <br />
 
@@ -152,16 +150,16 @@ delete_index(Id::binary(), Collection::<a href="#type-t">t()</a>) -&gt; <a href=
 ### fetch/3 ###
 
 <pre><code>
-fetch(Conn::pid(), BucketPrefix::binary(), Key::binary()) -&gt; <a href="#type-t">t()</a> | no_return()
+fetch(BucketPrefix::binary(), Key::binary(), RiakOpts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
 </code></pre>
 <br />
 
-<a name="fetch-4"></a>
+<a name="from_riak_object-1"></a>
 
-### fetch/4 ###
+### from_riak_object/1 ###
 
 <pre><code>
-fetch(Conn::pid(), BucketPrefix::binary(), Key::binary(), Opts::<a href="#type-req_opts">req_opts()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
+from_riak_object(Object::<a href="#type-riak_object">riak_object()</a>) -&gt; Collection::<a href="#type-t">t()</a>
 </code></pre>
 <br />
 
@@ -179,29 +177,31 @@ id(Collection::<a href="#type-t">t()</a>) -&gt; binary()
 ### index/2 ###
 
 <pre><code>
-index(Key::binary(), Collection::<a href="#type-t">t()</a>) -&gt; <a href="babel_index.md#type-t">babel_index:t()</a>
+index(IndexName::binary(), Collection::<a href="#type-t">t()</a>) -&gt; <a href="babel_index.md#type-t">babel_index:t()</a> | no_return()
 </code></pre>
 <br />
 
-Returns the babel index associated with key `Key` in collection
-`Collection`. This function assumes that the key is present in the
-collection. An exception is generated if the key is not in the collection.
+Returns the babel index associated with name `IndexName` in collection
+`Collection`. This function assumes that the name is present in the
+collection. An exception is generated if it is not.
+
+<a name="indices-1"></a>
+
+### indices/1 ###
+
+<pre><code>
+indices(Collection::<a href="#type-t">t()</a>) -&gt; [<a href="babel_index.md#type-t">babel_index:t()</a>]
+</code></pre>
+<br />
+
+Returns all the indices in the collection.
 
 <a name="lookup-3"></a>
 
 ### lookup/3 ###
 
 <pre><code>
-lookup(Conn::pid(), BucketPrefix::binary(), Key::binary()) -&gt; {ok, <a href="#type-t">t()</a>} | {error, not_found | term()}
-</code></pre>
-<br />
-
-<a name="lookup-4"></a>
-
-### lookup/4 ###
-
-<pre><code>
-lookup(Conn::pid(), BucketPrefix::binary(), Key::binary(), Opts::<a href="#type-req_opts">req_opts()</a>) -&gt; {ok, <a href="#type-t">t()</a>} | {error, not_found | term()}
+lookup(BucketPrefix::binary(), Key::binary(), Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; {ok, <a href="#type-t">t()</a>} | {error, not_found | term()}
 </code></pre>
 <br />
 
@@ -213,21 +213,6 @@ lookup(Conn::pid(), BucketPrefix::binary(), Key::binary(), Opts::<a href="#type-
 new(BucketPrefix::binary(), Name::binary()) -&gt; <a href="#type-t">t()</a>
 </code></pre>
 <br />
-
-Takes a list of pairs (property list) or map of binary keys to values
-of type `babel_index:t()` and returns an index collection.
-
-<a name="new-3"></a>
-
-### new/3 ###
-
-<pre><code>
-new(BucketPrefix::binary(), Name::binary(), Indices::[{binary(), <a href="babel_index.md#type-t">babel_index:t()</a>}]) -&gt; <a href="#type-t">t()</a>
-</code></pre>
-<br />
-
-Takes a list of pairs (property list) or map of binary keys to values
-of type `babel_index:t()` and returns an index collection.
 
 <a name="size-1"></a>
 
@@ -245,7 +230,7 @@ Returns the number of elements in the collection `Collection`.
 ### store/2 ###
 
 <pre><code>
-store(Conn::pid(), Collection::<a href="#type-t">t()</a>) -&gt; {ok, Index::<a href="#type-t">t()</a>} | {error, Reason::any()}
+store(Collection::<a href="#type-t">t()</a>, RiakOpts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; {ok, Index::<a href="#type-t">t()</a>} | {error, Reason::any()}
 </code></pre>
 <br />
 
@@ -253,27 +238,30 @@ Stores an index collection in Riak KV under a bucket name which results
 from contenating the prefix `BucketPrefix` to suffix "/index_collection" and
 key `Key`.
 
-<a name="store-3"></a>
+<a name="to_delete_item-1"></a>
 
-### store/3 ###
+### to_delete_item/1 ###
 
 <pre><code>
-store(Conn::pid(), Collection::<a href="#type-t">t()</a>, ReqOpts::<a href="#type-req_opts">req_opts()</a>) -&gt; {ok, Index::<a href="#type-t">t()</a>} | {error, Reason::any()}
+to_delete_item(Collection::<a href="#type-t">t()</a>) -&gt; <a href="babel.md#type-work_item">babel:work_item()</a>
 </code></pre>
 <br />
 
-Stores an index collection in Riak KV under a bucket name which results
-from contenating the prefix `BucketPrefix` to suffix "/index_collection" and
-key `Key`.
+<a name="to_riak_object-1"></a>
 
-<a name="to_work_item-1"></a>
-
-### to_work_item/1 ###
+### to_riak_object/1 ###
 
 <pre><code>
-to_work_item(Collection::<a href="#type-t">t()</a>) -&gt; <a href="babel.md#type-work_item">babel:work_item()</a>
+to_riak_object(Collection::<a href="#type-t">t()</a>) -&gt; Object::<a href="#type-riak_object">riak_object()</a>
 </code></pre>
 <br />
 
-Returns
+<a name="to_update_item-1"></a>
+
+### to_update_item/1 ###
+
+<pre><code>
+to_update_item(Collection::<a href="#type-t">t()</a>) -&gt; <a href="babel.md#type-work_item">babel:work_item()</a>
+</code></pre>
+<br />
 

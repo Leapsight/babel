@@ -2,6 +2,6 @@
 {application,babel}.
 {modules,[babel,babel_app,babel_config,babel_config_manager,
           babel_consistent_hashing,babel_crdt,babel_digraph,
-          babel_hash_partitioned_index,babel_index_collection,
+          babel_hash_partitioned_index,babel_index,babel_index_collection,
           babel_index_partition,babel_key_value,babel_manager,
-          babel_range_partitioned_index,babel_sup,riakc_pool]}.
+          babel_range_partitioned_index,babel_reliable,babel_sup,riakc_pool]}.

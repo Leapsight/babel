@@ -1,11 +1,8 @@
 
 
 # Module babel_app #
-* [Description](#description)
 * [Function Index](#index)
 * [Function Details](#functions)
-
-riak_utils public API.
 
 __Behaviours:__ [`application`](application.md).
 

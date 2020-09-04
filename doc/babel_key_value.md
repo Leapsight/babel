@@ -19,7 +19,17 @@ A Key Value coding interface for property lists and maps.
 
 
 <pre><code>
-key() = atom() | binary() | tuple() | <a href="riakc_map.md#type-key">riakc_map:key()</a> | [atom() | binary() | tuple() | <a href="riakc_map.md#type-key">riakc_map:key()</a>]
+key() = atom() | binary() | tuple() | <a href="riakc_map.md#type-key">riakc_map:key()</a> | <a href="#type-path">path()</a>
+</code></pre>
+
+
+
+
+### <a name="type-path">path()</a> ###
+
+
+<pre><code>
+path() = [atom() | binary() | tuple() | <a href="riakc_map.md#type-key">riakc_map:key()</a>]
 </code></pre>
 
 

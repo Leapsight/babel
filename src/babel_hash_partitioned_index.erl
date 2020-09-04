@@ -737,14 +737,6 @@ iterator_sort_ordering(#{sort_ordering := Value}, _) ->
 
 
 %% @private
-%% sorted_keys(Order, #{sort_ordering := Order}, L) ->
-%%     L;
-
-%% sorted_keys(_, _, L) ->
-%%     lists:reverse(L).
-
-
-%% @private
 match_output(_, _, nomatch) ->
     [];
 

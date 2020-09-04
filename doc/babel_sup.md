@@ -1,11 +1,8 @@
 
 
 # Module babel_sup #
-* [Description](#description)
 * [Function Index](#index)
 * [Function Details](#functions)
-
-riak_utils top level supervisor.
 
 __Behaviours:__ [`supervisor`](supervisor.md).
 

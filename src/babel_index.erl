@@ -494,20 +494,13 @@ partition_identifiers(Index, Order) ->
 
 
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
 %% -spec fold(fold_fun(), any(), Index :: t()) -> any().
 
 %% fold(Fun, Acc, Index) ->
 %%     fold(Fun, Acc, Index, #{}).
 
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+
 %% -spec fold(fold_fun(), any(), Index :: t(), Opts :: fold_opts()) -> any().
 
 %% fold(Fun, Acc, Index, Opts) ->
@@ -567,7 +560,7 @@ objects_by_partition_id(Mod, Config, List) ->
     leap_tuples:summarize(Tuples, Proj, #{}).
 
 
-%% @private
+%% %% @private
 %% iterator(Index, Opts) ->
 %%     Mod = type(Index),
 %%     Config = config(Index),
