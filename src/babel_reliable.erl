@@ -40,7 +40,7 @@
                             | fun(() -> reliable_storage_backend:work_item()).
 
 -type workflow_item_id()    ::  term().
--type workflow_item()   ::  {
+-type workflow_item()       ::  {
                                 Id :: workflow_item_id(),
                                 {update | delete, work_item()}
                             }.
@@ -137,7 +137,7 @@ abort(Reason) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun :: fun(() -> any())) ->
-    {ok, WorkId :: binary(), ResultOfFun :: any()}
+    {ok, {WorkId :: binary(), ResultOfFun :: any()}}
     | {error, Reason :: any()}
     | no_return().
 
@@ -188,7 +188,7 @@ workflow(Fun) ->
 %%          CollectionY1 = babel:create_index(IndexB, CollectionY0),
 %%          ok
 %%     end).
-%% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
+%% > {ok, {<<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}}
 %% '''
 %%
 %% The resulting workflow execution will schedule the writes in the order that
@@ -219,7 +219,7 @@ workflow(Fun, Opts) ->
         Result = Fun(),
         ok = maybe_schedule_workflow(),
         ok = on_terminate(normal, Opts),
-        {ok, WorkId, Result}
+        {ok, {WorkId, Result}}
     catch
         throw:Reason:Stacktrace ->
             ?LOG_ERROR(#{

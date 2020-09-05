@@ -102,7 +102,7 @@ workflow(Fun) ->
 %%          _CollextionY1 = babel:create_index(IndexB, CollectionY0),
 %%          ok
 %%     end).
-%% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
+%% > {ok, {<<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}}
 %% '''
 %%
 %% The resulting workflow execution will schedule the writes in the order that
@@ -201,7 +201,7 @@ delete_collection(Collection) ->
 %%          ok = babel:create_index(Index, Collection0),
 %%          ok
 %%     end).
-%% > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
+%% > {ok, {<<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}}
 %% '''
 %%
 %% @end

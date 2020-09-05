@@ -60,7 +60,7 @@ end_per_suite(Config) ->
 
 
 nothing_test(_) ->
-    {ok, _, ok} = babel:workflow(fun() -> ok end).
+    {ok, {_, ok}} = babel:workflow(fun() -> ok end).
 
 
 error_test(_) ->
@@ -90,7 +90,7 @@ index_creation_1_test(_) ->
         ok
     end,
 
-    {ok, _, _} =  babel:workflow(Fun),
+    {ok, _} =  babel:workflow(Fun),
     timer:sleep(5000),
     ok.
 
@@ -130,7 +130,7 @@ update_indices_1_test(_) ->
         ok
     end,
 
-    {ok, _, _} =  babel:workflow(Fun),
+    {ok, _} =  babel:workflow(Fun),
     timer:sleep(5000),
 
     Object = #{
@@ -149,7 +149,7 @@ update_indices_1_test(_) ->
         ok
     end,
 
-    {ok, _, ok} =  babel:workflow(Fun2),
+    {ok, {_, ok}} =  babel:workflow(Fun2),
 
     ok.
 
@@ -199,7 +199,7 @@ delete_index_test(_) ->
         end
     end,
 
-    {ok, _, _} =  babel:workflow(Fun),
+    {ok, _} =  babel:workflow(Fun),
 
     %% Sleep for 5 seconds for write to happen.
     timer:sleep(5000),
