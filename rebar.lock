@@ -15,6 +15,7 @@
   {git,"https://gitlab.com/leapsight/leap.git",
        {ref,"b7cc3d3b6cd18cd185309dc6f1ce06e816c34ff1"}},
   0},
+ {<<"opentelemetry_api">>,{pkg,<<"opentelemetry_api">>,<<"0.3.2">>},0},
  {<<"reliable">>,
   {git,"https://gitlab.com/leapsight/reliable.git",
        {ref,"7bdd850ffb950dbac1ec5947db2d2d4417fbbe67"}},
@@ -36,5 +37,6 @@
  {<<"cache">>, <<"1E585CD9777C1F71E9038D61059D07438643C0022FDC6E2F7C2899B4A45C593E">>},
  {<<"goldrush">>, <<"F06E5D5F1277DA5C413E84D5A2924174182FB108DABB39D5EC548B27424CD106">>},
  {<<"jsx">>, <<"77760560D6AC2B8C51FD4C980E9E19B784016AA70BE354CE746472C33BEB0B1C">>},
- {<<"lager">>, <<"3402B9A7E473680CA179FC2F1D827CAB88DD37DD1E6113090C6F45EF05228A1C">>}]}
+ {<<"lager">>, <<"3402B9A7E473680CA179FC2F1D827CAB88DD37DD1E6113090C6F45EF05228A1C">>},
+ {<<"opentelemetry_api">>, <<"B474CD21AF5855A6DFFF0912F26C7C40FBF1FD05B045D8E29FD53EDEB4C3EC99">>}]}
 ].
