@@ -92,36 +92,40 @@ from_riak_map({map, Values, _, _, Context}, Spec) ->
 -spec to_riak_op(T :: t(), Spec :: spec()) ->
     riakc_datatype:update(riakc_map:map_op()).
 
-to_riak_op(T, Spec) when is_map(Spec) ->
-    Updated = maps_utils:collect(T#babel_map.updates, T#babel_map.values),
+to_riak_op(T, Spec0) when is_map(Spec0) ->
+    %% #{Key => {{_, _} = RKey, Spec}}
+    Spec = reverse_spec(Spec0),
+
+    Updated = maps:with(T#babel_map.updates, T#babel_map.values),
 
     FoldFun = fun
-        ToOp({_, counter}, V, Acc) ->
+        ToOp({{_, counter}, _KeySpec}, _V, _Acc) ->
             error(not_implemented);
 
-        ToOp({_, flag}, V, Acc) ->
+        ToOp({{_, flag}, _KeySpec}, _V, _Acc) ->
             error(not_implemented);
 
         ToOp({_, register}, undefined, Acc) ->
             Acc;
 
-        ToOp({_, register} = Key, Value, Acc) ->
-            Bin = to_binary(Value, maps:get(Key, Spec)),
-            ToOp(
-                {riakc_register:type(), {assign, Bin}, undefined}, Key, Acc
-            );
+        ToOp({{_, register} = RKey, KeySpec}, Value, Acc) ->
+            Bin = to_binary(Value, KeySpec),
+            [{riakc_register:type(), {assign, Bin}, undefined} | Acc];
 
-        ToOp({_, set} = Key, Set, Acc) ->
-            ToOp(babel_set:to_riak_op(Set, maps:get(Key, Spec)), Key, Acc);
+        ToOp({{_, set} = RKey, KeySpec}, Set, Acc) ->
+            case babel_set:to_riak_op(Set, KeySpec) of
+                undefined -> Acc;
+                {_, Op, _} -> [{update, RKey, Op} | Acc]
+            end;
 
-        ToOp({_, map} = Key, Map, Acc) ->
-            ToOp(to_riak_op(Map, maps:get(Key, Spec)), Key, Acc);
+        ToOp({{_, map} = RKey, KeySpec}, Map, Acc) ->
+            case to_riak_op(Map, KeySpec) of
+                undefined -> Acc;
+                {_, Op, _} -> [{update, RKey, Op} | Acc]
+            end;
 
-        ToOp(undefined, Key, Acc) ->
-            Acc;
-
-        ToOp({_, Op, _}, Key, Acc) ->
-            [{update, Key, Op} | Acc]
+        ToOp(Key, Value, Acc) ->
+            ToOp(maps:get(Key, Spec), Value, Acc)
 
     end,
     Updates = maps:fold(FoldFun, [], Updated),
@@ -176,7 +180,7 @@ get(Key, #babel_map{values = Values}) ->
     NewT :: t().
 
 update(Key, UpdateFun, T) ->
-    NewValue = UpdateFun(maps:find(Key, T#babel_map.values)),
+    NewValue = UpdateFun(maps:get(Key, T#babel_map.values)),
     T#babel_map{
         values = maps:put(Key, NewValue, T#babel_map.values),
         updates = ordsets:add_element(Key, T#babel_map.updates)
@@ -311,3 +315,16 @@ to_binary(Value, Fun) when is_function(Fun, 2) ->
 
 to_binary(Value, Type) ->
     babel_utils:to_binary(Value, Type).
+
+
+reverse_spec(Spec) ->
+    maps:fold(
+        fun
+            (RKey, {Key, Spec}, Acc) ->
+                maps:put(Key, {RKey, Spec}, Acc);
+            ({Key, _} = RKey, Spec, Acc) ->
+                maps:put(Key, {RKey, Spec}, Acc)
+        end,
+        maps:new(),
+        Spec
+    ).
