@@ -1,5 +1,7 @@
 -module(babel_map).
 
+-define(BADKEY, '$error_badkey').
+
 -record(babel_map, {
     values = #{}        ::  #{key() => value()},
     updates = []        ::  ordsets:ordset(key()),
@@ -15,6 +17,7 @@
 -type babel_key()       ::  {key(), type()}.
 -type riak_key()        ::  {key(), datatype()}.
 -type key()             ::  binary().
+-type key_path()        ::  key() | [binary()].
 -type value()           ::  any().
 -type datatype()        ::  counter | flag | register | set | map.
 -type type()            ::  atom
@@ -32,7 +35,7 @@
 
 -export_type([t/0]).
 -export_type([spec/0]).
-
+-export_type([key_path/0]).
 
 %% API
 -export([new/1]).
@@ -45,6 +48,7 @@
 -export([get/2]).
 -export([update/3]).
 -export([remove/2]).
+
 
 
 
@@ -70,8 +74,10 @@ new(Data) when is_map(Data) ->
 %% -----------------------------------------------------------------------------
 -spec new(Data :: map(), Ctxt :: riakc_datatype:context()) -> t().
 
-new(Data, Ctxt) when is_map(Data) ->
-    #babel_map{values = Data, context = Ctxt}.
+new(Data, Spec) when is_map(Data) ->
+    MissingKeys = lists:subtract(maps:keys(Spec), maps:keys(Data)),
+    Values = init_values(maps:with(MissingKeys, Spec), Data),
+    #babel_map{values = Values}.
 
 
 %% -----------------------------------------------------------------------------
@@ -163,14 +169,61 @@ is_type(Term) ->
 
 
 %% -----------------------------------------------------------------------------
+%% @doc Returns value `Value' associated with `Key' if `T' contains `Key'.
+%% `Key' can be a binary or a path represented as a list of binaries, or as a
+%% tuple of binaries.
+%%
+%% The call fails with a {badarg, `T'} exception if `T' is not a a Babel Map.
+%% It also fails with a {badkey, `Key'} exception if no value is associated
+%% with `Key'.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec get(Key :: key(), T :: t()) -> any().
+
+get(Key, T) ->
+    get(Key, T, ?BADKEY).
+
+
+%% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec get(Key :: key(), T :: t()) -> term().
+-spec get(Key :: key_path(), Map :: t(), Default :: any()) -> any().
 
-get(Key, #babel_map{values = Values}) ->
-    maps:get(Key, Values).
+get([], _, _) ->
+    error(badkey);
 
+get(_, #babel_map{values = V}, Default) when map_size(V) == 0 ->
+    maybe_badkey(Default);
+
+get([H|[]], #babel_map{} = Map, Default) ->
+    get(H, Map, Default);
+
+get([H|T], #babel_map{values = V}, Default) ->
+    case maps:find(H, V) of
+        {ok, Child} ->
+            get(T, Child, Default);
+        error ->
+            maybe_badkey(Default)
+    end;
+
+get(K, #babel_map{values = V}, Default) ->
+    case maps:find(K, V) of
+        {ok, #babel_map{values = Value}} ->
+            Value;
+        {ok, Value} ->
+            case babel_set:is_type(Value) of
+                true ->
+                    babel_set:value(Value);
+                false ->
+                    Value
+            end;
+        error ->
+            maybe_badkey(Default)
+    end;
+
+get(_, _, _) ->
+    error(badarg).
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -257,28 +310,32 @@ from_riak_map(RMap, Context, Type) ->
 %% @private
 init_values(Spec, Acc) ->
     Fun = fun
-        ({_, counter}, {_Key, _TypeOrFun}, _) ->
-            %% from_integer(<<>>, TypeOrFun)
+        ({_, counter}, {_Key, _KeySpec}, _) ->
+            %% from_integer(<<>>, KeySpec)
             error(not_implemented);
-        ({Key, counter}, TypeOrFun, _) ->
+        ({Key, counter}, KeySpec, _) ->
             error(not_implemented);
-        ({_, flag}, {_Key, _TypeOrFun}, _) ->
-            %% from_boolean(<<>>, TypeOrFun)
+        ({_, flag}, {_Key, _KeySpec}, _) ->
+            %% from_boolean(<<>>, KeySpec)
             error(not_implemented);
-        ({Key, flag}, TypeOrFun, _) ->
+        ({Key, flag}, KeySpec, _) ->
             error(not_implemented);
-        ({_, register}, {Key, TypeOrFun}, Acc) ->
-            maps:put(Key, from_binary(<<>>, TypeOrFun), Acc);
-        ({Key, register}, TypeOrFun, Acc) ->
-            maps:put(Key, from_binary(<<>>, TypeOrFun), Acc);
-        ({_, set}, {Key, TypeOrFun}, Acc) ->
+        ({_, register}, {Key, KeySpec}, Acc) ->
+            maps:put(Key, from_binary(<<>>, KeySpec), Acc);
+        ({Key, register}, KeySpec, Acc) ->
+            maps:put(Key, from_binary(<<>>, KeySpec), Acc);
+        ({_, set}, {Key, KeySpec}, Acc) ->
             maps:put(Key, babel_set:new([]), Acc);
-        ({Key, set}, TypeOrFun, Acc) ->
+        ({Key, set}, KeySpec, Acc) ->
             maps:put(Key, babel_set:new([]), Acc);
-        ({_, map}, {Key, TypeOrFun}, Acc) ->
-            maps:put(Key, babel_map:new([]), Acc);
-        ({Key, map}, TypeOrFun, Acc) ->
-            maps:put(Key, babel_map:new([]), Acc)
+        ({_, map}, {Key, KeySpec}, Acc) when is_map(KeySpec) ->
+            maps:put(Key, babel_map:new(#{}, KeySpec), Acc);
+        ({_, map}, {Key, KeySpec}, Acc) ->
+            maps:put(Key, babel_map:new(#{}), Acc);
+        ({Key, map}, KeySpec, Acc) when is_map(KeySpec) ->
+            maps:put(Key, babel_map:new(#{}, KeySpec), Acc);
+        ({Key, map}, KeySpec, Acc) ->
+            maps:put(Key, babel_map:new(#{}), Acc)
     end,
     maps:fold(Fun, Acc, Spec).
 
@@ -328,3 +385,11 @@ reverse_spec(Spec) ->
         maps:new(),
         Spec
     ).
+
+
+%% @private
+maybe_badkey(?BADKEY) ->
+    error(badkey);
+
+maybe_badkey(Term) ->
+    Term.
