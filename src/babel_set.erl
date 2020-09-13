@@ -29,7 +29,6 @@
 -export([new/1]).
 -export([new/2]).
 -export([from_riak_set/2]).
--export([to_riak_set/2]).
 -export([to_riak_op/2]).
 -export([type/0]).
 -export([is_type/1]).
@@ -78,31 +77,16 @@ new(Data, Ctxt) when is_list(Data) ->
 %% @throws {badindex, term()}
 %% @end
 %% -----------------------------------------------------------------------------
--spec from_riak_set(RiakSet :: riakc_set:riakc_set(), Spec :: spec()) ->
+-spec from_riak_set(
+    RiakSet :: riakc_set:riakc_set() | ordsets:ordset(), Spec :: spec()) ->
     maybe_no_return(t()).
 
 from_riak_set(RiakSet, Spec) ->
-    Values = [from_binary(E, Spec) || E <- riakc_set:value(RiakSet)],
+    new(riakc_set:value(RiakSet), Spec);
+
+from_riak_set(Ordset, Spec) when is_list(Ordset) ->
+    Values = [from_binary(E, Spec) || E <- Ordset],
     new(Values, Spec).
-
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @throws {badindex, term()}
-%% @end
-%% -----------------------------------------------------------------------------
--spec to_riak_set(T :: t(), Spec :: spec()) ->
-    maybe_no_return(riakc_map:crdt_set()).
-
-to_riak_set(#babel_set{values = V, adds = A, removes = R, context = C}, Spec) ->
-    {
-        riakc_set:type(),
-        [to_binary(E, Spec) || E <- V],
-        [to_binary(E, Spec) || E <- A],
-        [to_binary(E, Spec) || E <- R],
-        C
-    }.
 
 
 %% -----------------------------------------------------------------------------
@@ -112,8 +96,15 @@ to_riak_set(#babel_set{values = V, adds = A, removes = R, context = C}, Spec) ->
 -spec to_riak_op(T :: t(), Spec :: spec()) ->
     riakc_datatype:update(riakc_set:set_op()).
 
-to_riak_op(T, Spec) ->
-    riakc_set:to_op(to_riak_set(T, Spec)).
+to_riak_op(#babel_set{values = V, adds = A, removes = R, context = C}, Spec) ->
+    RSet = {
+        riakc_set:type(),
+        [to_binary(E, Spec) || E <- V],
+        [to_binary(E, Spec) || E <- A],
+        [to_binary(E, Spec) || E <- R],
+        C
+    },
+    riakc_set:to_op(RSet).
 
 
 
