@@ -96,16 +96,24 @@ from_riak_set(Ordset, Spec) when is_list(Ordset) ->
 -spec to_riak_op(T :: t(), Spec :: spec()) ->
     riakc_datatype:update(riakc_set:set_op()).
 
-to_riak_op(#babel_set{values = V, adds = A, removes = R, context = C}, Spec) ->
-    RSet = {
-        riakc_set:type(),
-        [to_binary(E, Spec) || E <- V],
-        [to_binary(E, Spec) || E <- A],
-        [to_binary(E, Spec) || E <- R],
-        C
-    },
-    riakc_set:to_op(RSet).
+to_riak_op(#babel_set{adds = [], removes = []}, _) ->
+    undefined;
 
+to_riak_op(#babel_set{adds = A, removes = [], context = C}, Spec) ->
+    {riakc_set:type(), {add_all, [to_binary(E, Spec) || E <- A]}, C};
+
+to_riak_op(#babel_set{adds = [], removes = R, context = C}, Spec) ->
+    {riakc_set:type(), {remove_all, [to_binary(E, Spec) || E <- R]}, C};
+
+to_riak_op(#babel_set{adds = A, removes = R, context = C}, Spec) ->
+    {
+        riakc_set:type(),
+        {update, [
+            {remove_all, [to_binary(E, Spec) || E <- R]},
+            {add_all, [to_binary(E, Spec) || E <- A]}
+        ]},
+        C
+    }.
 
 
 %% -----------------------------------------------------------------------------
