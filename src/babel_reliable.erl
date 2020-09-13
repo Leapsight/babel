@@ -55,6 +55,7 @@
 -export([add_workflow_items/1]).
 -export([add_workflow_precedence/2]).
 -export([is_in_workflow/0]).
+-export([is_nested_workflow/0]).
 -export([ensure_in_workflow/0]).
 -export([workflow/1]).
 -export([workflow/2]).
@@ -104,6 +105,14 @@ workflow_nesting_level() ->
 
 
 %% -----------------------------------------------------------------------------
+%% @doc Returns true if the current workflow is nested within a parent workflow.
+%% @end
+%% -----------------------------------------------------------------------------
+is_nested_workflow() ->
+    get(?WORKFLOW_LEVEL) > 1.
+
+
+%% -----------------------------------------------------------------------------
 %% @doc Returns the workflow identifier or undefined not currently within a
 %% workflow.
 %% @end
@@ -147,18 +156,22 @@ workflow(Fun) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Executes the functional object `Fun' as a Reliable workflow, i.e.
-%% ordering and scheduling all resulting Riak KV object writes.
+%% ordering and scheduling all resulting Riak KV object writes and deletes.
 %%
-%% The code that executes inside the workflow should call one or more functions
-%% in this module to schedule writes in Riak KV. For example, if you wanted to
-%% schedule an index creation you should use {@link create_index/2} instead of
-%% {@link babel_index_collection}, {@link babel_index} and {@link
-%% babel_index_partition} functions directly.
 %%
-%% Any other operation, including reading and writing from/to Riak KV directly
-%% or by using the API provided by other Babel modules will work as normal and
-%% will not affect the workflow, only the special functions in this module will
-%% add work items to the workflow.
+%% Any function that executes inside the workflow that wants to be able to
+%% schedule work to Riak KV, needs to use the infrasturcture provided in this
+%% module to add workflow items to the workflow stack
+%% (see {@link add_workflow_items/1}) and to add the precedence amongst them
+%% (see {@link add_workflow_precedence/2}).
+%%
+%% This library offers such functions for index manipulation in the
+%% {@link babel} module.
+%%
+%% Any other operation, including reading and writing from/to Riak KV by
+%% directly using the RIak Client library or will work as normal and
+%% will not affect the workflow, only by calling the special functions in this
+%% module they can add work items to the workflow.
 %%
 %% If something goes wrong inside the workflow as a result of a user
 %% error or general exception, the entire workflow is terminated and the
@@ -166,7 +179,7 @@ workflow(Fun) ->
 %% returns the tuple `{error, Reason}'.
 %%
 %% If everything goes well, the function returns the triple
-%% `{ok, WorkId, ResultOfFun}' where `WorkId' is the identifier for the
+%% `{ok, {WorkId, ResultOfFun}}' where `WorkId' is the identifier for the
 %% workflow schedule by Reliable and `ResultOfFun' is the value of the last
 %% expression in `Fun'.
 %%
@@ -174,41 +187,26 @@ workflow(Fun) ->
 %% to use the WorkId to check with Reliable the status of the workflow
 %% execution.
 %%
-%% Example: Creating various babel objects and scheduling
-%%
-%% ```
-%% > babel:workflow(
-%%     fun() ->
-%%          CollectionX0 = babel_index_collection:new(<<"foo">>, <<"bar">>),
-%%          CollectionY0 = babel_index_collection:fetch(
-%% Conn, <<"foo">>, <<"users">>),
-%%          IndexA = babel_index:new(ConfigA),
-%%          IndexB = babel_index:new(ConfigB),
-%%          CollectionX1 = babel:create_index(IndexA, CollectionX0),
-%%          CollectionY1 = babel:create_index(IndexB, CollectionY0),
-%%          ok
-%%     end).
-%% > {ok, {<<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}}
-%% '''
-%%
-%% The resulting workflow execution will schedule the writes in the order that
-%% results from the dependency graph constructed using the results of this
-%% module functions. This ensures partitions are created first and then
-%% collections.
+%% The resulting workflow execution will schedule the writes and deletes in the
+%% order defined by the dependency graph constructed using
+%% {@link add_workflow_precedence/2}.
 %%
 %% The `Opts' argument offers the following options:
 %%
 %% * `on_terminate` – a functional object `fun((Reason :: any()) -> ok)'. This
 %% function will be evaluated before the call terminates. In case of succesful
-%% termination the value `normal' is passed as argument. Otherwise, in case of
-%% error, the error reason will be passed as argument. This allows you to
-%% perform a cleanup after the workflow execution e.g. returning a riak
-%% connection object to a pool.
+%% termination the value `normal' will be  passed as argument. Otherwise, in
+%% case of error, the error reason will be passed as argument. This allows you
+%% to perform a cleanup after the workflow execution e.g. returning a riak
+%% connection object to a pool. Notice that this function might be called
+%% multiple times in the case of nested workflows. If you need to conditionally
+%% perform a cleanup operation you might use the function `is_nested_worflow/0'
+%% to take a decision.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun ::fun(() -> any()), Opts :: opts()) ->
-    {ok, WorkId :: binary(), ResultOfFun :: any()}
+    {ok, {WorkId :: binary(), ResultOfFun :: any()}}
     | {error, Reason :: any()}
     | no_return().
 
@@ -228,7 +226,7 @@ workflow(Fun, Opts) ->
                 stacktrace => Stacktrace
             }),
             ok = on_terminate(Reason, Opts),
-            maybe_throw(Reason);
+            throw_or_return(Reason);
         _:Reason:Stacktrace ->
             %% A user exception, we need to raise it again up the
             %% nested transation stack and out
@@ -367,15 +365,6 @@ increment_nesting_level() ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-is_nested_workflow() ->
-    get(?WORKFLOW_LEVEL) > 1.
-
-
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
 decrement_nested_count() ->
     N = get(?WORKFLOW_LEVEL),
     N = put(?WORKFLOW_LEVEL, N - 1),
@@ -500,9 +489,9 @@ cleanup() ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec maybe_throw(Reason :: any()) -> no_return() | {error, any()}.
+-spec throw_or_return(Reason :: any()) -> no_return() | {error, any()}.
 
-maybe_throw(Reason) ->
+throw_or_return(Reason) ->
     case is_nested_workflow() of
         true ->
             throw(Reason);

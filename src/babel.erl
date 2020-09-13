@@ -50,7 +50,7 @@
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun :: fun(() -> any())) ->
-    {ok, WorkId :: binary(), ResultOfFun :: any()}
+    {ok, {WorkId :: binary(), ResultOfFun :: any()}}
     | {error, Reason :: any()}
     | no_return().
 
@@ -104,24 +104,27 @@ workflow(Fun) ->
 %% > {ok, {<<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}}
 %% '''
 %%
-%% The resulting workflow execution will schedule the writes in the order that
-%% results from the dependency graph constructed using the results of this
-%% module functions. This ensures partitions are created first and then
+%% The resulting workflow execution will schedule the writes and deletes in the
+%% order defined by the dependency graph constructed using the results
+%% of this module functions. This ensures partitions are created first and then
 %% collections.
 %%
 %% The `Opts' argument offers the following options:
 %%
 %% * `on_terminate` – a functional object `fun((Reason :: any()) -> ok)'. This
 %% function will be evaluated before the call terminates. In case of succesful
-%% termination the value `normal' is passed as argument. Otherwise, in case of
-%% error, the error reason will be passed as argument. This allows you to
-%% perform a cleanup after the workflow execution e.g. returning a riak
-%% connection object to a pool.
+%% termination the value `normal' will be  passed as argument. Otherwise, in
+%% case of error, the error reason will be passed as argument. This allows you
+%% to perform a cleanup after the workflow execution e.g. returning a riak
+%% connection object to a pool. Notice that this function might be called
+%% multiple times in the case of nested workflows. If you need to conditionally
+%% perform a cleanup operation you might use the function `is_nested_worflow/0'
+%% to take a decision.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun ::fun(() -> any()), Opts :: babel_workflow:opts()) ->
-    {ok, WorkId :: binary(), ResultOfFun :: any()}
+    {ok, {WorkId :: binary(), ResultOfFun :: any()}}
     | {error, Reason :: any()}
     | no_return().
 
