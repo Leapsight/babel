@@ -31,6 +31,7 @@
         kernel,
         stdlib,
         cache,
+        gproc,
         riakc,
         reliable
     ]},

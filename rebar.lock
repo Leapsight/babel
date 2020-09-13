@@ -1,9 +1,10 @@
-{"1.1.0",
+{"1.2.0",
 [{<<"cache">>,{pkg,<<"cache">>,<<"2.3.2">>},0},
  {<<"eunit_formatters">>,
   {git,"git://github.com/seancribbs/eunit_formatters",
        {ref,"6818dc14fe5d90d2561b1fa8ab8aea523a900128"}},
   1},
+ {<<"gproc">>,{pkg,<<"gproc">>,<<"0.8.0">>},0},
  {<<"hamcrest">>,
   {git,"https://github.com/basho/hamcrest-erlang.git",
        {ref,"ad3dbab419762fc2d5821abb88b989da006b85c6"}},
@@ -26,13 +27,22 @@
   {git,"https://github.com/basho/riak-erlang-client.git",
        {ref,"e4efcb7efd6ded616c5f1d7bae5ca36f9dee6bc2"}},
   0},
+ {<<"sbroker">>,{pkg,<<"sbroker">>,<<"1.0.0">>},0},
  {<<"utils">>,
   {git,"https://gitlab.com/leapsight/utils.git",
-       {ref,"316ec5acfdbd5af5fb2a2a42f1210b1bfe645505"}},
+       {ref,"af8a8f9fa77ef77a8b74e6cbe806cf5ab7c58605"}},
   0}]}.
 [
 {pkg_hash,[
  {<<"cache">>, <<"1E585CD9777C1F71E9038D61059D07438643C0022FDC6E2F7C2899B4A45C593E">>},
+ {<<"gproc">>, <<"CEA02C578589C61E5341FCE149EA36CCEF236CC2ECAC8691FBA408E7EA77EC2F">>},
  {<<"jsx">>, <<"77760560D6AC2B8C51FD4C980E9E19B784016AA70BE354CE746472C33BEB0B1C">>},
- {<<"opentelemetry_api">>, <<"B474CD21AF5855A6DFFF0912F26C7C40FBF1FD05B045D8E29FD53EDEB4C3EC99">>}]}
+ {<<"opentelemetry_api">>, <<"B474CD21AF5855A6DFFF0912F26C7C40FBF1FD05B045D8E29FD53EDEB4C3EC99">>},
+ {<<"sbroker">>, <<"28FF1B5E58887C5098539F236307B36FE1D3EDAA2ACFF9D6A3D17C2DCAFEBBD0">>}]},
+{pkg_hash_ext,[
+ {<<"cache">>, <<"E5559E1D71C5EF511C04E395F4B37AA71FA4A50ECC7365CA41DDEF0746FE907E">>},
+ {<<"gproc">>, <<"580ADAFA56463B75263EF5A5DF4C86AF321F68694E7786CB057FD805D1E2A7DE">>},
+ {<<"jsx">>, <<"9A83E3704807298016968DB506F9FAD0F027DE37546EB838B3AE1064C3A0AD62">>},
+ {<<"opentelemetry_api">>, <<"39B0EF74906E5D001AD244307337D168C594C2A05B67BEADDAD48CEAEBFEE352">>},
+ {<<"sbroker">>, <<"BA952BFA35B374E1E5D84BC5F5EFE8360C6F99DC93B3118F714A9A2DFF6C9E19">>}]}
 ].
