@@ -22,7 +22,6 @@
 %% -----------------------------------------------------------------------------
 -module(babel).
 -include("babel.hrl").
--include_lib("riakc/include/riakc.hrl").
 -include_lib("kernel/include/logger.hrl").
 
 

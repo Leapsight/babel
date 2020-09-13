@@ -22,7 +22,6 @@
 %% -----------------------------------------------------------------------------
 -module(babel_index_partition).
 -include("babel.hrl").
--include_lib("riakc/include/riakc.hrl").
 
 -define(BUCKET_SUFFIX, "index_data").
 

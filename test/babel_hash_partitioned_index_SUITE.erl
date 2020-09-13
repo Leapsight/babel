@@ -27,7 +27,6 @@ end_per_suite(Config) ->
     {save_config, Config}.
 
 
-
 index_1_test(_) ->
     Conf = #{
         name => <<"users_by_email">>,

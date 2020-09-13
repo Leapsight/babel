@@ -22,7 +22,6 @@
 %% -----------------------------------------------------------------------------
 
 -module(babel_crdt).
--include_lib("riakc/include/riakc.hrl").
 -include("babel.hrl").
 
 -define(BADKEY, '$error_badkey').
@@ -224,3 +223,5 @@ map_entry(set, Field, Values) when is_list(Values) ->
 
 map_entry(map, Field, Values) when is_list(Values) ->
     {{Field, map}, riakc_map:new(Values, undefined)}.
+
+

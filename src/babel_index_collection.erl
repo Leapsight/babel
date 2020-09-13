@@ -61,7 +61,6 @@
 %% -----------------------------------------------------------------------------
 -module(babel_index_collection).
 -include("babel.hrl").
--include_lib("riakc/include/riakc.hrl").
 
 -define(BUCKET_SUFFIX, "index_collection").
 

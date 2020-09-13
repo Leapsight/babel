@@ -33,7 +33,6 @@
 %% -----------------------------------------------------------------------------
 -module(babel_index).
 -include("babel.hrl").
--include_lib("riakc/include/riakc.hrl").
 -include_lib("kernel/include/logger.hrl").
 
 -define(BUCKET_SUFFIX, "index_data").
