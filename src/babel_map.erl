@@ -51,6 +51,7 @@
 -export([get/3]).
 -export([set/3]).
 -export([add_element/3]).
+-export([del_element/3]).
 -export([update/3]).
 -export([remove/2]).
 
@@ -241,24 +242,30 @@ get(_, _, _) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Associates `Key' with value `Value' and inserts the association into
+%% map `NewMap'. If key `Key' already exists in map `Map', the old associated
+%% value is replaced by value `Value'. The function returns a new map `NewMap'
+%% containing the new association and the old associations in `Map'.
+%%
+%% The call fails with a {badmap, Map} exception if `Map' is not a babel map.
 %% @end
 %% -----------------------------------------------------------------------------
--spec set(Key :: key(), Value :: value(), Map :: t()) -> t() | no_return().
+-spec set(Key :: key(), Value :: value(), Map :: t()) ->
+    NewMap :: t() | no_return().
 
 set([H|[]], Value, Map) ->
     set(H, Value, Map);
 
-set([H|T], Value, #babel_map{} = Map0) ->
-    InnerMap = case get(H, Map0, undefined) of
+set([H|T], Value, #babel_map{} = Map) ->
+    InnerMap = case get(H, Map, undefined) of
         #babel_map{} = HMap -> HMap;
         undefined -> new();
         Term -> error({badmap, Term})
     end,
-    Map = Map0#babel_map{
-        updates = ordsets:add_element(H, Map0#babel_map.updates)
+    NewMap = Map#babel_map{
+        updates = ordsets:add_element(H, Map#babel_map.updates)
     },
-    set(H, set(T, Value, InnerMap), Map);
+    set(H, set(T, Value, InnerMap), NewMap);
 
 set([], _, _)  ->
     error(badkey);
@@ -274,13 +281,23 @@ set(_, _, _) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Adds a value to a babel set associated with key or path `Key'.
-%% An exception is generated if the initial value associated with `Key' is not
-%% a babel set.
+%% @doc Adds a value to a babel set associated with key or path `Key' in map
+%% `Map' and inserts the association into map `NewMap'.
+%%
+%% If the key `Key' does not exist in map `Map', this function creates a new
+%% babel set containining `Value'.
+%%
+%% The call might fail with the following exception reasons:
+%%
+%% * `{badset, Set}' - if the initial value associated with `Key' in map `Map0'
+%% is not a babel set;
+%% * `{badmap, Map}' exception if `Map' is not a babel map.
+%% * `{badkey, Key}' - exception if no value is associated with `Key' or `Key'
+%% is not of type binary.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec add_element(Key :: key(), Value :: value(), Map :: t()) ->
-    t() | no_return().
+    NewMap :: t() | no_return().
 
 add_element([H|[]], Value, Map) ->
     add_element(H, Value, Map);
@@ -297,7 +314,7 @@ add_element([H|T], Value, #babel_map{} = Map0) ->
     set(H, add_element(T, Value, InnerMap), Map);
 
 add_element([], _, _)  ->
-    error(badkey);
+    error({badkey, []});
 
 add_element(Key, Value, #babel_map{context = C} = Map) when is_binary(Key) ->
     NewValue = case get(Key, Map, undefined) of
@@ -308,7 +325,7 @@ add_element(Key, Value, #babel_map{context = C} = Map) when is_binary(Key) ->
                 true ->
                     babel_set:add_element(Value, Term);
                 false ->
-                    error({badarg, Key, Term})
+                    error({badset, Term})
             end
     end,
     Map#babel_map{
@@ -316,8 +333,68 @@ add_element(Key, Value, #babel_map{context = C} = Map) when is_binary(Key) ->
         updates = ordsets:add_element(Key, Map#babel_map.updates)
     };
 
-add_element(_, _, _) ->
-    error(badarg).
+add_element(Key, _, #babel_map{}) when not is_binary(Key) ->
+    error({badkey, Key});
+
+add_element(_, _, Map) ->
+    error({badmap, Map}).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Adds a value to a babel set associated with key or path `Key' in map
+%% `Map' and inserts the association into map `NewMap'.
+%%
+%% If the key `Key' does not exist in map `Map', this function creates a new
+%% babel set containining `Value'.
+%%
+%% The call might fail with the following exception reasons:
+%%
+%% * `{badset, Set}' - if the initial value associated with `Key' in map `Map0'
+%% is not a babel set;
+%% * `{badmap, Map}' exception if `Map' is not a babel map.
+%% * `{badkey, Key}' - exception if no value is associated with `Key' or `Key'
+%% is not of type binary.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec del_element(Key :: key(), Value :: value(), Map :: t()) ->
+    NewMap :: t() | no_return().
+
+del_element([H|[]], Value, Map) ->
+    del_element(H, Value, Map);
+
+del_element([H|T], Value, #babel_map{} = Map0) ->
+    InnerMap = case get(H, Map0, undefined) of
+        #babel_map{} = HMap -> HMap;
+        undefined -> new();
+        Term -> error({badmap, Term})
+    end,
+    Map = Map0#babel_map{
+        updates = ordsets:add_element(H, Map0#babel_map.updates)
+    },
+    set(H, del_element(T, Value, InnerMap), Map);
+
+del_element(Key, Value, #babel_map{context = C} = Map) when is_binary(Key) ->
+    NewValue = case get(Key, Map, undefined) of
+        undefined ->
+            babel_set:new([Value], C);
+        Term ->
+            case babel_set:is_type(Term) of
+                true ->
+                    babel_set:del_element(Value, Term);
+                false ->
+                    error({badset, Term})
+            end
+    end,
+    Map#babel_map{
+        values = maps:put(Key, NewValue, Map#babel_map.values),
+        updates = ordsets:add_element(Key, Map#babel_map.updates)
+    };
+
+del_element(Key, _, _) when not is_binary(Key) ->
+    error({badkey, Key});
+
+del_element(_, _, Map) when not is_record(Map, babel_map) ->
+    error({badmap, Map}).
 
 
 %% -----------------------------------------------------------------------------
@@ -349,7 +426,6 @@ remove(Key, T) ->
         values = maps:remove(Key, T#babel_map.values),
         removes = ordsets:add_element(Key, T#babel_map.removes)
     }.
-
 
 
 
