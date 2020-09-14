@@ -52,8 +52,10 @@
 -export([set/3]).
 -export([add_element/3]).
 -export([del_element/3]).
+-export([value/1]).
 -export([update/3]).
 -export([remove/2]).
+-export([get_type/1]).
 
 
 
@@ -181,6 +183,30 @@ type() -> map.
 
 is_type(Term) ->
     is_record(Term, babel_map).
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec value(Map :: t()) -> map().
+
+value(#babel_map{values = V} = Map) ->
+    Fun = fun
+        (_, #babel_map{} = Term) ->
+            value(Term);
+        (_, Term) ->
+            case get_type(Term) of
+                term ->
+                    Term;
+                set ->
+                    babel_set:value(Term);
+                counter ->
+                    error(not_implemented);
+                flag ->
+                    error(not_implemented)
+            end
+    end,
+    maps:map(Fun, V).
 
 
 %% -----------------------------------------------------------------------------
@@ -573,9 +599,9 @@ maybe_badkey(Term) ->
 
 get_type(Term) ->
     Fun = fun(Mod, Acc) ->
-        try
-            Type = Mod:type(Term),
-            throw({type, Type})
+        try Mod:is_type(Term) of
+            true -> throw({type, Mod:type()});
+            false -> Acc
         catch
             error:_ -> Acc
         end
@@ -585,7 +611,7 @@ get_type(Term) ->
         lists:foldl(
             Fun,
             term,
-            [babel_counter, babel_flag, babel_set, babel_map]
+            [babel_set, babel_map, babel_counter, babel_flag]
         )
     catch
         throw:{type, Mod} -> Mod
