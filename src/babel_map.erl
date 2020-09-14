@@ -51,6 +51,7 @@
 -export([get/3]).
 -export([set/3]).
 -export([add_element/3]).
+-export([add_elements/3]).
 -export([del_element/3]).
 -export([value/1]).
 -export([update/3]).
@@ -133,7 +134,7 @@ to_riak_op(T, Spec0) when is_map(Spec0) ->
 
         ToOp({{_, register} = RKey, KeySpec}, Value, Acc) ->
             Bin = to_binary(Value, KeySpec),
-            [{riakc_register:type(), {assign, Bin}, undefined} | Acc];
+            [{update, RKey, {assign, Bin}} | Acc];
 
         ToOp({{_, set} = RKey, KeySpec}, Set, Acc) ->
             case babel_set:to_riak_op(Set, KeySpec) of
@@ -167,7 +168,7 @@ to_riak_op(T, Spec0) when is_map(Spec0) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc %% @doc Returns the symbolic name of this container.
+%% @doc Returns the symbolic name of this container.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec type() -> atom().
@@ -176,7 +177,7 @@ type() -> map.
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns true if term `Term' is a babel map.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec is_type(Term :: any()) -> boolean().
@@ -184,13 +185,16 @@ type() -> map.
 is_type(Term) ->
     is_record(Term, babel_map).
 
+
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns an external representation of the babel map `Map' as an erlang
+%% map. This is build recursively by calling the value/1 function on any
+%% embedded babel datatype.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec value(Map :: t()) -> map().
 
-value(#babel_map{values = V} = Map) ->
+value(#babel_map{values = V}) ->
     Fun = fun
         (_, #babel_map{} = Term) ->
             value(Term);
@@ -307,8 +311,19 @@ set(_, _, _) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Adds a value to a babel set associated with key or path `Key' in map
-%% `Map' and inserts the association into map `NewMap'.
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec add_element(Key :: key(), Value :: value(), Map :: t()) ->
+    NewMap :: t() | no_return().
+
+add_element(Key, Value, Map) ->
+    add_elements(Key, [Value], Map).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Adds a a list of values to a babel set associated with key or path
+%% `Key' in map `Map' and inserts the association into map `NewMap'.
 %%
 %% If the key `Key' does not exist in map `Map', this function creates a new
 %% babel set containining `Value'.
@@ -322,13 +337,13 @@ set(_, _, _) ->
 %% is not of type binary.
 %% @end
 %% -----------------------------------------------------------------------------
--spec add_element(Key :: key(), Value :: value(), Map :: t()) ->
+-spec add_elements(Key :: key(), Value :: [value()], Map :: t()) ->
     NewMap :: t() | no_return().
 
-add_element([H|[]], Value, Map) ->
-    add_element(H, Value, Map);
+add_elements([H|[]], Values, Map) ->
+    add_elements(H, Values, Map);
 
-add_element([H|T], Value, #babel_map{} = Map0) ->
+add_elements([H|T], Values, #babel_map{} = Map0) ->
     InnerMap = case get(H, Map0, undefined) of
         #babel_map{} = HMap -> HMap;
         undefined -> new();
@@ -337,19 +352,19 @@ add_element([H|T], Value, #babel_map{} = Map0) ->
     Map = Map0#babel_map{
         updates = ordsets:add_element(H, Map0#babel_map.updates)
     },
-    set(H, add_element(T, Value, InnerMap), Map);
+    set(H, add_elements(T, Values, InnerMap), Map);
 
-add_element([], _, _)  ->
+add_elements([], _, _)  ->
     error({badkey, []});
 
-add_element(Key, Value, #babel_map{context = C} = Map) when is_binary(Key) ->
+add_elements(Key, Values, #babel_map{context = C} = Map) when is_binary(Key) andalso is_list(Values) ->
     NewValue = case get(Key, Map, undefined) of
         undefined ->
-            babel_set:new([Value], C);
+            babel_set:new([Values], C);
         Term ->
             case babel_set:is_type(Term) of
                 true ->
-                    babel_set:add_element(Value, Term);
+                    babel_set:add_element(Values, Term);
                 false ->
                     error({badset, Term})
             end
@@ -359,10 +374,10 @@ add_element(Key, Value, #babel_map{context = C} = Map) when is_binary(Key) ->
         updates = ordsets:add_element(Key, Map#babel_map.updates)
     };
 
-add_element(Key, _, #babel_map{}) when not is_binary(Key) ->
+add_elements(Key, _, #babel_map{}) when not is_binary(Key) ->
     error({badkey, Key});
 
-add_element(_, _, Map) ->
+add_elements(_, _, Map) ->
     error({badmap, Map}).
 
 
@@ -503,49 +518,49 @@ from_riak_map(RMap, Context, Type) ->
 
 
 %% @private
-init_values(Spec, Acc) ->
+init_values(Spec, Acc0) ->
     Fun = fun
         ({_, counter}, {_Key, _KeySpec}, _) ->
             %% from_integer(<<>>, KeySpec)
             error(not_implemented);
-        ({Key, counter}, KeySpec, _) ->
+        ({_, counter}, _KeySpec, _) ->
             error(not_implemented);
         ({_, flag}, {_Key, _KeySpec}, _) ->
             %% from_boolean(<<>>, KeySpec)
             error(not_implemented);
-        ({Key, flag}, KeySpec, _) ->
+        ({_, flag}, _, _) ->
             error(not_implemented);
         ({_, register}, {Key, KeySpec}, Acc) ->
             maps:put(Key, from_binary(<<>>, KeySpec), Acc);
         ({Key, register}, KeySpec, Acc) ->
             maps:put(Key, from_binary(<<>>, KeySpec), Acc);
-        ({_, set}, {Key, KeySpec}, Acc) ->
+        ({_, set}, {Key, _}, Acc) ->
             maps:put(Key, babel_set:new(), Acc);
-        ({Key, set}, KeySpec, Acc) ->
+        ({Key, set}, _, Acc) ->
             maps:put(Key, babel_set:new(), Acc);
         ({_, map}, {Key, KeySpec}, Acc) when is_map(KeySpec) ->
             maps:put(Key, babel_map:new(#{}, KeySpec), Acc);
         ({_, map}, {Key, KeySpec}, Acc) ->
-            maps:put(Key, babel_map:new(), Acc);
+            maps:put(Key, babel_map:new(#{}, KeySpec), Acc);
         ({Key, map}, KeySpec, Acc) when is_map(KeySpec) ->
             maps:put(Key, babel_map:new(#{}, KeySpec), Acc);
         ({Key, map}, KeySpec, Acc) ->
-            maps:put(Key, babel_map:new(), Acc)
+            maps:put(Key, babel_map:new(#{}, KeySpec), Acc)
     end,
-    maps:fold(Fun, Acc, Spec).
+    maps:fold(Fun, Acc0, Spec).
 
 
 %% @private
-from_datatype({_, register} = Key, Value, Fun) when is_function(Fun, 2) ->
+from_datatype({_, register}, Value, Fun) when is_function(Fun, 2) ->
     Fun(decode, Value);
 
-from_datatype({_, register} = Key, Value, Type) ->
+from_datatype({_, register}, Value, Type) ->
     babel_utils:from_binary(Value, Type);
 
-from_datatype({_, set} = Key, Value, #{binary := _} = Spec) ->
+from_datatype({_, set}, Value, #{binary := _} = Spec) ->
     babel_set:from_riak_set(Value, Spec);
 
-from_datatype({_, map} = Key, Value, Spec) ->
+from_datatype({_, map}, Value, Spec) ->
     from_riak_map(Value, undefined, Spec);
 
 from_datatype(_Key, _RiakMap, _Type) ->
@@ -569,13 +584,15 @@ to_binary(Value, Type) ->
     babel_utils:to_binary(Value, Type).
 
 
+%% @private
 reverse_spec(Spec) ->
     maps:fold(
         fun
-            (RKey, {Key, Spec}, Acc) ->
-                maps:put(Key, {RKey, Spec}, Acc);
-            ({Key, _} = RKey, Spec, Acc) ->
-                maps:put(Key, {RKey, Spec}, Acc)
+            (RKey, {Key, KeySpec}, Acc) ->
+                maps:put(Key, {RKey, KeySpec}, Acc);
+
+            ({Key, _} = RKey, KeySpec, Acc) ->
+                maps:put(Key, {RKey, KeySpec}, Acc)
         end,
         maps:new(),
         Spec
