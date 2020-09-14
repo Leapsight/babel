@@ -44,7 +44,6 @@
 -export([new/1]).
 -export([new/2]).
 -export([from_riak_map/2]).
-%% -export([to_riak_map/2]).
 -export([to_riak_op/2]).
 -export([type/0]).
 -export([is_type/1]).
