@@ -117,53 +117,16 @@ from_riak_map({map, Values, _, _, Context}, Spec) ->
     riakc_datatype:update(riakc_map:map_op()).
 
 to_riak_op(T, Spec0) when is_map(Spec0) ->
-    %% #{Key => {{_, _} = RKey, Spec}}
+    %% Spec :: #{Key => {{_, _} = RKey, Spec}}
     Spec = reverse_spec(Spec0),
+    Updates = prepare_update_ops(T, Spec),
+    Removes = prepare_remove_ops(T, Spec),
 
-    Updated = maps:with(T#babel_map.updates, T#babel_map.values),
-
-    FoldFun = fun
-        ToOp({{_, counter}, _KeySpec}, _V, _Acc) ->
-            error(not_implemented);
-
-        ToOp({{_, flag}, _KeySpec}, _V, _Acc) ->
-            error(not_implemented);
-
-        ToOp({_, register}, undefined, Acc) ->
-            Acc;
-
-        ToOp({{_, register} = RKey, KeySpec}, Value, Acc) ->
-            Bin = to_binary(Value, KeySpec),
-            [{update, RKey, {assign, Bin}} | Acc];
-
-        ToOp({{_, set} = RKey, KeySpec}, Set, Acc) ->
-            case babel_set:to_riak_op(Set, KeySpec) of
-                undefined -> Acc;
-                {_, Op, _} -> [{update, RKey, Op} | Acc]
-            end;
-
-        ToOp({{_, map} = RKey, KeySpec}, Map, Acc) ->
-            case to_riak_op(Map, KeySpec) of
-                undefined -> Acc;
-                {_, Op, _} -> [{update, RKey, Op} | Acc]
-            end;
-
-        ToOp(Key, Value, Acc) ->
-            ToOp(maps:get(Key, Spec), Value, Acc)
-
-    end,
-    Updates = maps:fold(FoldFun, [], Updated),
-
-    Result = lists:append(
-        [{remove, Key} || Key <- T#babel_map.removes],
-        Updates
-    ),
-
-    case Result of
+    case lists:append(Removes, Updates) of
         [] ->
             undefined;
-        _ ->
-            {riakc_map:type(), {update, Result}, T#babel_map.context}
+        Ops ->
+            {riakc_map:type(), {update, Ops}, T#babel_map.context}
     end.
 
 
@@ -215,10 +178,9 @@ value(#babel_map{values = V}) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns value `Value' associated with `Key' if `T' contains `Key'.
-%% `Key' can be a binary or a path represented as a list of binaries, or as a
-%% tuple of binaries.
+%% `Key' can be a binary or a path represented as a list of binaries.
 %%
-%% The call fails with a {badarg, `T'} exception if `T' is not a a Babel Map.
+%% The call fails with a {badarg, `T'} exception if `T' is not a Babel Map.
 %% It also fails with a {badkey, `Key'} exception if no value is associated
 %% with `Key'.
 %% @end
@@ -235,16 +197,13 @@ get(Key, T) ->
 %% -----------------------------------------------------------------------------
 -spec get(Key :: key_path(), Map :: t(), Default :: any()) -> value().
 
-get([], _, _) ->
-    error(badkey);
-
 get(_, #babel_map{values = V}, Default) when map_size(V) == 0 ->
     maybe_badkey(Default);
 
-get([H|[]], #babel_map{} = Map, Default) ->
+get([H|[]], #babel_map{} = Map, Default) when is_binary(H) ->
     get(H, Map, Default);
 
-get([H|T], #babel_map{values = V}, Default) ->
+get([H|T], #babel_map{values = V}, Default) when is_binary(H) ->
     case maps:find(H, V) of
         {ok, Child} ->
             get(T, Child, Default);
@@ -252,9 +211,9 @@ get([H|T], #babel_map{values = V}, Default) ->
             maybe_badkey(Default)
     end;
 
-get(K, #babel_map{values = V}, Default) ->
+get(K, #babel_map{values = V}, Default) when is_binary(K) ->
     case maps:find(K, V) of
-        {ok, Value} ->
+        {ok, #babel_map{} = Value} ->
             Value;
         {ok, Value} ->
             case babel_set:is_type(Value) of
@@ -267,8 +226,11 @@ get(K, #babel_map{values = V}, Default) ->
             maybe_badkey(Default)
     end;
 
-get(_, _, _) ->
-    error(badarg).
+get(Key, #babel_map{}, _) when not is_binary(Key) ->
+    error({badkey, Key});
+
+get(_, Map, _) ->
+    error({badmap, Map}).
 
 
 %% -----------------------------------------------------------------------------
@@ -292,13 +254,11 @@ set([H|T], Value, #babel_map{} = Map) ->
         undefined -> new();
         Term -> error({badmap, Term})
     end,
+
     NewMap = Map#babel_map{
         updates = ordsets:add_element(H, Map#babel_map.updates)
     },
     set(H, set(T, Value, InnerMap), NewMap);
-
-set([], _, _)  ->
-    error(badkey);
 
 set(Key, Value, #babel_map{} = Map) when is_binary(Key) ->
     Map#babel_map{
@@ -306,8 +266,11 @@ set(Key, Value, #babel_map{} = Map) when is_binary(Key) ->
         updates = ordsets:add_element(Key, Map#babel_map.updates)
     };
 
-set(_, _, _) ->
-    error(badarg).
+set(Key, _, #babel_map{}) when not is_binary(Key) ->
+    error({badkey, Key});
+
+set(_, _, Map) ->
+    error({badmap, Map}).
 
 
 %% -----------------------------------------------------------------------------
@@ -353,9 +316,6 @@ add_elements([H|T], Values, #babel_map{} = Map0) ->
         updates = ordsets:add_element(H, Map0#babel_map.updates)
     },
     set(H, add_elements(T, Values, InnerMap), Map);
-
-add_elements([], _, _)  ->
-    error({badkey, []});
 
 add_elements(Key, Values, #babel_map{context = C} = Map) when is_binary(Key) andalso is_list(Values) ->
     NewValue = case get(Key, Map, undefined) of
@@ -463,10 +423,8 @@ remove(_, #babel_map{context = undefined}) ->
     throw(context_required);
 
 remove(Key, T) ->
-    T#babel_map{
-        values = maps:remove(Key, T#babel_map.values),
-        removes = ordsets:add_element(Key, T#babel_map.removes)
-    }.
+    do_remove(Key, T).
+
 
 
 
@@ -600,11 +558,42 @@ reverse_spec(Spec) ->
 
 
 %% @private
+do_remove([H|[]], Map) ->
+    do_remove(H, Map);
+
+do_remove([H|T], #babel_map{values = V} = Map) ->
+    case maps:get(H, V, undefined) of
+        #babel_map{} = HMap ->
+            Map#babel_map{
+                values = maps:put(H, do_remove(T, HMap), V),
+                updates = ordsets:add_element(H, Map#babel_map.updates)
+            };
+        undefined ->
+            error({badkey, H});
+        Term ->
+            error({badmap, Term})
+    end;
+
+do_remove(Key, #babel_map{} = Map) when is_binary(Key) ->
+    Map#babel_map{
+        values = maps:remove(Key, Map#babel_map.values),
+        removes = ordsets:add_element(Key, Map#babel_map.removes)
+    };
+
+do_remove(Key, #babel_map{}) when not is_binary(Key) ->
+    error({badkey, Key});
+
+do_remove(_, Map) ->
+    error({badmap, Map}).
+
+
+%% @private
 maybe_badkey(?BADKEY) ->
     error(badkey);
 
 maybe_badkey(Term) ->
     Term.
+
 
 
 %% -----------------------------------------------------------------------------
@@ -633,3 +622,50 @@ get_type(Term) ->
     catch
         throw:{type, Mod} -> Mod
     end.
+
+
+prepare_update_ops(T, Spec) ->
+    %% Spec :: #{Key => {{_, _} = RKey, Spec}}
+    FoldFun = fun
+        ToOp({{_, counter}, _KeySpec}, _V, _Acc) ->
+            error(not_implemented);
+
+        ToOp({{_, flag}, _KeySpec}, _V, _Acc) ->
+            error(not_implemented);
+
+        ToOp({_, register}, undefined, Acc) ->
+            Acc;
+
+        ToOp({{_, register} = RKey, KeySpec}, Value, Acc) ->
+            Bin = to_binary(Value, KeySpec),
+            [{update, RKey, {assign, Bin}} | Acc];
+
+        ToOp({{_, set} = RKey, KeySpec}, Set, Acc) ->
+            case babel_set:to_riak_op(Set, KeySpec) of
+                undefined -> Acc;
+                {_, Op, _} -> [{update, RKey, Op} | Acc]
+            end;
+
+        ToOp({{_, map} = RKey, KeySpec}, Map, Acc) ->
+            case to_riak_op(Map, KeySpec) of
+                undefined -> Acc;
+                {_, Op, _} -> [{update, RKey, Op} | Acc]
+            end;
+
+        ToOp(Key, Value, Acc) ->
+            ToOp(maps:get(Key, Spec), Value, Acc)
+
+    end,
+
+    Updates = maps:with(T#babel_map.updates, T#babel_map.values),
+    maps:fold(FoldFun, [], Updates).
+
+
+prepare_remove_ops(T, Spec) ->
+    %% Spec :: #{Key => {{_, _} = RKey, Spec}}
+    [
+        begin
+            {RKey, _} = maps:get(Key, Spec),
+            {remove, RKey}
+        end || Key <- T#babel_map.removes
+    ].
