@@ -191,11 +191,11 @@ when (is_atom(H) orelse is_binary(H)) andalso is_list(KVTerm)->
 
 set([H|T], Value, KVTerm)
 when (is_atom(H) orelse is_binary(H)) andalso is_map(KVTerm)->
-    InnerTerm = set(T, Value, get(H, KVTerm, [])),
+    InnerTerm = set(T, Value, get(H, KVTerm, #{})),
     maps:put(H, InnerTerm, KVTerm);
 
 set([H|T], Value, KVTerm) ->
-    InnerTerm = set(T, Value, get(H, KVTerm, [])),
+    InnerTerm = set(T, Value, get(H, KVTerm, riakc_map:new())),
     riakc_map:update(H, fun(_) -> InnerTerm end, KVTerm);
 
 set([], _, _)  ->

@@ -1,4 +1,5 @@
 -module(babel_map).
+-include("babel.hrl").
 
 -define(BADKEY, '$error_badkey').
 
@@ -12,12 +13,11 @@
 -opaque t()             ::  #babel_map{}.
 -type spec()            ::  #{riak_key() => babel_key() | type()}
                             | {register, type()}
-                            | fun((encode, key(), any()) -> value())
-                            | fun((decode, key(), value()) -> any()).
--type babel_key()       ::  {key(), type()}.
--type riak_key()        ::  {key(), datatype()}.
--type key()             ::  binary().
--type key_path()        ::  key() | [binary()].
+                            | fun((encode, binary(), any()) -> value())
+                            | fun((decode, binary(), value()) -> any()).
+-type babel_key()       ::  {binary(), type()}.
+-type riak_key()        ::  {binary(), datatype()}.
+-type key_path()        ::  binary() | [binary()].
 -type value()           ::  any().
 -type datatype()        ::  counter | flag | register | set | map.
 -type type()            ::  atom
@@ -31,13 +31,16 @@
                             | babel_set:spec()
                             | fun((encode, any()) -> value())
                             | fun((decode, value()) -> any()).
-
+-type update_fun()      ::  fun((babel_datatype() | term()) ->
+                                babel_datatype() | term()
+                            ).
 
 -export_type([t/0]).
 -export_type([spec/0]).
 -export_type([key_path/0]).
 
 %% API
+-export([new/0]).
 -export([new/1]).
 -export([new/2]).
 -export([from_riak_map/2]).
@@ -46,6 +49,9 @@
 -export([type/0]).
 -export([is_type/1]).
 -export([get/2]).
+-export([get/3]).
+-export([set/3]).
+-export([add_element/3]).
 -export([update/3]).
 -export([remove/2]).
 
@@ -56,6 +62,15 @@
 %% API
 %% =============================================================================
 
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec new() -> t().
+
+new()->
+    #babel_map{}.
 
 
 %% -----------------------------------------------------------------------------
@@ -188,7 +203,7 @@ get(Key, T) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec get(Key :: key_path(), Map :: t(), Default :: any()) -> any().
+-spec get(Key :: key_path(), Map :: t(), Default :: any()) -> value().
 
 get([], _, _) ->
     error(badkey);
@@ -209,7 +224,7 @@ get([H|T], #babel_map{values = V}, Default) ->
 
 get(K, #babel_map{values = V}, Default) ->
     case maps:find(K, V) of
-        {ok, #babel_map{values = Value}} ->
+        {ok, Value} ->
             Value;
         {ok, Value} ->
             case babel_set:is_type(Value) of
@@ -225,18 +240,97 @@ get(K, #babel_map{values = V}, Default) ->
 get(_, _, _) ->
     error(badarg).
 
+
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec update(Key :: key(), UpdateFun :: term(), T :: t()) ->
-    NewT :: t().
+-spec set(Key :: key(), Value :: value(), Map :: t()) -> t() | no_return().
 
-update(Key, UpdateFun, T) ->
-    NewValue = UpdateFun(maps:get(Key, T#babel_map.values)),
-    T#babel_map{
-        values = maps:put(Key, NewValue, T#babel_map.values),
-        updates = ordsets:add_element(Key, T#babel_map.updates)
+set([H|[]], Value, Map) ->
+    set(H, Value, Map);
+
+set([H|T], Value, #babel_map{} = Map0) ->
+    InnerMap = case get(H, Map0, undefined) of
+        #babel_map{} = HMap -> HMap;
+        undefined -> new();
+        Term -> error({badmap, Term})
+    end,
+    Map = Map0#babel_map{
+        updates = ordsets:add_element(H, Map0#babel_map.updates)
+    },
+    set(H, set(T, Value, InnerMap), Map);
+
+set([], _, _)  ->
+    error(badkey);
+
+set(Key, Value, #babel_map{} = Map) when is_binary(Key) ->
+    Map#babel_map{
+        values = maps:put(Key, Value, Map#babel_map.values),
+        updates = ordsets:add_element(Key, Map#babel_map.updates)
+    };
+
+set(_, _, _) ->
+    error(badarg).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Adds a value to a babel set associated with key or path `Key'.
+%% An exception is generated if the initial value associated with `Key' is not
+%% a babel set.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec add_element(Key :: key(), Value :: value(), Map :: t()) ->
+    t() | no_return().
+
+add_element([H|[]], Value, Map) ->
+    add_element(H, Value, Map);
+
+add_element([H|T], Value, #babel_map{} = Map0) ->
+    InnerMap = case get(H, Map0, undefined) of
+        #babel_map{} = HMap -> HMap;
+        undefined -> new();
+        Term -> error({badmap, Term})
+    end,
+    Map = Map0#babel_map{
+        updates = ordsets:add_element(H, Map0#babel_map.updates)
+    },
+    set(H, add_element(T, Value, InnerMap), Map);
+
+add_element([], _, _)  ->
+    error(badkey);
+
+add_element(Key, Value, #babel_map{context = C} = Map) when is_binary(Key) ->
+    NewValue = case get(Key, Map, undefined) of
+        undefined ->
+            babel_set:new([Value], C);
+        Term ->
+            case babel_set:is_type(Term) of
+                true ->
+                    babel_set:add_element(Value, Term);
+                false ->
+                    error({badarg, Key, Term})
+            end
+    end,
+    Map#babel_map{
+        values = maps:put(Key, NewValue, Map#babel_map.values),
+        updates = ordsets:add_element(Key, Map#babel_map.updates)
+    };
+
+add_element(_, _, _) ->
+    error(badarg).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec update(Key :: key(), Fun :: update_fun(), T :: t()) -> NewT :: t().
+
+update(Key, Fun, #babel_map{values = V, updates = U} = Map) ->
+    Map#babel_map{
+        values = maps:put(Key, Fun(maps:get(Key, V)), V),
+        updates = ordsets:add_element(Key, U)
     }.
 
 
@@ -393,3 +487,31 @@ maybe_badkey(?BADKEY) ->
 
 maybe_badkey(Term) ->
     Term.
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec get_type(Term :: any()) -> counter | flag | set | map | term.
+
+get_type(Term) ->
+    Fun = fun(Mod, Acc) ->
+        try
+            Type = Mod:type(Term),
+            throw({type, Type})
+        catch
+            error:_ -> Acc
+        end
+    end,
+
+    try
+        lists:foldl(
+            Fun,
+            term,
+            [babel_counter, babel_flag, babel_set, babel_map]
+        )
+    catch
+        throw:{type, Mod} -> Mod
+    end.

@@ -32,6 +32,9 @@
 from_binary(Value, binary) ->
     Value;
 
+from_binary(<<>>, _) ->
+    undefined;
+
 from_binary(Value, atom) ->
     binary_to_atom(Value, utf8);
 

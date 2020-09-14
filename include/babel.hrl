@@ -124,3 +124,5 @@
 -type typed_bucket()        ::  bucket_and_type().
 
 
+-type babel_datatype()      ::  babel_map:t()
+                                | babel_set:t().
