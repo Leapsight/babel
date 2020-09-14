@@ -418,17 +418,17 @@ init_values(Spec, Acc) ->
         ({Key, register}, KeySpec, Acc) ->
             maps:put(Key, from_binary(<<>>, KeySpec), Acc);
         ({_, set}, {Key, KeySpec}, Acc) ->
-            maps:put(Key, babel_set:new([]), Acc);
+            maps:put(Key, babel_set:new(), Acc);
         ({Key, set}, KeySpec, Acc) ->
-            maps:put(Key, babel_set:new([]), Acc);
+            maps:put(Key, babel_set:new(), Acc);
         ({_, map}, {Key, KeySpec}, Acc) when is_map(KeySpec) ->
             maps:put(Key, babel_map:new(#{}, KeySpec), Acc);
         ({_, map}, {Key, KeySpec}, Acc) ->
-            maps:put(Key, babel_map:new(#{}), Acc);
+            maps:put(Key, babel_map:new(), Acc);
         ({Key, map}, KeySpec, Acc) when is_map(KeySpec) ->
             maps:put(Key, babel_map:new(#{}, KeySpec), Acc);
         ({Key, map}, KeySpec, Acc) ->
-            maps:put(Key, babel_map:new(#{}), Acc)
+            maps:put(Key, babel_map:new(), Acc)
     end,
     maps:fold(Fun, Acc, Spec).
 
