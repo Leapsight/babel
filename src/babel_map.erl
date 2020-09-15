@@ -90,7 +90,7 @@ new()->
 new(Data) when is_map(Data) ->
     #babel_map{
         values = Data,
-        updates = ordsets:add_elements(maps:keys(Data))
+        updates = ordsets:from_list(maps:keys(Data))
     }.
 
 
@@ -105,7 +105,7 @@ new(Data, Spec) when is_map(Data) ->
     Values = init_values(maps:with(MissingKeys, Spec), Data),
     #babel_map{
         values = Values,
-        updates = ordsets:add_elements(maps:keys(Values))
+        updates = ordsets:from_list(maps:keys(Values))
     }.
 
 
