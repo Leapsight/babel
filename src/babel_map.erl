@@ -61,10 +61,10 @@
 
 
 
-
 %% =============================================================================
 %% API
 %% =============================================================================
+
 
 
 %% -----------------------------------------------------------------------------
@@ -259,7 +259,7 @@ get(_, Map, _) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec set(Key :: key(), Value :: value(), Map :: t()) ->
-    NewMap :: t() | no_return().
+    NewMap :: maybe_no_return(t()).
 
 set([H|[]], Value, Map) ->
     set(H, Value, Map);
@@ -298,7 +298,7 @@ set(_, _, Map) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec add_element(Key :: key(), Value :: value(), Map :: t()) ->
-    NewMap :: t() | no_return().
+    NewMap :: maybe_no_return(t()).
 
 add_element(Key, Value, Map) ->
     add_elements(Key, [Value], Map).
@@ -321,7 +321,7 @@ add_element(Key, Value, Map) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec add_elements(Key :: key(), Value :: [value()], Map :: t()) ->
-    NewMap :: t() | no_return().
+    NewMap :: maybe_no_return(t()).
 
 add_elements([H|[]], Values, Map) ->
     add_elements(H, Values, Map);
@@ -384,7 +384,7 @@ add_elements(_, _, Map) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec del_element(Key :: key(), Value :: value(), Map :: t()) ->
-    NewMap :: t() | no_return().
+    NewMap :: maybe_no_return(t()).
 
 del_element([H|[]], Value, Map) ->
     del_element(H, Value, Map);
@@ -406,7 +406,6 @@ del_element([H|T], Value, #babel_map{values = V} = Map) ->
                 updates = ordsets:add_element(H, Map#babel_map.updates)
             }
     end;
-
 
 del_element(Key, Value, #babel_map{values = V} = Map) when is_binary(Key) ->
     NewValue = case maps:find(Key, V) of
@@ -445,20 +444,18 @@ update(Key, Fun, #babel_map{values = V, updates = U} = Map) ->
     }.
 
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Removes a key and its value from the map. Removing a key that
 %% does not exist simply records a remove operation.
 %% @throws context_required
 %% -----------------------------------------------------------------------------
--spec remove(Key :: key(), T :: t()) -> NewT :: t() | no_return().
+-spec remove(Key :: key(), T :: t()) -> NewT :: maybe_no_return(t()).
 
 remove(_, #babel_map{context = undefined}) ->
-    throw(context_required);
+    error(context_required);
 
 remove(Key, T) ->
     do_remove(Key, T).
-
 
 
 
@@ -559,7 +556,6 @@ from_datatype(_Key, _RiakMap, _Type) ->
     error(not_implemented).
 
 
-
 %% @private
 from_binary(Value, Fun) when is_function(Fun, 2) ->
     Fun(decode, Value);
@@ -629,7 +625,6 @@ maybe_badkey(Term) ->
     Term.
 
 
-
 %% -----------------------------------------------------------------------------
 %% @private
 %% @doc
@@ -655,6 +650,7 @@ get_type(Term) ->
     end.
 
 
+%% @private
 prepare_update_ops(T, Spec) ->
     %% Spec :: #{Key => {{_, _} = RKey, Spec}}
     FoldFun = fun
@@ -692,6 +688,7 @@ prepare_update_ops(T, Spec) ->
     maps:fold(FoldFun, [], Updates).
 
 
+%% @private
 prepare_remove_ops(T, Spec) ->
     %% Spec :: #{Key => {{_, _} = RKey, Spec}}
     [
