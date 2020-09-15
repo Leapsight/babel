@@ -30,7 +30,7 @@
 start(_StartType, _StartArgs) ->
     case babel_sup:start_link() of
         {ok, _} = OK ->
-            _ = opentelemetry:register_application_tracer(babel),
+            %% _ = opentelemetry:register_application_tracer(babel),
             OK;
         Error ->
             Error
