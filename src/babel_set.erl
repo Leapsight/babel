@@ -26,22 +26,22 @@
 
 
 %% API
--export([new/0]).
--export([new/1]).
--export([new/2]).
--export([from_riak_set/2]).
--export([to_riak_op/2]).
--export([type/0]).
--export([is_type/1]).
--export([value/1]).
--export([size/1]).
--export([original_value/1]).
 -export([add_element/2]).
 -export([add_elements/2]).
+-export([context/1]).
 -export([del_element/2]).
+-export([fold/3]).
+-export([from_riak_set/2]).
 -export([is_element/2]).
 -export([is_original_element/2]).
--export([fold/3]).
+-export([is_type/1]).
+-export([new/0]).
+-export([new/1]).
+-export([original_value/1]).
+-export([size/1]).
+-export([to_riak_op/2]).
+-export([type/0]).
+-export([value/1]).
 
 
 
@@ -59,7 +59,7 @@
 -spec new() -> t().
 
 new() ->
-    new([], undefined).
+    new([]).
 
 
 %% -----------------------------------------------------------------------------
@@ -69,19 +69,8 @@ new() ->
 -spec new(Data :: ordsets:ordset(any())) -> t().
 
 new(Data) when is_list(Data) ->
-    new(Data, undefined).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec new(Data :: ordsets:ordset(any()), Ctxt :: riakc_datatype:context()) ->
-    t().
-
-new(Data, Ctxt) when is_list(Data) ->
     Adds = ordsets:from_list(Data),
-    #babel_set{adds = Adds, size = ordsets:size(Adds), context = Ctxt}.
+    #babel_set{adds = Adds, size = ordsets:size(Adds)}.
 
 
 %% -----------------------------------------------------------------------------
@@ -93,12 +82,12 @@ new(Data, Ctxt) when is_list(Data) ->
     RiakSet :: riakc_set:riakc_set() | ordsets:ordset(), Spec :: spec()) ->
     maybe_no_return(t()).
 
-from_riak_set(RiakSet, Spec) ->
-    new(riakc_set:value(RiakSet), Spec);
-
 from_riak_set(Ordset, Spec) when is_list(Ordset) ->
     Values = [from_binary(E, Spec) || E <- Ordset],
-    new(Values, Spec).
+    new(Values);
+
+from_riak_set(RiakSet, Spec) ->
+    from_riak_set(riakc_set:value(RiakSet), Spec).
 
 
 %% -----------------------------------------------------------------------------
@@ -137,6 +126,7 @@ to_riak_op(#babel_set{adds = A, removes = R, context = C}, Spec) ->
 type() -> set.
 
 
+
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -145,6 +135,15 @@ type() -> set.
 
 is_type(Term) ->
     is_record(Term, babel_set).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the Riak KV context
+%% @end
+%% -----------------------------------------------------------------------------
+-spec context(T :: t()) -> riakc_datatype:context().
+
+context(#babel_set{context = Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
