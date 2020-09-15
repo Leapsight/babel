@@ -83,7 +83,10 @@ new()->
 -spec new(Data :: map()) -> t().
 
 new(Data) when is_map(Data) ->
-    #babel_map{values = Data}.
+    #babel_map{
+        values = Data,
+        updates = ordsets:add_elements(maps:keys(Data))
+    }.
 
 
 %% -----------------------------------------------------------------------------
@@ -95,7 +98,10 @@ new(Data) when is_map(Data) ->
 new(Data, Spec) when is_map(Data) ->
     MissingKeys = lists:subtract(maps:keys(Spec), maps:keys(Data)),
     Values = init_values(maps:with(MissingKeys, Spec), Data),
-    #babel_map{values = Values}.
+    #babel_map{
+        values = Values,
+        updates = ordsets:add_elements(maps:keys(Values))
+    }.
 
 
 %% -----------------------------------------------------------------------------
@@ -248,17 +254,21 @@ get(_, Map, _) ->
 set([H|[]], Value, Map) ->
     set(H, Value, Map);
 
-set([H|T], Value, #babel_map{} = Map) ->
-    InnerMap = case get(H, Map, undefined) of
-        #babel_map{} = HMap -> HMap;
-        undefined -> new();
-        Term -> error({badmap, Term})
-    end,
-
-    NewMap = Map#babel_map{
-        updates = ordsets:add_element(H, Map#babel_map.updates)
-    },
-    set(H, set(T, Value, InnerMap), NewMap);
+set([H|T], Value, #babel_map{values = V} = Map) ->
+    case maps:get(H, V, undefined) of
+        #babel_map{} = HMap ->
+            Map#babel_map{
+                values = maps:put(H, set(T, Value, HMap), V),
+                updates = ordsets:add_element(H, Map#babel_map.updates)
+            };
+        undefined ->
+            Map#babel_map{
+                values = maps:put(H, set(T, Value, new()), V),
+                updates = ordsets:add_element(H, Map#babel_map.updates)
+            };
+        Term ->
+            error({badmap, Term})
+    end;
 
 set(Key, Value, #babel_map{} = Map) when is_binary(Key) ->
     Map#babel_map{
