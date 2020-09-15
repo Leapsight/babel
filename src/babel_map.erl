@@ -1,3 +1,7 @@
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
 -module(babel_map).
 -include("babel.hrl").
 
@@ -208,7 +212,14 @@ get(Key, T) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns value `Value' associated with `Key' if `T' contains `Key', or
+%% the default value `Default' in case `T' does not contain `Key'.
+%%
+%% `Key' can be a binary or a path represented as a list of binaries.
+%%
+%% The call fails with a `{badarg, T}` exception if `T' is not a Babel Map.
+%% It also fails with a `{badkey, Key}` exception if no value is associated
+%% with `Key'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec get(Key :: key_path(), Map :: t(), Default :: any()) -> value().
@@ -255,7 +266,8 @@ get(_, Map, _) ->
 %% value is replaced by value `Value'. The function returns a new map `NewMap'
 %% containing the new association and the old associations in `Map'.
 %%
-%% The call fails with a {badmap, Map} exception if `Map' is not a babel map.
+%% The call fails with a `{badmap, Term}' exception if `Map' or any value of a
+%% partial key path is not a babel map.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec set(Key :: key(), Value :: value(), Map :: t()) ->
@@ -294,18 +306,7 @@ set(_, _, Map) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec add_element(Key :: key(), Value :: value(), Map :: t()) ->
-    NewMap :: maybe_no_return(t()).
-
-add_element(Key, Value, Map) ->
-    add_elements(Key, [Value], Map).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc Adds a a list of values to a babel set associated with key or path
+%% @doc Adds element `Value' to a babel set associated with key or path
 %% `Key' in map `Map' and inserts the association into map `NewMap'.
 %%
 %% If the key `Key' does not exist in map `Map', this function creates a new
@@ -320,7 +321,30 @@ add_element(Key, Value, Map) ->
 %% is not of type binary.
 %% @end
 %% -----------------------------------------------------------------------------
--spec add_elements(Key :: key(), Value :: [value()], Map :: t()) ->
+-spec add_element(Key :: key(), Value :: value(), Map :: t()) ->
+    NewMap :: maybe_no_return(t()).
+
+add_element(Key, Value, Map) ->
+    add_elements(Key, [Value], Map).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Adds a list of values `Values' to a babel set associated with key or
+%% path `Key' in map `Map' and inserts the association into map `NewMap'.
+%%
+%% If the key `Key' does not exist in map `Map', this function creates a new
+%% babel set containining `Values'.
+%%
+%% The call might fail with the following exception reasons:
+%%
+%% * `{badset, Set}' - if the initial value associated with `Key' in map `Map0'
+%% is not a babel set;
+%% * `{badmap, Map}' exception if `Map' is not a babel map.
+%% * `{badkey, Key}' - exception if no value is associated with `Key' or `Key'
+%% is not of type binary.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec add_elements(Key :: key(), Values :: [value()], Map :: t()) ->
     NewMap :: maybe_no_return(t()).
 
 add_elements([H|[]], Values, Map) ->
@@ -368,11 +392,12 @@ add_elements(_, _, Map) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Adds a value to a babel set associated with key or path `Key' in map
-%% `Map' and inserts the association into map `NewMap'.
+%% @doc Returns a new map `NewMap' were the value `Value' has been removed from
+%% a babel set associated with key or path `Key' in
+%% map `Map'.
 %%
 %% If the key `Key' does not exist in map `Map', this function creates a new
-%% babel set containining `Value'.
+%% babel set recording the removal of `Value'.
 %%
 %% The call might fail with the following exception reasons:
 %%
