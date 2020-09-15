@@ -638,21 +638,18 @@ maybe_badkey(Term) ->
 -spec get_type(Term :: any()) -> counter | flag | set | map | term.
 
 get_type(Term) ->
+    Mods = [babel_set, babel_map, babel_counter, babel_flag],
     Fun = fun(Mod, Acc) ->
-        try Mod:is_type(Term) of
-            true -> throw({type, Mod:type()});
-            false -> Acc
-        catch
-            error:_ -> Acc
+        case (catch Mod:is_type(Term)) of
+            Type when is_atom(Type) ->
+                throw({type, Mod:type()});
+            _ ->
+                Acc
         end
     end,
 
     try
-        lists:foldl(
-            Fun,
-            term,
-            [babel_set, babel_map, babel_counter, babel_flag]
-        )
+        lists:foldl(Fun, term, Mods)
     catch
         throw:{type, Mod} -> Mod
     end.
