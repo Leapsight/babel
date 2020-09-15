@@ -538,10 +538,10 @@ expand_spec(Keys, {Datatype, Type}) ->
     Fun = fun
         ({_, RType} = RKey, Acc) when RType == Datatype ->
             maps:put(RKey, Type, Acc);
-        (Key, Acc) ->
-            maps:put({Key, map}, Type, Acc);
-        (RKey, _) ->
-            error({badarg, RKey})
+        ({_, _} = RKey, _) ->
+            error({badarg, RKey});
+        (Key, Acc) when is_binary(Key) ->
+            maps:put({Key, map}, Type, Acc)
     end,
     lists:foldl(Fun, maps:new(), Keys).
 
