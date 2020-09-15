@@ -40,23 +40,24 @@
 -export_type([key_path/0]).
 
 %% API
+-export([add_element/3]).
+-export([add_elements/3]).
+-export([context/1]).
+-export([del_element/3]).
+-export([from_riak_map/2]).
+-export([get/2]).
+-export([get/3]).
+-export([get_type/1]).
+-export([is_type/1]).
 -export([new/0]).
 -export([new/1]).
 -export([new/2]).
--export([from_riak_map/2]).
+-export([remove/2]).
+-export([set/3]).
 -export([to_riak_op/2]).
 -export([type/0]).
--export([is_type/1]).
--export([get/2]).
--export([get/3]).
--export([set/3]).
--export([add_element/3]).
--export([add_elements/3]).
--export([del_element/3]).
--export([value/1]).
 -export([update/3]).
--export([remove/2]).
--export([get_type/1]).
+-export([value/1]).
 
 
 
@@ -153,6 +154,15 @@ type() -> map.
 
 is_type(Term) ->
     is_record(Term, babel_map).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the Riak KV context
+%% @end
+%% -----------------------------------------------------------------------------
+-spec context(T :: t()) -> riakc_datatype:context().
+
+context(#babel_map{context = Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -255,19 +265,19 @@ set([H|[]], Value, Map) ->
     set(H, Value, Map);
 
 set([H|T], Value, #babel_map{values = V} = Map) ->
-    case maps:get(H, V, undefined) of
-        #babel_map{} = HMap ->
+    case maps:find(H, V) of
+        {ok, #babel_map{} = HMap} ->
             Map#babel_map{
                 values = maps:put(H, set(T, Value, HMap), V),
                 updates = ordsets:add_element(H, Map#babel_map.updates)
             };
-        undefined ->
+        {ok, Term} ->
+            error({badmap, Term});
+        error ->
             Map#babel_map{
                 values = maps:put(H, set(T, Value, new()), V),
                 updates = ordsets:add_element(H, Map#babel_map.updates)
-            };
-        Term ->
-            error({badmap, Term})
+            }
     end;
 
 set(Key, Value, #babel_map{} = Map) when is_binary(Key) ->
@@ -316,28 +326,34 @@ add_element(Key, Value, Map) ->
 add_elements([H|[]], Values, Map) ->
     add_elements(H, Values, Map);
 
-add_elements([H|T], Values, #babel_map{} = Map0) ->
-    InnerMap = case get(H, Map0, undefined) of
-        #babel_map{} = HMap -> HMap;
-        undefined -> new();
-        Term -> error({badmap, Term})
-    end,
-    Map = Map0#babel_map{
-        updates = ordsets:add_element(H, Map0#babel_map.updates)
-    },
-    set(H, add_elements(T, Values, InnerMap), Map);
+add_elements([H|T], Values, #babel_map{values = V} = Map) ->
+    case maps:find(H, V) of
+        {ok, #babel_map{} = HMap} ->
+            Map#babel_map{
+                values = maps:put(H, add_elements(T, Values, HMap), V),
+                updates = ordsets:add_element(H, Map#babel_map.updates)
+            };
+        {ok, Term} ->
+            error({badmap, Term});
+        error ->
+            Map#babel_map{
+                values = maps:put(H, add_elements(T, Values, new()), V),
+                updates = ordsets:add_element(H, Map#babel_map.updates)
+            }
+    end;
 
-add_elements(Key, Values, #babel_map{context = C} = Map) when is_binary(Key) andalso is_list(Values) ->
-    NewValue = case get(Key, Map, undefined) of
-        undefined ->
-            babel_set:new([Values], C);
-        Term ->
+add_elements(Key, Values, #babel_map{values = V} = Map)
+when is_binary(Key) andalso is_list(Values) ->
+    NewValue = case maps:find(Key, V) of
+        {ok, Term} ->
             case babel_set:is_type(Term) of
                 true ->
-                    babel_set:add_element(Values, Term);
+                    babel_set:add_elements(Values, Term);
                 false ->
                     error({badset, Term})
-            end
+            end;
+        error ->
+            babel_set:new(Values)
     end,
     Map#babel_map{
         values = maps:put(Key, NewValue, Map#babel_map.values),
@@ -373,28 +389,36 @@ add_elements(_, _, Map) ->
 del_element([H|[]], Value, Map) ->
     del_element(H, Value, Map);
 
-del_element([H|T], Value, #babel_map{} = Map0) ->
-    InnerMap = case get(H, Map0, undefined) of
-        #babel_map{} = HMap -> HMap;
-        undefined -> new();
-        Term -> error({badmap, Term})
-    end,
-    Map = Map0#babel_map{
-        updates = ordsets:add_element(H, Map0#babel_map.updates)
-    },
-    set(H, del_element(T, Value, InnerMap), Map);
+del_element([H|T], Value, #babel_map{values = V} = Map) ->
+    case maps:find(H, V) of
+        {ok, #babel_map{} = HMap} ->
+            Map#babel_map{
+                values = maps:put(H, del_element(T, Value, HMap), V),
+                updates = ordsets:add_element(H, Map#babel_map.updates)
+            };
+        {ok, Term} ->
+            error({badmap, Term});
+        error ->
+            %% We create the map as we need to record the removal even if it
+            %% did not exist
+            Map#babel_map{
+                values = maps:put(H, del_element(T, Value, new()), V),
+                updates = ordsets:add_element(H, Map#babel_map.updates)
+            }
+    end;
 
-del_element(Key, Value, #babel_map{context = C} = Map) when is_binary(Key) ->
-    NewValue = case get(Key, Map, undefined) of
-        undefined ->
-            babel_set:new([Value], C);
-        Term ->
+
+del_element(Key, Value, #babel_map{values = V} = Map) when is_binary(Key) ->
+    NewValue = case maps:find(Key, V) of
+        {ok, Term} ->
             case babel_set:is_type(Term) of
                 true ->
                     babel_set:del_element(Value, Term);
                 false ->
                     error({badset, Term})
-            end
+            end;
+        error ->
+            babel_set:new([Value])
     end,
     Map#babel_map{
         values = maps:put(Key, NewValue, Map#babel_map.values),
