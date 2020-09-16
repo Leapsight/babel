@@ -775,11 +775,11 @@ maybe_badkey(Term) ->
 get_type(#babel_map{}) ->
     map;
 
-get_type(Term) when is_tuple(Term) ->
+get_type(Term) ->
     Mods = [babel_set, babel_map, babel_counter, babel_flag],
     Fun = fun(Mod, Acc) ->
         case (catch Mod:is_type(Term)) of
-            Type when is_atom(Type) ->
+            true ->
                 throw({type, Mod:type()});
             _ ->
                 Acc
@@ -790,10 +790,7 @@ get_type(Term) when is_tuple(Term) ->
         lists:foldl(Fun, term, Mods)
     catch
         throw:{type, Mod} -> Mod
-    end;
-
-get_type(_) ->
-    term.
+    end.
 
 
 %% @private
