@@ -1,5 +1,5 @@
 %% =============================================================================
-%%  babel_consisten_hashing.erl -
+%%  babel_consistent_hashing.erl -
 %%
 %%  Copyright (c) 2020 Leapsight Holdings Limited. All rights reserved.
 %%

@@ -1,5 +1,55 @@
+%% =============================================================================
+%%  babel_map.erl -
+%%
+%%  Copyright (c) 2020 Leapsight Holdings Limited. All rights reserved.
+%%
+%%  Licensed under the Apache License, Version 2.0 (the "License");
+%%  you may not use this file except in compliance with the License.
+%%  You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%%  Unless required by applicable law or agreed to in writing, software
+%%  distributed under the License is distributed on an "AS IS" BASIS,
+%%  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%%  See the License for the specific language governing permissions and
+%%  limitations under the License.
+%% =============================================================================
+
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Provides an alternative to Riak map datatype.
+%% Babel maps (maps) differ from Riak's and Erlang's maps in several ways:
+%%
+%% * Maps are special key-value structures where the key is a binary name and teh value is either an Erlang term or another Babel data structure (each one an alternative of the Riak's counterparts). In case the value is an Erlang term, it is denoted as a Riak register but without the restriction of them being binaries as in Riak. To be able to do this certain map operations require a Specification object, a sort of schema that tells Babel map the type of each value. This enables the map to use Erlang terms and only convert them to the required Riak datatypes when storing the object in the database.
+%% * Maps maintain the same semantics as Riak Maps but with some key differences
+%%     * As with Riak Map, removals, and modifications are captured for later
+%% application by Riak but they are also applied to the local state. That is,
+%% maps resolve the issue of not being able to read your object mutations in
+%% memory that occurs when using Riak maps.
+%%     * Removals are processed before updates in Riak.
+%% Also, removals performed without a context may result in failure.
+%%     * Updating an entry followed by removing that same entry will result in
+%% no operation being recorded. Likewise, removing an entry followed by
+%% updating that entry  will cancel the removal operation.
+%%     * You may store or remove values in a map by using `set/3`, `remove/2', and other functions targetting embedded babel containers e.g. `add_element/3', `add_elements/3', `del_element/3' to modify an embeded {@link babel_set}. This is a complete departure from Riak's cumbersome `update/3' function. As in Riak Maps, setting or adding a value to an embedded container that is not present will create a new container before the set/add operation.
+%%     * Certain function e.g. `set/3' allows you to set a value in a key or a path (list of nested keys).
+%%
+%% # Map Specification
+%%
+%% A map specification is an Erlang map where the keys are Riak keys i.e. a
+%% pair of a binary name and data type and value is another specification or a
+%% `type()'. This can be seen as an encoding specification. For example the
+%% specification `#{ {<<"friends">>, set} => list}', says the map contains a
+%% single key name "friends" containing a set which individual elements we want
+%% to convert to lists i.e. a set of lists. This will result in a map
+%% containing the key `<<"friends">>' and a babel set contining the elements
+%% converted from binaries to lists.
+%%
+%% The special '_' key name provides the capability to convert a Riak Map where
+%% the keys are dynamic i.e. not known in advance, and their values are all of
+%% the same type.  This specs can only have a single entry as follows `#{{'_',
+%% set}, binary}'.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -module(babel_map).
@@ -32,7 +82,7 @@
                             | binary
                             | list
                             | spec()
-                            | babel_set:spec()
+                            | babel_set:type()
                             | fun((encode, any()) -> value())
                             | fun((decode, value()) -> any()).
 -type update_fun()      ::  fun((babel_datatype() | term()) ->
@@ -613,8 +663,7 @@ from_term(Term, register, Type) ->
 
 
 %% @private
--spec from_riak_map(
-    orddict:orddict(), riakc_datatype:context(), spec()) ->
+-spec from_riak_map(orddict:orddict(), riakc_datatype:context(), spec()) ->
     maybe_no_return(t()).
 
 from_riak_map(RMap, Context, Spec) when is_map(Spec) ->
