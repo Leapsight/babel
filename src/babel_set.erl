@@ -10,7 +10,6 @@
 }).
 
 -opaque t()             ::  #babel_set{}.
--type spec()            ::  #{binary => type()}.
 -type type()            ::  atom
                             | existing_atom
                             | boolean
@@ -22,7 +21,7 @@
                             | fun((decode, binary()) -> any()).
 
 -export_type([t/0]).
--export_type([spec/0]).
+-export_type([type/0]).
 
 
 %% API
@@ -79,39 +78,39 @@ new(Data) when is_list(Data) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec from_riak_set(
-    RiakSet :: riakc_set:riakc_set() | ordsets:ordset(), Spec :: spec()) ->
+    RiakSet :: riakc_set:riakc_set() | ordsets:ordset(), Type :: type()) ->
     maybe_no_return(t()).
 
-from_riak_set(Ordset, Spec) when is_list(Ordset) ->
-    Values = [from_binary(E, Spec) || E <- Ordset],
+from_riak_set(Ordset, Type) when is_list(Ordset) ->
+    Values = [from_binary(E, Type) || E <- Ordset],
     new(Values);
 
-from_riak_set(RiakSet, Spec) ->
-    from_riak_set(riakc_set:value(RiakSet), Spec).
+from_riak_set(RiakSet, Type) ->
+    from_riak_set(riakc_set:value(RiakSet), Type).
 
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_riak_op(T :: t(), Spec :: spec()) ->
+-spec to_riak_op(T :: t(), Type :: type()) ->
     riakc_datatype:update(riakc_set:set_op()).
 
 to_riak_op(#babel_set{adds = [], removes = []}, _) ->
     undefined;
 
-to_riak_op(#babel_set{adds = A, removes = [], context = C}, Spec) ->
-    {riakc_set:type(), {add_all, [to_binary(E, Spec) || E <- A]}, C};
+to_riak_op(#babel_set{adds = A, removes = [], context = C}, Type) ->
+    {riakc_set:type(), {add_all, [to_binary(E, Type) || E <- A]}, C};
 
-to_riak_op(#babel_set{adds = [], removes = R, context = C}, Spec) ->
-    {riakc_set:type(), {remove_all, [to_binary(E, Spec) || E <- R]}, C};
+to_riak_op(#babel_set{adds = [], removes = R, context = C}, Type) ->
+    {riakc_set:type(), {remove_all, [to_binary(E, Type) || E <- R]}, C};
 
-to_riak_op(#babel_set{adds = A, removes = R, context = C}, Spec) ->
+to_riak_op(#babel_set{adds = A, removes = R, context = C}, Type) ->
     {
         riakc_set:type(),
         {update, [
-            {remove_all, [to_binary(E, Spec) || E <- R]},
-            {add_all, [to_binary(E, Spec) || E <- A]}
+            {remove_all, [to_binary(E, Type) || E <- R]},
+            {add_all, [to_binary(E, Type) || E <- A]}
         ]},
         C
     }.
@@ -274,9 +273,6 @@ is_original_element(Element, #babel_set{values = V}) ->
 
 
 %% @private
-from_binary(Value, #{binary := Type}) ->
-    from_binary(Value, Type);
-
 from_binary(Value, Fun) when is_function(Fun, 2) ->
     Fun(decode, Value);
 
@@ -285,9 +281,6 @@ from_binary(Value, Type) ->
 
 
 %% @private
-to_binary(Value, #{binary := Type}) ->
-    to_binary(Value, Type);
-
 to_binary(Value, Fun) when is_function(Fun, 2) ->
     Fun(encode, Value);
 
