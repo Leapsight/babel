@@ -225,7 +225,8 @@ value(#babel_map{values = V}) ->
             value(Term);
         (_, Term) ->
             case get_type(Term) of
-                term ->
+                register ->
+                    %% Registers are implicit in babel
                     Term;
                 set ->
                     babel_set:value(Term);
@@ -770,7 +771,7 @@ maybe_badkey(Term) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec get_type(Term :: any()) -> counter | flag | set | map | term.
+-spec get_type(Term :: any()) -> datatype().
 
 get_type(#babel_map{}) ->
     map;
@@ -787,13 +788,13 @@ get_type(Term) when is_tuple(Term) ->
     end,
 
     try
-        lists:foldl(Fun, term, Mods)
+        lists:foldl(Fun, register, Mods)
     catch
         throw:{type, Mod} -> Mod
     end;
 
 get_type(_) ->
-    term.
+    register.
 
 
 %% @private
