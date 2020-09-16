@@ -95,6 +95,7 @@
 -export([from_riak_object/1]).
 -export([id/1]).
 -export([index/2]).
+-export([index_names/1]).
 -export([indices/1]).
 -export([lookup/3]).
 -export([new/2]).
@@ -251,6 +252,23 @@ indices(#babel_index_collection{} = Collection) ->
                 E = babel_index:from_riak_object(V),
                 [E | Acc]
             end,
+            lists:reverse(orddict:fold(Fun, [], Data))
+    catch
+        error:function_clause ->
+            []
+    end.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec index_names(Collection :: t()) -> [binary()].
+
+index_names(Collection) ->
+    try data(Collection) of
+        Data ->
+            Fun = fun(K, _, Acc) -> [K | Acc] end,
             lists:reverse(orddict:fold(Fun, [], Data))
     catch
         error:function_clause ->
