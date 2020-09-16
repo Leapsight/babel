@@ -79,8 +79,6 @@ to_riak_op_test(_) ->
     ),
     ?assertEqual(true, riakc_map:is_type(RM)),
 
-    dbg:tracer(), dbg:p(all,c),
-    dbg:tpl(babel_map, '_', x),
     ?assertEqual(
         babel_map:value(M),
         babel_map:value(babel_map:from_riak_map(RM, spec()))
