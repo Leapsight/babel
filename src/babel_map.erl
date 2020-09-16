@@ -15,11 +15,11 @@
 }).
 
 -opaque t()             ::  #babel_map{}.
--type spec()            ::  #{riak_key() => babel_key() | type()}
-                            | {datatype(), type()}.
+-type multi_key_spec()  ::  #{riak_key() => type()}.
+-type anon_key_spec()   ::  #{{'_', datatype()} := type()}.
+-type spec()            ::  multi_key_spec() | anon_key_spec().
                             %% | fun((encode, binary(), any()) -> value())
                             %% | fun((decode, binary(), value()) -> any()).
--type babel_key()       ::  {binary(), type()}.
 -type riak_key()        ::  {binary(), datatype()}.
 -type key_path()        ::  binary() | [binary()].
 -type value()           ::  any().
@@ -98,15 +98,24 @@ new(Data) when is_map(Data) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec new(Data :: map(), Ctxt :: riakc_datatype:context()) -> t().
+-spec new(Data :: map(), Spec :: spec()) -> t().
 
-new(Data, Spec) when is_map(Data) ->
-    MissingKeys = lists:subtract(maps:keys(Spec), maps:keys(Data)),
-    Values = init_values(maps:with(MissingKeys, Spec), Data),
-    #babel_map{
-        values = Values,
-        updates = ordsets:from_list(maps:keys(Values))
-    }.
+new(Data, Spec) ->
+    from_map(Data, Spec).
+
+%% new(Data, Spec) when is_map(Data) andalso is_map(Spec) ->
+%%     MissingKeys = lists:subtract(maps:keys(Spec), maps:keys(Data)),
+%%     Values = init_values(maps:with(MissingKeys, Spec), Data),
+%%     #babel_map{
+%%         values = Values,
+%%         updates = ordsets:from_list(maps:keys(Values))
+%%     };
+
+%% new(Data, {_, _}) ->
+%%     #babel_map{
+%%         values = Data,
+%%         updates = ordsets:from_list(maps:keys(Data))
+%%     }.
 
 
 %% -----------------------------------------------------------------------------
@@ -116,8 +125,26 @@ new(Data, Spec) when is_map(Data) ->
 -spec from_riak_map(
     RMap :: riakc_map:crdt_map() | list(), Spec :: spec()) -> t().
 
-from_riak_map({map, Values, _, _, Context}, Spec) ->
-    from_riak_map(Values, Context, Spec).
+from_riak_map(RMap, #{{'_', map} := _} = Spec0) ->
+    from_riak_map(RMap, expand_spec(orddict:fetch_keys(RMap), Spec0));
+
+from_riak_map(RMap, #{{'_', set} := _} = Spec0) ->
+    from_riak_map(RMap, expand_spec(orddict:fetch_keys(RMap), Spec0));
+
+from_riak_map(RMap, #{{'_', register} := _} = Spec0) ->
+    from_riak_map(RMap, expand_spec(orddict:fetch_keys(RMap), Spec0));
+
+from_riak_map(RMap, #{{'_', flag} := _} = Spec0) ->
+    from_riak_map(RMap, expand_spec(orddict:fetch_keys(RMap), Spec0));
+
+from_riak_map(RMap, #{{'_', counter} := _} = Spec0) ->
+    from_riak_map(RMap, expand_spec(orddict:fetch_keys(RMap), Spec0));
+
+from_riak_map({map, Values, _, _, Context}, Spec) when is_map(Spec) ->
+    from_riak_map(Values, Context, Spec);
+
+from_riak_map(RMap, Spec) when is_list(RMap) ->
+    from_riak_map(RMap, undefined, Spec).
 
 
 %% -----------------------------------------------------------------------------
@@ -126,6 +153,21 @@ from_riak_map({map, Values, _, _, Context}, Spec) ->
 %% -----------------------------------------------------------------------------
 -spec to_riak_op(T :: t(), Spec :: spec()) ->
     riakc_datatype:update(riakc_map:map_op()).
+
+to_riak_op(T, #{{'_', map} := _} = Spec0) ->
+    to_riak_op(T, expand_spec(modified_keys(T), Spec0));
+
+to_riak_op(T, #{{'_', set} := _} = Spec0) ->
+    to_riak_op(T, expand_spec(modified_keys(T), Spec0));
+
+to_riak_op(T, #{{'_', register} := _} = Spec0) ->
+    to_riak_op(T, expand_spec(modified_keys(T), Spec0));
+
+to_riak_op(T, #{{'_', flag} := _} = Spec0) ->
+    to_riak_op(T, expand_spec(modified_keys(T), Spec0));
+
+to_riak_op(T, #{{'_', counter} := _} = Spec0) ->
+    to_riak_op(T, expand_spec(modified_keys(T), Spec0));
 
 to_riak_op(T, Spec0) when is_map(Spec0) ->
     %% Spec :: #{Key => {{_, _} = RKey, Spec}}
@@ -138,11 +180,7 @@ to_riak_op(T, Spec0) when is_map(Spec0) ->
             undefined;
         Ops ->
             {riakc_map:type(), {update, Ops}, T#babel_map.context}
-    end;
-
-to_riak_op(#babel_map{updates = U, removes = R} = T, Spec0) ->
-    Spec = expand_spec(ordsets:union(U, R), Spec0),
-    to_riak_op(T, Spec).
+    end.
 
 
 %% -----------------------------------------------------------------------------
@@ -495,13 +533,93 @@ remove(Key, T) ->
 
 
 %% @private
+from_map(Map, #{{'_', map} := _} = Spec0) ->
+    from_map(Map, expand_spec(maps:keys(Map), Spec0));
+
+from_map(Map, #{{'_', set} := _} = Spec0) ->
+    from_map(Map, expand_spec(maps:keys(Map), Spec0));
+
+from_map(Map, #{{'_', register} := _} = Spec0) ->
+    from_map(Map, expand_spec(maps:keys(Map), Spec0));
+
+from_map(Map, #{{'_', flag} := _} = Spec0) ->
+    from_map(Map, expand_spec(maps:keys(Map), Spec0));
+
+from_map(Map, #{{'_', counter} := _} = Spec0) ->
+    from_map(Map, expand_spec(maps:keys(Map), Spec0));
+
+from_map(Map, Spec0) when is_map(Spec0) ->
+    Spec = reverse_spec(Spec0),
+
+    Convert = fun(Key, Value) ->
+        case maps:find(Key, Spec) of
+            {ok, {{Key, Datatype}, KeySpec}} ->
+                from_term(Value, Datatype, KeySpec);
+            {ok, {Datatype, KeySpec}}
+            when Datatype == map orelse Datatype == set->
+                from_term(Value, Datatype, KeySpec);
+            error ->
+                error({missing_spec, Key})
+        end
+    end,
+    Values = maps:map(Convert, Map),
+
+    #babel_map{
+        values = Values,
+        updates = ordsets:from_list(maps:keys(Values))
+    }.
+
+
+%% @private
+from_term(Term, map, Spec) when is_map(Term) ->
+    new(Term, Spec);
+
+from_term(Term, set, Spec) when is_list(Term) ->
+    babel_set:new(Term, Spec);
+
+from_term(Term, counter, _) when is_integer(Term) ->
+    error(not_implemented);
+
+from_term(Term, flag, _) when is_boolean(Term) ->
+    error(not_implemented);
+
+from_term(Term, register, atom) when is_atom(Term) ->
+    Term;
+
+from_term(Term, register, existing_atom) when is_atom(Term) ->
+    Term;
+
+from_term(Term, register, boolean) when is_boolean(Term) ->
+    Term;
+
+from_term(Term, register, integer) when is_integer(Term) ->
+    Term;
+
+from_term(Term, register, float) when is_float(Term) ->
+    Term;
+
+from_term(Term, register, binary) when is_binary(Term) ->
+    Term;
+
+from_term(Term, register, integer) when is_integer(Term) ->
+    Term;
+
+from_term(Term, register, Fun) when is_function(Fun, 2) ->
+    Term;
+
+from_term(Term, register, Type) ->
+    error({badkeytype, Term, Type}).
+
+
+%% @private
+-spec from_riak_map(
+    orddict:orddict(), riakc_datatype:context(), spec()) ->
+    maybe_no_return(t()).
+
 from_riak_map(RMap, Context, Spec) when is_map(Spec) ->
     %% Convert values in RMap
     Convert = fun({Key, _} = RKey, RValue, Acc) ->
         case maps:find(RKey, Spec) of
-            {ok, {NewKey, TypeOrFun}} ->
-                Value = from_datatype(RKey, RValue, TypeOrFun),
-                maps:put(NewKey, Value, Acc);
             {ok, TypeOrFun} ->
                 Value = from_datatype(RKey, RValue, TypeOrFun),
                 maps:put(Key, Value, Acc);
@@ -515,80 +633,63 @@ from_riak_map(RMap, Context, Spec) when is_map(Spec) ->
     MissingKeys = lists:subtract(maps:keys(Spec), orddict:fetch_keys(RMap)),
     Values1 = init_values(maps:with(MissingKeys, Spec), Values0),
 
-    #babel_map{values = Values1, context = Context};
+    #babel_map{values = Values1, context = Context}.
 
-from_riak_map(RMap, Context, Spec0) ->
-    Spec = expand_spec(orddict:fetch_keys(RMap), Spec0),
-    from_riak_map(RMap, Context, Spec).
-
-%% from_riak_map(RMap, Context, Fun) when is_function(Fun, 3) ->
-%%     %% This is equivalent to a map function.
-%%     Values = riakc_map:fold(
-%%         fun(K, V, Acc) ->
-%%             maps:put(K, Fun(decode, K, V), Acc)
-%%         end,
-%%         maps:new(),
-%%         RMap
-%%     ),
-%%     #babel_map{values = Values, context = Context};
 
 
 %% @private
-expand_spec(Keys, {Datatype, Type}) ->
+modified_keys(#babel_map{updates = U, removes = R}) ->
+    ordsets:union(U, R).
+
+
+%% @private
+expand_spec(Keys, Spec) when is_map(Spec) ->
+    case maps:to_list(Spec) of
+        [{{'_', Datatype}, KeySpec}] ->
+            expand_spec(Keys, Datatype, KeySpec);
+        _ ->
+            error({badspec, Spec})
+    end.
+
+expand_spec(Keys, Datatype, KeySpec) ->
     Fun = fun
         ({_, RType} = RKey, Acc) when RType == Datatype ->
-            maps:put(RKey, Type, Acc);
+            maps:put(RKey, KeySpec, Acc);
         ({_, _} = RKey, _) ->
             error({badarg, RKey});
         (Key, Acc) when is_binary(Key) ->
-            maps:put({Key, map}, Type, Acc)
+            maps:put({Key, Datatype}, KeySpec, Acc)
     end,
     lists:foldl(Fun, maps:new(), Keys).
 
 
 %% @private
+-spec reverse_spec(#{riak_key() => type()}) ->
+    #{binary() => {riak_key(), type()}}.
+
 reverse_spec(Spec) when is_map(Spec) ->
     maps:fold(
-        fun
-            (RKey, {Key, KeySpec}, Acc) ->
-                maps:put(Key, {RKey, KeySpec}, Acc);
-
-            ({Key, _} = RKey, KeySpec, Acc) ->
-                maps:put(Key, {RKey, KeySpec}, Acc)
+        fun({Key, _} = RKey, KeySpec, Acc) ->
+            maps:put(Key, {RKey, KeySpec}, Acc)
         end,
         maps:new(),
         Spec
     ).
 
+
 %% @private
 init_values(Spec, Acc0) ->
     Fun = fun
-        ({_, counter}, {_Key, _KeySpec}, _) ->
-            %% from_integer(<<>>, KeySpec)
-            error(not_implemented);
         ({_, counter}, _KeySpec, _) ->
             error(not_implemented);
-        ({_, flag}, {_Key, _KeySpec}, _) ->
-            %% from_boolean(<<>>, KeySpec)
+        ({_, flag}, _KeySpec, _) ->
             error(not_implemented);
-        ({_, flag}, _, _) ->
-            error(not_implemented);
-        ({_, register}, {Key, KeySpec}, Acc) ->
-            maps:put(Key, from_binary(<<>>, KeySpec), Acc);
         ({Key, register}, KeySpec, Acc) ->
             maps:put(Key, from_binary(<<>>, KeySpec), Acc);
-        ({_, set}, {Key, _}, Acc) ->
-            maps:put(Key, babel_set:new(), Acc);
         ({Key, set}, _, Acc) ->
             maps:put(Key, babel_set:new(), Acc);
-        ({_, map}, {Key, KeySpec}, Acc) when is_map(KeySpec) ->
-            maps:put(Key, babel_map:new(#{}, KeySpec), Acc);
-        ({_, map}, {Key, KeySpec}, Acc) ->
-            maps:put(Key, babel_map:new(#{}, KeySpec), Acc);
         ({Key, map}, KeySpec, Acc) when is_map(KeySpec) ->
-            maps:put(Key, babel_map:new(#{}, KeySpec), Acc);
-        ({Key, map}, KeySpec, Acc) ->
-            maps:put(Key, babel_map:new(#{}, KeySpec), Acc)
+            maps:put(Key, babel_map:new(), Acc)
     end,
     maps:fold(Fun, Acc0, Spec).
 
@@ -604,7 +705,7 @@ from_datatype({_, set}, Value, #{binary := _} = Spec) ->
     babel_set:from_riak_set(Value, Spec);
 
 from_datatype({_, map}, Value, Spec) ->
-    from_riak_map(Value, undefined, Spec);
+    from_riak_map(Value, Spec);
 
 from_datatype(_Key, _RiakMap, _Type) ->
     error(not_implemented).
@@ -624,8 +725,6 @@ to_binary(Value, Fun) when is_function(Fun, 2) ->
 
 to_binary(Value, Type) ->
     babel_utils:to_binary(Value, Type).
-
-
 
 
 %% @private
@@ -673,7 +772,10 @@ maybe_badkey(Term) ->
 %% -----------------------------------------------------------------------------
 -spec get_type(Term :: any()) -> counter | flag | set | map | term.
 
-get_type(Term) ->
+get_type(#babel_map{}) ->
+    map;
+
+get_type(Term) when is_tuple(Term) ->
     Mods = [babel_set, babel_map, babel_counter, babel_flag],
     Fun = fun(Mod, Acc) ->
         case (catch Mod:is_type(Term)) of
@@ -688,7 +790,10 @@ get_type(Term) ->
         lists:foldl(Fun, term, Mods)
     catch
         throw:{type, Mod} -> Mod
-    end.
+    end;
+
+get_type(_) ->
+    term.
 
 
 %% @private
@@ -751,3 +856,4 @@ prepare_remove_ops(T, Spec) ->
             {remove, RKey}
         end || Key <- T#babel_map.removes
     ].
+

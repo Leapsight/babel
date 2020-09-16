@@ -10,6 +10,7 @@
 all() ->
     [
         create_test,
+        to_riak_op_test,
         fetch_test
     ].
 
@@ -54,8 +55,36 @@ end_per_suite(Config) ->
 
 
 create_test(_) ->
-    M = babel_map:new(data()),
+    %% dbg:tracer(), dbg:p(all,c),
+    %% dbg:tpl(babel_map, '_', x),
+
+    M = babel_map:new(data(), spec()),
     ?assertEqual(true, babel_map:is_type(M)).
+
+
+to_riak_op_test(_) ->
+    M = babel_map:new(data(), spec()),
+    Op = babel_map:to_riak_op(M, spec()),
+    ?assertEqual(true, is_tuple(Op)),
+
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    pong = riakc_pb_socket:ping(Conn),
+
+    {ok, RM} = riakc_pb_socket:update_type(
+        Conn,
+        {<<"index_data">>, <<"test">>},
+        <<"to_riak_op_test">>,
+        Op,
+        [{return_body, true}]
+    ),
+    ?assertEqual(true, riakc_map:is_type(RM)),
+
+    dbg:tracer(), dbg:p(all,c),
+    dbg:tpl(babel_map, '_', x),
+    ?assertEqual(
+        babel_map:value(M),
+        babel_map:value(babel_map:from_riak_map(RM, spec()))
+    ).
 
 
 fetch_test(_) ->
@@ -74,6 +103,7 @@ data() ->
     #{
         <<"version">> => <<"2.0">>,
         <<"id">> => <<"mrn:business_account:1">>,
+        <<"account_type">> => <<"business">>,
         <<"name">> => <<"Leapsight">>,
         <<"active">> => true,
         <<"operation_mode">> => <<"normal">>,
@@ -91,40 +121,46 @@ data() ->
         },
         %% decode #{Email => Tag} --> [{email => Email, tag => Tag}]
         %% encode [{number => Email, tag => Tag}] --> #{Email => Tag}
-        <<"emails">> => [
-            #{
-                <<"email">> =><<"john.doe@foo.com">>,
-                <<"tage">> => <<"work">>
-            }
-        ],
-        <<"phones">> =>  [
-            #{
-                <<"number">> => <<"09823092834">>,
-                <<"tage">> => <<"work">>
-            }
-        ],
-        <<"services">> => [
-            #{
+        %% <<"emails">> => [
+        %%     #{
+        %%         <<"email">> =><<"john.doe@foo.com">>,
+        %%         <<"tage">> => <<"work">>
+        %%     }
+        %% ],
+        <<"emails">> => #{
+            <<"john.doe@foo.com">> => <<"work">>
+        },
+        %% <<"phones">> =>  [
+        %%     #{
+        %%         <<"number">> => <<"09823092834">>,
+        %%         <<"tage">> => <<"work">>
+        %%     }
+        %% ],
+        <<"phones">> => #{
+            <<"09823092834">> => <<"work">>
+        },
+        <<"services">> => #{
+            <<"mrn:service:vehicle_lite">> => #{
                 <<"enabled">> => true,
                 <<"description">> => <<"Baz Service">>,
                 <<"expiry_date">> => <<"2020/10/09">>
             }
-        ],
-        <<"username">> => <<"john.doe@foo.com">>,
-        <<"owner_id">> => <<"mrn:user:1">>,
+        },
         <<"created_by">> => <<"mrn:user:1">>,
         <<"last_modified_by">> => <<"mrn:user:1">>,
         <<"created_timestamp">> => 1599835691640,
         <<"last_modified_timestamp">> => 1599835691640
     }.
 
+
 spec() ->
     #{
         {<<"version">>, register} => binary,
         {<<"id">>, register} => binary,
+        {<<"account_type">>, register} => binary,
         {<<"name">>, register} => binary,
         {<<"active">>, register} => boolean,
-        {<<"operation_mode">>, register} => boolean,
+        {<<"operation_mode">>, register} => binary,
         {<<"country_id">>, register} => binary,
         {<<"number">>, register} => binary,
         {<<"identification_type">>, register} => binary,
@@ -137,16 +173,23 @@ spec() ->
             {<<"country">>, register} => binary,
             {<<"postal_code">>, register} => binary
         },
-        %% decode #{Email => Tag} --> [{email => Email, tag => Tag}]
-        %% encode [{number => Email, tag => Tag}] --> #{Email => Tag}
-        {<<"emails">>, map} => {register, binary},
-        {<<"phones">>, map} => {register, binary},
-        {<<"services">>, map} => {register, #{
-            {<<"enabled">>, flag} => boolean,
-            {<<"expiry_date">>, register} => binary
+        %% emails and phones are stored as maps of their values to their tag
+        %% value e.g. #{<<"john.doe@example.com">> => <<"work">>}
+        %% {register, binary} means "every key in the phones | emails map has
+        %% a register associated and we keep the value of the registry as a
+        %% binary
+        {<<"emails">>, map} => #{{'_', register} => binary},
+        {<<"phones">>, map} => #{{'_', register} => binary},
+        %% services is a mapping of serviceID to service objects
+        %% e.g. #{<<"mrn:service:1">> => #{<<"description">> => ...}
+        %% {map, #{..}} means "every key in the services map has a map
+        %% associated with it which is always of the same type, in this case a
+        %% map with 3 properties: description, expired_data and enabled"
+        {<<"services">>, map} => #{{'_', map} => #{
+            {<<"description">>, register} => binary,
+            {<<"expiry_date">>, register} => binary,
+            {<<"enabled">>, register} => boolean
         }},
-        {<<"username">>, register} => binary,
-        {<<"owner_id">>, register} => binary,
         {<<"created_by">>, register} => binary,
         {<<"last_modified_by">>, register} => binary,
         {<<"created_timestamp">>, register} => integer,
