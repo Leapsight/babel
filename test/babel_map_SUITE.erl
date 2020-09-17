@@ -11,7 +11,7 @@ all() ->
     [
         create_test,
         to_riak_op_test,
-        fetch_test
+        get_test
     ].
 
 
@@ -85,8 +85,16 @@ to_riak_op_test(_) ->
     ).
 
 
-fetch_test(_) ->
-    ok.
+get_test(_) ->
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    pong = riakc_pb_socket:ping(Conn),
+    {ok, M} = babel:get(
+        {<<"index_data">>, <<"test">>},
+        <<"to_riak_op_test">>,
+        spec(),
+        #{return_body => true, connection => Conn}
+    ),
+    ?assertEqual(true, babel_map:is_type(M)).
 
 
 

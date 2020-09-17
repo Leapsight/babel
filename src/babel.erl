@@ -48,7 +48,7 @@
 -export([execute/1]).
 -export([put/5]).
 -export([delete/3]).
--export([get/5]).
+-export([get/4]).
 -export([type/1]).
 
 
@@ -89,23 +89,22 @@ type(Term) when is_tuple(Term) ->
 -spec get(
     TypedBucket :: bucket_and_type(),
     Key :: binary(),
-    Datatype :: datatype(),
     Spec :: type_spec(),
     Opts :: map()) ->
     ok
     | {ok, Datatype :: datatype()}
     | {error, Reason :: term()}.
 
-get(TypedBucket, Key, Datatype, Spec, Opts0) ->
+get(TypedBucket, Key, Spec, Opts0) ->
     Opts = validate_riak_opts(Opts0),
     Conn = get_connection(Opts),
     RiakOpts = maps:to_list(Opts),
-    Type = type(Datatype),
 
     case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, RiakOpts) of
         {ok, Object} ->
+            Type = riak_type(Object),
             {ok, to_babel_datatype(Type, Object, Spec)};
-        {error, {notfound, Type}} ->
+        {error, {notfound, _}} ->
             {error, not_found};
         {error, _} = Error ->
             Error
@@ -757,3 +756,24 @@ on_execute(Reason, #{on_execute := Fun}) when is_function(Fun, 1) ->
 on_execute(_, _) ->
     ok.
 
+
+%% @private
+-spec riak_type(datatype()) -> set | map | counter | flag.
+
+riak_type(Term) when is_tuple(Term) ->
+    Mods = [riakc_set, riakc_map, riakc_counter, riakc_flag],
+    Fun = fun(Mod, Acc) ->
+        case (catch Mod:is_type(Term)) of
+            true ->
+                throw({type, Mod:type()});
+            _ ->
+                Acc
+        end
+    end,
+
+    try
+        error = lists:foldl(Fun, error, Mods),
+        error(badarg)
+    catch
+        throw:{type, Mod} -> Mod
+    end.
