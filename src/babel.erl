@@ -105,7 +105,7 @@ get(TypedBucket, Key, Datatype, Spec, Opts0) ->
     case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, RiakOpts) of
         {ok, Object} ->
             {ok, to_babel_datatype(Type, Object, Spec)};
-        {error, {notfound, _}} ->
+        {error, {notfound, Type}} ->
             {error, not_found};
         {error, _} = Error ->
             Error
@@ -598,8 +598,6 @@ schedule_delete(TypedBucket, Key, _Opts0) ->
     {scheduled, Id}.
 
 
-
-
 %% -----------------------------------------------------------------------------
 %% @private
 %% @doc
@@ -707,7 +705,7 @@ datatype_to_op(flag, _Datatype, _Spec) ->
 
 %% @private
 to_babel_datatype(map, RiakDatatype, Spec) ->
-    babel_map:from_riam_map(RiakDatatype, Spec);
+    babel_map:from_riak_map(RiakDatatype, Spec);
 
 to_babel_datatype(set, Datatype, Spec) ->
     babel_set:from_riak_set(Datatype, Spec);
@@ -741,7 +739,7 @@ to_update_item(TypedBucket, Key, Op) ->
     {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
 
 
-
+%% @private
 to_delete_item(TypedBucket, Key) ->
     Args = [TypedBucket, Key],
     {node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]}.

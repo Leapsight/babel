@@ -346,7 +346,7 @@ delete(BucketType, BucketPrefix, Key, RiakOpts) ->
         ok ->
             ok = on_delete(TypedBucket, Key),
             ok;
-        {error, {notfound, _}} ->
+        {error, {notfound, map}} ->
             {error, not_found};
         {error, _} = Error ->
             Error
@@ -378,7 +378,7 @@ maybe_lookup(TypedBucket, Key, RiakOpts, undefined) ->
             ok = cache:put(?MODULE, {TypedBucket, Key}, Partition),
             {ok, Partition};
 
-        {error, {notfound, _}} ->
+        {error, {notfound, map}} ->
             {error, not_found};
 
         {error, _} = Error ->
