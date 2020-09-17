@@ -170,7 +170,7 @@ execute(Fun) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Executes a number of operations using the same Riak cclient connection.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec execute(
@@ -198,7 +198,9 @@ execute(_, #{connection := _}) ->
     error(badarg);
 
 execute(Fun, Opts) ->
-    Pid = undefined, %% TODO get connection from pool
+    %% TODO get connection from pool
+    %% TODO use a timeout and fail elegantly
+    Pid = undefined,
     Checkin = fun(_) -> ok end, %% TODO fun to return conn to pool
     execute(Fun, Opts#{connection => Pid, on_execute => Checkin}).
 
@@ -562,6 +564,7 @@ do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
 
 %% @private
 schedule_put(TypedBucket, Key, Datatype, Spec, _Opts0) ->
+    ok = babel_reliable:ensure_in_workflow(),
     Id = {TypedBucket, Key},
     Type = type(Datatype),
     Item = to_update_item(Type, TypedBucket, Key, Datatype, Spec),
@@ -587,6 +590,7 @@ do_delete(TypedBucket, Key, Opts0) ->
 
 %% @private
 schedule_delete(TypedBucket, Key, _Opts0) ->
+    ok = babel_reliable:ensure_in_workflow(),
     Id = {TypedBucket, Key},
     Item = to_delete_item(TypedBucket, Key),
     WorkflowItem = {Id, {delete, Item}},
