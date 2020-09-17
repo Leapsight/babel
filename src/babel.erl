@@ -250,7 +250,7 @@ workflow(Fun) ->
 %%
 %% Example: Creating various babel objects and scheduling
 %%
-%% ```
+%% ```erlang
 %% > babel:workflow(
 %%     fun() ->
 %%          CollectionX0 = babel_index_collection:new(<<"foo">>, <<"bar">>),
