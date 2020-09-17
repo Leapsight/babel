@@ -56,7 +56,7 @@ workflow_item_id() = term()
 
 <table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#abort-1">abort/1</a></td><td>When called within the functional object in <a href="#workflow-1"><code>workflow/1</code></a>,
 makes the workflow silently return the tuple {aborted, Reason} as the
-error reason.</td></tr><tr><td valign="top"><a href="#add_workflow_items-1">add_workflow_items/1</a></td><td></td></tr><tr><td valign="top"><a href="#add_workflow_precedence-2">add_workflow_precedence/2</a></td><td></td></tr><tr><td valign="top"><a href="#find_workflow_item-1">find_workflow_item/1</a></td><td></td></tr><tr><td valign="top"><a href="#get_workflow_item-1">get_workflow_item/1</a></td><td></td></tr><tr><td valign="top"><a href="#is_in_workflow-0">is_in_workflow/0</a></td><td>Returns true if the process has a workflow context.</td></tr><tr><td valign="top"><a href="#workflow-1">workflow/1</a></td><td>Equivalent to calling <a href="#workflow-2"><code>workflow/2</code></a> with and empty map passed as
+error reason.</td></tr><tr><td valign="top"><a href="#add_workflow_items-1">add_workflow_items/1</a></td><td></td></tr><tr><td valign="top"><a href="#add_workflow_precedence-2">add_workflow_precedence/2</a></td><td></td></tr><tr><td valign="top"><a href="#find_workflow_item-1">find_workflow_item/1</a></td><td></td></tr><tr><td valign="top"><a href="#get_workflow_item-1">get_workflow_item/1</a></td><td></td></tr><tr><td valign="top"><a href="#is_in_workflow-0">is_in_workflow/0</a></td><td>Returns true if the process has a workflow context.</td></tr><tr><td valign="top"><a href="#is_nested_workflow-0">is_nested_workflow/0</a></td><td>Returns true if the current workflow is nested within a parent workflow.</td></tr><tr><td valign="top"><a href="#workflow-1">workflow/1</a></td><td>Equivalent to calling <a href="#workflow-2"><code>workflow/2</code></a> with and empty map passed as
 the <code>Opts</code> argument.</td></tr><tr><td valign="top"><a href="#workflow-2">workflow/2</a></td><td>Executes the functional object <code>Fun</code> as a Reliable workflow, i.e.</td></tr><tr><td valign="top"><a href="#workflow_id-0">workflow_id/0</a></td><td>Returns the workflow identifier or undefined not currently within a
 workflow.</td></tr><tr><td valign="top"><a href="#workflow_nesting_level-0">workflow_nesting_level/0</a></td><td>Returns the current worflow nesting level.</td></tr></table>
 
@@ -129,12 +129,20 @@ is_in_workflow() -&gt; boolean()
 
 Returns true if the process has a workflow context.
 
+<a name="is_nested_workflow-0"></a>
+
+### is_nested_workflow/0 ###
+
+`is_nested_workflow() -> any()`
+
+Returns true if the current workflow is nested within a parent workflow.
+
 <a name="workflow-1"></a>
 
 ### workflow/1 ###
 
 <pre><code>
-workflow(Fun::fun(() -&gt; any())) -&gt; {ok, WorkId::binary(), ResultOfFun::any()} | {error, Reason::any()} | no_return()
+workflow(Fun::fun(() -&gt; any())) -&gt; {ok, {WorkId::binary(), ResultOfFun::any()}} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -146,22 +154,26 @@ the `Opts` argument.
 ### workflow/2 ###
 
 <pre><code>
-workflow(Fun::fun(() -&gt; any()), Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorkId::binary(), ResultOfFun::any()} | {error, Reason::any()} | no_return()
+workflow(Fun::fun(() -&gt; any()), Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, {WorkId::binary(), ResultOfFun::any()}} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
 Executes the functional object `Fun` as a Reliable workflow, i.e.
-ordering and scheduling all resulting Riak KV object writes.
+ordering and scheduling all resulting Riak KV object writes and deletes.
 
-The code that executes inside the workflow should call one or more functions
-in this module to schedule writes in Riak KV. For example, if you wanted to
-schedule an index creation you should use [`create_index/2`](#create_index-2) instead of
-[`babel_index_collection`](babel_index_collection.md), [`babel_index`](babel_index.md) and [`babel_index_partition`](babel_index_partition.md) functions directly.
+Any function that executes inside the workflow that wants to be able to
+schedule work to Riak KV, needs to use the infrasturcture provided in this
+module to add workflow items to the workflow stack
+(see [`add_workflow_items/1`](#add_workflow_items-1)) and to add the precedence amongst them
+(see [`add_workflow_precedence/2`](#add_workflow_precedence-2)).
 
-Any other operation, including reading and writing from/to Riak KV directly
-or by using the API provided by other Babel modules will work as normal and
-will not affect the workflow, only the special functions in this module will
-add work items to the workflow.
+This library offers such functions for index manipulation in the
+[`babel`](babel.md) module.
+
+Any other operation, including reading and writing from/to Riak KV by
+directly using the RIak Client library or will work as normal and
+will not affect the workflow, only by calling the special functions in this
+module they can add work items to the workflow.
 
 If something goes wrong inside the workflow as a result of a user
 error or general exception, the entire workflow is terminated and the
@@ -169,7 +181,7 @@ function raises an exception. In case of an internal error, the function
 returns the tuple `{error, Reason}`.
 
 If everything goes well, the function returns the triple
-`{ok, WorkId, ResultOfFun}` where `WorkId` is the identifier for the
+`{ok, {WorkId, ResultOfFun}}` where `WorkId` is the identifier for the
 workflow schedule by Reliable and `ResultOfFun` is the value of the last
 expression in `Fun`.
 
@@ -177,36 +189,21 @@ expression in `Fun`.
 to use the WorkId to check with Reliable the status of the workflow
 execution.
 
-Example: Creating various babel objects and scheduling
-
-```
-  > babel:workflow(
-      fun() ->
-           CollectionX0 = babel_index_collection:new(<<"foo">>, <<"bar">>),
-           CollectionY0 = babel_index_collection:fetch(
-  Conn, <<"foo">>, <<"users">>),
-           IndexA = babel_index:new(ConfigA),
-           IndexB = babel_index:new(ConfigB),
-           CollectionX1 = babel:create_index(IndexA, CollectionX0),
-           CollectionY1 = babel:create_index(IndexB, CollectionY0),
-           ok
-      end).
-  > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
-```
-
-The resulting workflow execution will schedule the writes in the order that
-results from the dependency graph constructed using the results of this
-module functions. This ensures partitions are created first and then
-collections.
+The resulting workflow execution will schedule the writes and deletes in the
+order defined by the dependency graph constructed using
+[`add_workflow_precedence/2`](#add_workflow_precedence-2).
 
 The `Opts` argument offers the following options:
 
 * `on_terminate` – a functional object `fun((Reason :: any()) -> ok)`. This
 function will be evaluated before the call terminates. In case of succesful
-termination the value `normal` is passed as argument. Otherwise, in case of
-error, the error reason will be passed as argument. This allows you to
-perform a cleanup after the workflow execution e.g. returning a riak
-connection object to a pool.
+termination the value `normal` will be  passed as argument. Otherwise, in
+case of error, the error reason will be passed as argument. This allows you
+to perform a cleanup after the workflow execution e.g. returning a riak
+connection object to a pool. Notice that this function might be called
+multiple times in the case of nested workflows. If you need to conditionally
+perform a cleanup operation you might use the function `is_nested_worflow/0`
+to take a decision.
 
 <a name="workflow_id-0"></a>
 

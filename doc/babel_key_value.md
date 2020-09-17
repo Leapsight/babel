@@ -39,7 +39,7 @@ path() = [atom() | binary() | tuple() | <a href="riakc_map.md#type-key">riakc_ma
 
 
 <pre><code>
-t() = map() | [<a href="proplists.md#type-property">proplists:property()</a>] | <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
+t() = map() | [<a href="proplists.md#type-property">proplists:property()</a>] | <a href="babel_map.md#type-t">babel_map:t()</a> | <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 </code></pre>
 
 <a name="index"></a>

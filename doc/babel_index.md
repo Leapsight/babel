@@ -61,6 +61,26 @@ config_object() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 
 
 
+### <a name="type-fold_fun">fold_fun()</a> ###
+
+
+<pre><code>
+fold_fun() = fun((<a href="#type-index_key">index_key()</a>, <a href="#type-index_values">index_values()</a>, any()) -&gt; any())
+</code></pre>
+
+
+
+
+### <a name="type-fold_opts">fold_opts()</a> ###
+
+
+<pre><code>
+fold_opts() = #{first =&gt; binary(), sort_ordering =&gt; asc | desc}
+</code></pre>
+
+
+
+
 ### <a name="type-foreach_fun">foreach_fun()</a> ###
 
 
@@ -131,6 +151,16 @@ partition_key() = binary()
 
 
 
+### <a name="type-query_opts">query_opts()</a> ###
+
+
+<pre><code>
+query_opts() = #{max_results =&gt; non_neg_integer() | all, continuation =&gt; any(), return_body =&gt; any(), timeout =&gt; timeout(), pagination_sort =&gt; boolean(), stream =&gt; boolean()}
+</code></pre>
+
+
+
+
 ### <a name="type-riak_object">riak_object()</a> ###
 
 
@@ -145,7 +175,7 @@ riak_object() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 
 
 <pre><code>
-t() = map()
+t() = #{bucket =&gt; binary(), bucket_type =&gt; binary(), config =&gt; term(), name =&gt; binary(), type =&gt; atom()}
 </code></pre>
 
 <a name="index"></a>

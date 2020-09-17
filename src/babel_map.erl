@@ -612,6 +612,7 @@ update(Key, Fun, #babel_map{values = V, updates = U} = Map) ->
 %% @doc Removes a key and its value from the map. Removing a key that
 %% does not exist simply records a remove operation.
 %% @throws context_required
+%% @end
 %% -----------------------------------------------------------------------------
 -spec remove(Key :: key(), T :: t()) -> NewT :: maybe_no_return(t()).
 

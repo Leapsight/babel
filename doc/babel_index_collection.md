@@ -91,9 +91,7 @@ t() = #babel_index_collection{id = binary(), bucket = binary(), object = <a href
 
 
 <table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_index-2">add_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#bucket-1">bucket/1</a></td><td></td></tr><tr><td valign="top"><a href="#data-1">data/1</a></td><td></td></tr><tr><td valign="top"><a href="#delete-3">delete/3</a></td><td></td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#fetch-3">fetch/3</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_object-1">from_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#id-1">id/1</a></td><td></td></tr><tr><td valign="top"><a href="#index-2">index/2</a></td><td>Returns the babel index associated with name <code>IndexName</code> in collection
-<code>Collection</code>.</td></tr><tr><td valign="top"><a href="#indices-1">indices/1</a></td><td>Returns all the indices in the collection.</td></tr><tr><td valign="top"><a href="#lookup-3">lookup/3</a></td><td></td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td></td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>Returns the number of elements in the collection <code>Collection</code>.</td></tr><tr><td valign="top"><a href="#store-2">store/2</a></td><td>Stores an index collection in Riak KV under a bucket name which results
-from contenating the prefix <code>BucketPrefix</code> to suffix "/index_collection" and
-key <code>Key</code>.</td></tr><tr><td valign="top"><a href="#to_delete_item-1">to_delete_item/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_update_item-1">to_update_item/1</a></td><td></td></tr></table>
+<code>Collection</code>.</td></tr><tr><td valign="top"><a href="#index_names-1">index_names/1</a></td><td></td></tr><tr><td valign="top"><a href="#indices-1">indices/1</a></td><td>Returns all the indices in the collection.</td></tr><tr><td valign="top"><a href="#lookup-3">lookup/3</a></td><td></td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td>Creates a new index collection object.</td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>Returns the number of elements in the collection <code>Collection</code>.</td></tr><tr><td valign="top"><a href="#store-2">store/2</a></td><td>Stores an index collection in Riak KV.</td></tr><tr><td valign="top"><a href="#to_delete_item-1">to_delete_item/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_update_item-1">to_update_item/1</a></td><td></td></tr></table>
 
 
 <a name="functions"></a>
@@ -185,6 +183,15 @@ Returns the babel index associated with name `IndexName` in collection
 `Collection`. This function assumes that the name is present in the
 collection. An exception is generated if it is not.
 
+<a name="index_names-1"></a>
+
+### index_names/1 ###
+
+<pre><code>
+index_names(Collection::<a href="#type-t">t()</a>) -&gt; [binary()]
+</code></pre>
+<br />
+
 <a name="indices-1"></a>
 
 ### indices/1 ###
@@ -214,6 +221,10 @@ new(BucketPrefix::binary(), Name::binary()) -&gt; <a href="#type-t">t()</a>
 </code></pre>
 <br />
 
+Creates a new index collection object.
+The value for `bucket` is computed by concatenating `BucketPrefix` with the
+suffix `/index_collection`.
+
 <a name="size-1"></a>
 
 ### size/1 ###
@@ -234,9 +245,11 @@ store(Collection::<a href="#type-t">t()</a>, RiakOpts::<a href="#type-riak_opts"
 </code></pre>
 <br />
 
-Stores an index collection in Riak KV under a bucket name which results
-from contenating the prefix `BucketPrefix` to suffix "/index_collection" and
-key `Key`.
+Stores an index collection in Riak KV.
+The collection will be stored under the bucket type configured
+for the application option `index_collection_bucket_type`, bucket name
+will be the value returned by [`bucket/1`](#bucket-1), and the key will be the
+value returned by [`id/1`](#id-1).
 
 <a name="to_delete_item-1"></a>
 

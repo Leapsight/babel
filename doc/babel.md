@@ -1,17 +1,59 @@
 
 
 # Module babel #
+* [Description](#description)
+* [Data Types](#types)
 * [Function Index](#index)
 * [Function Details](#functions)
+
+This module acts as entry point for a number of Babel features and
+provides some of the `riakc_pb_socke` module functions adapted for babel
+datatypes.
+
+<a name="types"></a>
+
+## Data Types ##
+
+
+
+
+### <a name="type-datatype">datatype()</a> ###
+
+
+<pre><code>
+datatype() = <a href="babel_map.md#type-t">babel_map:t()</a> | <a href="babel_set.md#type-t">babel_set:t()</a>
+</code></pre>
+
+
+
+
+### <a name="type-riak_op">riak_op()</a> ###
+
+
+<pre><code>
+riak_op() = <a href="riakc_datatype.md#type-update">riakc_datatype:update</a>(term())
+</code></pre>
+
+
+
+
+### <a name="type-type_spec">type_spec()</a> ###
+
+
+<pre><code>
+type_spec() = <a href="babel_map.md#type-type_spec">babel_map:type_spec()</a> | <a href="babel_set.md#type-type_spec">babel_set:type_spec()</a>
+</code></pre>
 
 <a name="index"></a>
 
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#create_collection-2">create_collection/2</a></td><td>Schedules the creation of an index collection using Reliable.</td></tr><tr><td valign="top"><a href="#create_index-2">create_index/2</a></td><td>Schedules the creation of an index and its partitions according to
-<code>Config</code> using Reliable.</td></tr><tr><td valign="top"><a href="#delete_collection-1">delete_collection/1</a></td><td>Schedules the delete of a collection, all its indices and their
-partitions.</td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#get_connection-1">get_connection/1</a></td><td></td></tr><tr><td valign="top"><a href="#rebuild_index-4">rebuild_index/4</a></td><td></td></tr><tr><td valign="top"><a href="#update_indices-3">update_indices/3</a></td><td></td></tr><tr><td valign="top"><a href="#validate_riak_opts-1">validate_riak_opts/1</a></td><td>Validates and returns the options in proplist format as expected by
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#create_collection-2">create_collection/2</a></td><td>Schedules the creation of an empty index collection using Reliable.</td></tr><tr><td valign="top"><a href="#create_index-2">create_index/2</a></td><td>Schedules the creation of an index and its partitions according to
+<code>Config</code> using Reliable.</td></tr><tr><td valign="top"><a href="#delete-3">delete/3</a></td><td>
+> This function is workflow aware.</td></tr><tr><td valign="top"><a href="#delete_collection-1">delete_collection/1</a></td><td>Schedules the delete of a collection, all its indices and their
+partitions.</td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#execute-1">execute/1</a></td><td></td></tr><tr><td valign="top"><a href="#execute-2">execute/2</a></td><td>Executes a number of operations using the same Riak cclient connection.</td></tr><tr><td valign="top"><a href="#get-5">get/5</a></td><td></td></tr><tr><td valign="top"><a href="#get_connection-1">get_connection/1</a></td><td></td></tr><tr><td valign="top"><a href="#put-5">put/5</a></td><td>
+> This function is workflow aware.</td></tr><tr><td valign="top"><a href="#rebuild_index-4">rebuild_index/4</a></td><td></td></tr><tr><td valign="top"><a href="#type-1">type/1</a></td><td></td></tr><tr><td valign="top"><a href="#update_indices-3">update_indices/3</a></td><td></td></tr><tr><td valign="top"><a href="#validate_riak_opts-1">validate_riak_opts/1</a></td><td>Validates and returns the options in proplist format as expected by
 Riak KV.</td></tr><tr><td valign="top"><a href="#workflow-1">workflow/1</a></td><td>Equivalent to calling <a href="#workflow-2"><code>workflow/2</code></a> with and empty map passed as
 the <code>Opts</code> argument.</td></tr><tr><td valign="top"><a href="#workflow-2">workflow/2</a></td><td>Executes the functional object <code>Fun</code> as a Reliable workflow, i.e.</td></tr></table>
 
@@ -29,8 +71,13 @@ create_collection(BucketPrefix::binary(), Name::binary()) -&gt; <a href="babel_i
 </code></pre>
 <br />
 
-Schedules the creation of an index collection using Reliable.
-Fails if the collection already existed
+Schedules the creation of an empty index collection using Reliable.
+Fails if the collection already exists.
+
+The collection will be stored in Riak KV under the bucket type configured
+for the application option `index_collection_bucket_type`, bucket name
+resulting from concatenating the value of `BucketPrefix` to the suffix `/
+index_collection` and the key will be the value of `Name`.
 
 > This function needs to be called within a workflow functional object,
 see [`workflow/1`](#workflow-1).
@@ -60,9 +107,20 @@ Example: Creating an index and adding it to an existing collection
            ok = babel:create_index(Index, Collection0),
            ok
       end).
-  > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>}
+  > {ok, {<<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}}
 ```
 
+
+<a name="delete-3"></a>
+
+### delete/3 ###
+
+<pre><code>
+delete(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Opts::map()) -&gt; ok | {scheduled, WorkflowId::{<a href="#type-bucket_and_type">bucket_and_type()</a>, <a href="#type-key">key()</a>}} | {error, Reason::term()}
+</code></pre>
+<br />
+
+> This function is workflow aware
 
 <a name="delete_collection-1"></a>
 
@@ -85,11 +143,51 @@ delete_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collect
 </code></pre>
 <br />
 
+<a name="execute-1"></a>
+
+### execute/1 ###
+
+<pre><code>
+execute(Fun::fun((RiakConn::pid()) -&gt; Result::any())) -&gt; {ok, Result::any()} | {error, Reason::any()}
+</code></pre>
+<br />
+
+<a name="execute-2"></a>
+
+### execute/2 ###
+
+<pre><code>
+execute(Fun::fun((RiakConn::pid()) -&gt; Result::any()), RiakOpts::map()) -&gt; {ok, Result::any()} | {error, Reason::any()}
+</code></pre>
+<br />
+
+Executes a number of operations using the same Riak cclient connection.
+
+<a name="get-5"></a>
+
+### get/5 ###
+
+<pre><code>
+get(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>, Spec::<a href="#type-type_spec">type_spec()</a>, Opts::map()) -&gt; ok | {ok, Datatype::<a href="#type-datatype">datatype()</a>} | {error, Reason::term()}
+</code></pre>
+<br />
+
 <a name="get_connection-1"></a>
 
 ### get_connection/1 ###
 
 `get_connection(X1) -> any()`
+
+<a name="put-5"></a>
+
+### put/5 ###
+
+<pre><code>
+put(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>, Spec::<a href="#type-type_spec">type_spec()</a>, Opts::map()) -&gt; ok | {ok, Datatype::<a href="#type-datatype">datatype()</a>} | {ok, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>} | {scheduled, WorkflowId::{<a href="#type-bucket_and_type">bucket_and_type()</a>, <a href="#type-key">key()</a>}} | {error, Reason::term()}
+</code></pre>
+<br />
+
+> This function is workflow aware
 
 <a name="rebuild_index-4"></a>
 
@@ -97,6 +195,15 @@ delete_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collect
 
 <pre><code>
 rebuild_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, BucketType::binary(), Bucket::binary(), Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; ok | no_return()
+</code></pre>
+<br />
+
+<a name="type-1"></a>
+
+### type/1 ###
+
+<pre><code>
+type(Term::<a href="#type-datatype">datatype()</a>) -&gt; set | map | counter | flag
 </code></pre>
 <br />
 
@@ -126,7 +233,7 @@ Riak KV.
 ### workflow/1 ###
 
 <pre><code>
-workflow(Fun::fun(() -&gt; any())) -&gt; {ok, WorkId::binary(), ResultOfFun::any()} | {error, Reason::any()} | no_return()
+workflow(Fun::fun(() -&gt; any())) -&gt; {ok, {WorkId::binary(), ResultOfFun::any()}} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -138,7 +245,7 @@ the `Opts` argument.
 ### workflow/2 ###
 
 <pre><code>
-workflow(Fun::fun(() -&gt; any()), Opts::<a href="babel_workflow.md#type-opts">babel_workflow:opts()</a>) -&gt; {ok, WorkId::binary(), ResultOfFun::any()} | {error, Reason::any()} | no_return()
+workflow(Fun::fun(() -&gt; any()), Opts::<a href="babel_workflow.md#type-opts">babel_workflow:opts()</a>) -&gt; {ok, {WorkId::binary(), ResultOfFun::any()}} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -183,20 +290,23 @@ Example: Creating various babel objects and scheduling
            _CollextionY1 = babel:create_index(IndexB, CollectionY0),
            ok
       end).
-  > {ok, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
+  > {ok, {<<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}}
 ```
 
-The resulting workflow execution will schedule the writes in the order that
-results from the dependency graph constructed using the results of this
-module functions. This ensures partitions are created first and then
+The resulting workflow execution will schedule the writes and deletes in the
+order defined by the dependency graph constructed using the results
+of this module functions. This ensures partitions are created first and then
 collections.
 
 The `Opts` argument offers the following options:
 
 * `on_terminate` – a functional object `fun((Reason :: any()) -> ok)`. This
 function will be evaluated before the call terminates. In case of succesful
-termination the value `normal` is passed as argument. Otherwise, in case of
-error, the error reason will be passed as argument. This allows you to
-perform a cleanup after the workflow execution e.g. returning a riak
-connection object to a pool.
+termination the value `normal` will be  passed as argument. Otherwise, in
+case of error, the error reason will be passed as argument. This allows you
+to perform a cleanup after the workflow execution e.g. returning a riak
+connection object to a pool. Notice that this function might be called
+multiple times in the case of nested workflows. If you need to conditionally
+perform a cleanup operation you might use the function `is_nested_worflow/0`
+to take a decision.
 

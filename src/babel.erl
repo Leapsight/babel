@@ -18,7 +18,7 @@
 
 %% -----------------------------------------------------------------------------
 %% @doc This module acts as entry point for a number of Babel features and
-%% provides some of the `riakc_pb_socket` module functions adapted for babel
+%% provides some of the `riakc_pb_socke' module functions adapted for babel
 %% datatypes.
 %% @end
 %% -----------------------------------------------------------------------------

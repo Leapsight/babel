@@ -1,7 +1,9 @@
 %% encoding: UTF-8
 {application,babel}.
 {modules,[babel,babel_app,babel_config,babel_config_manager,
-          babel_consistent_hashing,babel_crdt,babel_digraph,
+          babel_consistent_hashing,babel_crdt,babel_digraph,babel_flag,
           babel_hash_partitioned_index,babel_index,babel_index_collection,
-          babel_index_partition,babel_key_value,babel_manager,
-          babel_range_partitioned_index,babel_reliable,babel_sup,riakc_pool]}.
+          babel_index_partition,babel_key_value,babel_manager,babel_map,
+          babel_range_partitioned_index,babel_reliable,
+          babel_riak_connection_broker,babel_riak_connection_pool,
+          babel_riak_connection_sup,babel_set,babel_sup,babel_utils]}.
