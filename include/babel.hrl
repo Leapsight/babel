@@ -2,10 +2,9 @@
 
 -define(DEFAULT_REQ_TIMEOUT, 5000).
 -define(DEFAULT_REQ_DEADLINE, 5 * 60 * 1000).
-%% We use the ASCII unit separator ($\31) which was designed to separate
-%% fields of a record.
--define(PATH_SEPARATOR, $/).
--define(KEY(Bucket), <<Bucket/binary, "_idx">>).
+%% Riak HTTP does not like the $/
+-define(PATH_SEPARATOR, $-).
+-define(KEY(Bucket), <<Bucket/binary, "idx">>).
 
 
 
