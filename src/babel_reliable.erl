@@ -236,7 +236,7 @@ workflow(Fun, Opts) ->
                 stacktrace => Stacktrace
             }),
             ok = on_terminate(Reason, Opts),
-            error(Reason)
+            error(Reason, Stacktrace)
     after
         ok = maybe_cleanup()
     end.
