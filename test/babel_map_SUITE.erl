@@ -11,6 +11,7 @@ all() ->
     [
         create_test,
         to_riak_op_test,
+        put_test,
         get_test
     ].
 
@@ -65,24 +66,22 @@ create_test(_) ->
 to_riak_op_test(_) ->
     M = babel_map:new(data(), spec()),
     Op = babel_map:to_riak_op(M, spec()),
-    ?assertEqual(true, is_tuple(Op)),
+    ?assertEqual(true, is_tuple(Op)).
 
+
+put_test(_) ->
+    M0 = babel_map:new(data(), spec()),
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    {ok, RM} = riakc_pb_socket:update_type(
-        Conn,
-        {<<"index_data">>, <<"test">>},
-        <<"to_riak_op_test">>,
-        Op,
-        [{return_body, true}]
-    ),
-    ?assertEqual(true, riakc_map:is_type(RM)),
+    Opts = #{return_body => true, connection => Conn},
 
-    ?assertEqual(
-        babel_map:value(M),
-        babel_map:value(babel_map:from_riak_map(RM, spec()))
-    ).
+    ?assertEqual(false, babel_reliable:is_in_workflow()),
+
+    {ok, M1} = babel:put(
+        {<<"index_data">>, <<"test">>},<<"to_riak_op_test">>, M0, spec(), Opts
+    ),
+    ?assertEqual(true, babel_map:is_type(M1)).
 
 
 get_test(_) ->
@@ -92,7 +91,7 @@ get_test(_) ->
         {<<"index_data">>, <<"test">>},
         <<"to_riak_op_test">>,
         spec(),
-        #{return_body => true, connection => Conn}
+        #{connection => Conn}
     ),
     ?assertEqual(true, babel_map:is_type(M)).
 

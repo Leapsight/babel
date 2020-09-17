@@ -130,9 +130,9 @@ get(TypedBucket, Key, Spec, Opts0) ->
 
 put(TypedBucket, Key, Datatype, Spec, Opts) ->
     case babel_reliable:is_in_workflow() of
-        true ->
-            do_put(TypedBucket, Key, Datatype, Spec, Opts);
         false ->
+            do_put(TypedBucket, Key, Datatype, Spec, Opts);
+        true ->
             schedule_put(TypedBucket, Key, Datatype, Spec, Opts)
     end.
 
@@ -150,9 +150,9 @@ put(TypedBucket, Key, Datatype, Spec, Opts) ->
 
 delete(TypedBucket, Key, Opts) ->
     case babel_reliable:is_in_workflow() of
-        true ->
-            do_delete(TypedBucket, Key, Opts);
         false ->
+            do_delete(TypedBucket, Key, Opts);
+        true ->
             schedule_delete(TypedBucket, Key, Opts)
     end.
 
