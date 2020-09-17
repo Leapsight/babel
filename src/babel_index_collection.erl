@@ -268,7 +268,7 @@ indices(#babel_index_collection{} = Collection) ->
 index_names(Collection) ->
     try data(Collection) of
         Data ->
-            Fun = fun(K, _, Acc) -> [K | Acc] end,
+            Fun = fun({K, map}, _, Acc) -> [K | Acc] end,
             lists:reverse(orddict:fold(Fun, [], Data))
     catch
         error:function_clause ->
