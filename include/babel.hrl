@@ -22,6 +22,14 @@
         required => true,
         datatype => [pid, function]
     },
+    n_val => #{
+        alias => <<"n_val">>,
+        key => n_val,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => non_neg_integer
+    },
     r => #{
         alias => <<"r">>,
         key => r,
@@ -86,6 +94,26 @@
         allow_undefined => false,
         datatype => boolean
     },
+    sloppy_quorum => #{
+        alias => <<"sloppy_quorum">>,
+        key => sloppy_quorum,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => boolean
+    },
+    return_body => #{
+        alias => <<"return_body">>,
+        key => return_body,
+        required => false,
+        datatype => boolean
+    },
+    return_head => #{
+        alias => <<"return_head">>,
+        key => return_head,
+        required => false,
+        datatype => boolean
+    },
     timeout => #{
         alias => <<"timeout">>,
         key => timeout,
@@ -107,7 +135,9 @@
     pw => quorum(),
     notfound_ok => boolean(),
     basic_quorum => boolean(),
+    sloppy_quorum => boolean(),
     timeout => timeout(),
+    return_body => boolean(),
     '$validated' => boolean()
 }.
 
