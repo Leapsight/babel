@@ -390,16 +390,16 @@ maybe_lookup(_, _, _, Partition) ->
 
 
 %% @private
-on_delete(TypedBucket, Key) ->
+on_delete(_TypedBucket, _Key) ->
     %% TODO WAMP Publication
-    _URI = <<"org.babel.index_partition.deleted">>,
-    _Args = [TypedBucket, Key],
+    %% _URI = <<"org.babel.index_partition.deleted">>,
+    %% _Args = [TypedBucket, Key],
     ok.
 
 
 %% @private
-on_update(TypedBucket, Key) ->
+on_update(_TypedBucket, _Key) ->
     %% TODO WAMP Publication
-    _URI = <<"org.babel.index_partition.updated">>,
-    _Args = [TypedBucket, Key],
+    %% _URI = <<"org.babel.index_partition.updated">>,
+    %% _Args = [TypedBucket, Key],
     ok.

@@ -141,6 +141,9 @@ end).
 -export_type([index_key/0]).
 -export_type([index_values/0]).
 -export_type([riak_opts/0]).
+-export_type([query_opts/0]).
+-export_type([fold_fun/0]).
+-export_type([fold_opts/0]).
 
 %% API
 %% -export([get/4]).

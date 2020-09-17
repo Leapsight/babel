@@ -17,13 +17,22 @@
 %% =============================================================================
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc This module acts as entry point for a number of Babel features and
+%% provides some of the `riakc_pb_socket` module functions adapted for babel
+%% datatypes.
 %% @end
 %% -----------------------------------------------------------------------------
 -module(babel).
 -include("babel.hrl").
 -include_lib("kernel/include/logger.hrl").
 
+
+-type datatype()        ::  babel_map:t() | babel_set:t().
+-type type_spec()       ::  babel_map:type_spec() | babel_set:type_spec().
+-type riak_op()         ::  riakc_datatype:update(term()).
+
+-export_type([datatype/0]).
+-export_type([riak_op/0]).
 
 -export([create_collection/2]).
 -export([create_index/2]).
@@ -35,7 +44,12 @@
 -export([workflow/2]).
 -export([validate_riak_opts/1]).
 -export([get_connection/1]).
-
+-export([execute/2]).
+-export([execute/1]).
+-export([put/5]).
+-export([delete/3]).
+-export([get/5]).
+-export([type/1]).
 
 
 %% =============================================================================
@@ -47,13 +61,146 @@
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-%% -spec execute(Fun :: fun((RiakConn :: pid()) -> Result :: any())) ->
-%%     {ok, Result :: any()} | {error, Reason :: any()}.
+-spec type(datatype()) -> set | map | counter | flag.
 
-%% execute(Fun) ->
-%%     babel_riak_connection_pool:checkout()
+type(Term) when is_tuple(Term) ->
+    Mods = [babel_set, babel_map, babel_counter, babel_flag],
+    Fun = fun(Mod, Acc) ->
+        case (catch Mod:is_type(Term)) of
+            true ->
+                throw({type, Mod:type()});
+            _ ->
+                Acc
+        end
+    end,
+
+    try
+        error = lists:foldl(Fun, error, Mods),
+        error(badarg)
+    catch
+        throw:{type, Mod} -> Mod
+    end.
 
 
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec get(
+    TypedBucket :: bucket_and_type(),
+    Key :: binary(),
+    Datatype :: datatype(),
+    Spec :: type_spec(),
+    Opts :: map()) ->
+    ok
+    | {ok, Datatype :: datatype()}
+    | {error, Reason :: term()}.
+
+get(TypedBucket, Key, Datatype, Spec, Opts0) ->
+    Opts = validate_riak_opts(Opts0),
+    Conn = get_connection(Opts),
+    RiakOpts = maps:to_list(Opts),
+    Type = type(Datatype),
+
+    case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, RiakOpts) of
+        {ok, Object} ->
+            {ok, to_babel_datatype(Type, Object, Spec)};
+        {error, {notfound, _}} ->
+            {error, not_found};
+        {error, _} = Error ->
+            Error
+    end.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% > This function is workflow aware
+%% @end
+%% -----------------------------------------------------------------------------
+-spec put(
+    TypedBucket :: bucket_and_type(),
+    Key :: binary(),
+    Datatype :: datatype(),
+    Spec :: type_spec(),
+    Opts :: map()) ->
+    ok
+    | {ok, Datatype :: datatype()}
+    | {ok, Key :: binary(), Datatype :: datatype()}
+    | {scheduled, WorkflowId :: {bucket_and_type(), key()}}
+    | {error, Reason :: term()}.
+
+put(TypedBucket, Key, Datatype, Spec, Opts) ->
+    case babel_reliable:is_in_workflow() of
+        true ->
+            do_put(TypedBucket, Key, Datatype, Spec, Opts);
+        false ->
+            schedule_put(TypedBucket, Key, Datatype, Spec, Opts)
+    end.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% > This function is workflow aware
+%% @end
+%% -----------------------------------------------------------------------------
+-spec delete(
+    TypedBucket :: bucket_and_type(), Key :: binary(), Opts :: map()) ->
+    ok
+    | {scheduled, WorkflowId :: {bucket_and_type(), key()}}
+    | {error, Reason :: term()}.
+
+delete(TypedBucket, Key, Opts) ->
+    case babel_reliable:is_in_workflow() of
+        true ->
+            do_delete(TypedBucket, Key, Opts);
+        false ->
+            schedule_delete(TypedBucket, Key, Opts)
+    end.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec execute(Fun :: fun((RiakConn :: pid()) -> Result :: any())) ->
+    {ok, Result :: any()} | {error, Reason :: any()}.
+
+execute(Fun) ->
+    execute(Fun, #{}).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec execute(
+    Fun :: fun((RiakConn :: pid()) -> Result :: any()),
+    RiakOpts :: map()) ->
+    {ok, Result :: any()} | {error, Reason :: any()}.
+
+execute(Fun, #{connection := Pid} = Opts) when is_pid(Pid) ->
+    try
+        Res = Fun(Pid),
+        ok = on_execute(normal, Opts),
+        Res
+    catch
+        _:Reason:Stacktrace ->
+            ok = on_execute(Reason, Opts),
+            error(Reason, Stacktrace)
+    after
+        ok
+    end;
+
+execute(Fun, #{connection := GetConn} = Opts) when is_function(GetConn) ->
+    execute(Fun, Opts#{connection => GetConn()});
+
+execute(_, #{connection := _}) ->
+    error(badarg);
+
+execute(Fun, Opts) ->
+    Pid = undefined, %% TODO get connection from pool
+    Checkin = fun(_) -> ok end, %% TODO fun to return conn to pool
+    execute(Fun, Opts#{connection => Pid, on_execute => Checkin}).
 
 
 %% -----------------------------------------------------------------------------
@@ -392,6 +539,63 @@ delete_index(Index, Collection0) ->
 
 
 
+%% @private
+do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
+    Opts = validate_riak_opts(Opts0),
+    Conn = get_connection(Opts),
+    RiakOpts = maps:to_list(Opts),
+    Type = type(Datatype),
+    Op = datatype_to_op(Type, Datatype, Spec),
+
+    case riakc_pb_socket:update_type(Conn, TypedBucket, Key, Op, RiakOpts) of
+        ok ->
+            ok;
+        {ok, Object} ->
+            {ok, to_babel_datatype(Type, Object, Spec)};
+        {ok, Key, Object} ->
+            {ok, Key, to_babel_datatype(Type, Object, Spec)};
+        {error, _Reason} = Error ->
+            %% TODO Retries, deadlines, backoff, etc
+            Error
+    end.
+
+
+%% @private
+schedule_put(TypedBucket, Key, Datatype, Spec, _Opts0) ->
+    Id = {TypedBucket, Key},
+    Type = type(Datatype),
+    Item = to_update_item(Type, TypedBucket, Key, Datatype, Spec),
+    WorkflowItem = {Id, {update, Item}},
+    ok = babel_reliable:add_workflow_items([WorkflowItem]),
+    {scheduled, Id}.
+
+
+%% @private
+do_delete(TypedBucket, Key, Opts0) ->
+    Opts = validate_riak_opts(Opts0),
+    Conn = get_connection(Opts),
+    RiakOpts = maps:to_list(Opts),
+
+    case riakc_pb_socket:delete(Conn, TypedBucket, Key, RiakOpts) of
+        ok ->
+            ok;
+        {error, _Reason} = Error ->
+            %% TODO Retries, deadlines, backoff, etc
+            Error
+    end.
+
+
+%% @private
+schedule_delete(TypedBucket, Key, _Opts0) ->
+    Id = {TypedBucket, Key},
+    Item = to_delete_item(TypedBucket, Key),
+    WorkflowItem = {Id, {delete, Item}},
+    ok = babel_reliable:add_workflow_items([WorkflowItem]),
+    {scheduled, Id}.
+
+
+
+
 %% -----------------------------------------------------------------------------
 %% @private
 %% @doc
@@ -481,3 +685,73 @@ partition_update_items(Collection, Index, Partitions, Mode) ->
 
         end || P <- Partitions
     ].
+
+
+%% @private
+datatype_to_op(map, Datatype, Spec) ->
+    babel_map:to_riak_op(Datatype, Spec);
+
+datatype_to_op(set, Datatype, Spec) ->
+    babel_set:to_riak_op(Datatype, Spec);
+
+datatype_to_op(counter, _Datatype, _Spec) ->
+    error(not_implemented);
+
+datatype_to_op(flag, _Datatype, _Spec) ->
+    error(not_implemented).
+
+
+%% @private
+to_babel_datatype(map, RiakDatatype, Spec) ->
+    babel_map:from_riam_map(RiakDatatype, Spec);
+
+to_babel_datatype(set, Datatype, Spec) ->
+    babel_set:from_riak_set(Datatype, Spec);
+
+to_babel_datatype(counter, _Datatype, _Spec) ->
+    error(not_implemented);
+
+to_babel_datatype(flag, _Datatype, _Spec) ->
+    error(not_implemented).
+
+
+%% @private
+to_update_item(map, TypedBucket, Key, Datatype, Spec) ->
+    Op = babel_map:to_riak_op(Datatype, Spec),
+    to_update_item(TypedBucket, Key, Op);
+
+to_update_item(set, TypedBucket, Key, Datatype, Spec) ->
+    Op = babel_set:to_riak_op(Datatype, Spec),
+    to_update_item(TypedBucket, Key, Op);
+
+to_update_item(counter, _TypedBucket, _Key, _Datatype, _Spec) ->
+    error(not_implemented);
+
+to_update_item(flag, _TypedBucket, _Key, _Datatype, _Spec) ->
+    error(not_implemented).
+
+
+%% @private
+to_update_item(TypedBucket, Key, Op) ->
+    Args = [TypedBucket, Key, Op],
+    {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
+
+
+
+to_delete_item(TypedBucket, Key) ->
+    Args = [TypedBucket, Key],
+    {node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]}.
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+on_execute(Reason, #{on_execute := Fun}) when is_function(Fun, 1) ->
+    _ = Fun(Reason),
+    ok;
+
+on_execute(_, _) ->
+    ok.
+

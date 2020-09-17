@@ -18,9 +18,20 @@
 
 %% -----------------------------------------------------------------------------
 %% @doc Provides an alternative to Riak map datatype.
+%%
+%% # Overview
+%%
 %% Babel maps (maps) differ from Riak's and Erlang's maps in several ways:
 %%
-%% * Maps are special key-value structures where the key is a binary name and teh value is either an Erlang term or another Babel data structure (each one an alternative of the Riak's counterparts). In case the value is an Erlang term, it is denoted as a Riak register but without the restriction of them being binaries as in Riak. To be able to do this certain map operations require a Specification object, a sort of schema that tells Babel map the type of each value. This enables the map to use Erlang terms and only convert them to the required Riak datatypes when storing the object in the database.
+%% * Maps are special key-value structures where the key is a binary name and
+%% the value is either an Erlang term or another Babel data structure (each one
+%% an alternative of the Riak's counterparts). In case the value is an Erlang
+%% term, it is denoted as a Riak register but without the restriction of them
+%% being binaries as in Riak. To be able to do this certain map operations
+%% require a Specification object, a sort of schema that tells Babel map the
+%% type of each value. This enables the map to use Erlang terms and only
+%% convert them to the required Riak datatypes when storing the object in the
+%% database.
 %% * Maps maintain the same semantics as Riak Maps but with some key differences
 %%     * As with Riak Map, removals, and modifications are captured for later
 %% application by Riak but they are also applied to the local state. That is,
@@ -31,8 +42,14 @@
 %%     * Updating an entry followed by removing that same entry will result in
 %% no operation being recorded. Likewise, removing an entry followed by
 %% updating that entry  will cancel the removal operation.
-%%     * You may store or remove values in a map by using `set/3`, `remove/2', and other functions targetting embedded babel containers e.g. `add_element/3', `add_elements/3', `del_element/3' to modify an embeded {@link babel_set}. This is a complete departure from Riak's cumbersome `update/3' function. As in Riak Maps, setting or adding a value to an embedded container that is not present will create a new container before the set/add operation.
-%%     * Certain function e.g. `set/3' allows you to set a value in a key or a path (list of nested keys).
+%%     * You may store or remove values in a map by using `set/3`, `remove/2',
+%% and other functions targetting embedded babel containers e.g. `add_element/
+%% 3', `add_elements/3', `del_element/3' to modify an embeded {@link babel_set}
+%% . This is a complete departure from Riak's cumbersome `update/3' function.
+%% As in Riak Maps, setting or adding a value to an embedded container that is
+%% not present will create a new container before the set/add operation.
+%%     * Certain function e.g. `set/3' allows you to set a value in a key or a
+%% path (list of nested keys).
 %%
 %% # Map Specification
 %%
@@ -46,9 +63,9 @@
 %% converted from binaries to lists.
 %%
 %% The special '_' key name provides the capability to convert a Riak Map where
-%% the keys are dynamic i.e. not known in advance, and their values are all of
-%% the same type.  This specs can only have a single entry as follows `#{{'_',
-%% set}, binary}'.
+%% the keys are not known in advance, and their values are all of the same
+%% type. These specs can only have a single entry as follows
+%% `#{{'_', set}, binary}'.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
@@ -65,37 +82,36 @@
 }).
 
 -opaque t()             ::  #babel_map{}.
--type multi_key_spec()  ::  #{riak_key() => type()}.
--type anon_key_spec()   ::  #{{'_', datatype()} := type()}.
--type spec()            ::  multi_key_spec() | anon_key_spec().
-                            %% | fun((encode, binary(), any()) -> value())
-                            %% | fun((decode, binary(), value()) -> any()).
 -type riak_key()        ::  {binary(), datatype()}.
 -type key_path()        ::  binary() | [binary()].
 -type value()           ::  any().
 -type datatype()        ::  counter | flag | register | set | map.
--type type()            ::  atom
+
+-type type_spec()       ::  #{riak_key() => key_type_spec()}
+                            | #{{'_', datatype()} := key_type_spec()}.
+-type key_type_spec()   ::  atom
                             | existing_atom
                             | boolean
                             | integer
                             | float
                             | binary
                             | list
-                            | spec()
-                            | babel_set:type()
+                            | type_spec()
+                            | babel_set:type_spec()
                             | fun((encode, any()) -> value())
                             | fun((decode, value()) -> any()).
--type update_fun()      ::  fun((babel_datatype() | term()) ->
-                                babel_datatype() | term()
+-type update_fun()      ::  fun((babel:datatype() | term()) ->
+                                babel:datatype() | term()
                             ).
 
 -export_type([t/0]).
--export_type([spec/0]).
+-export_type([type_spec/0]).
 -export_type([key_path/0]).
 
 %% API
 -export([add_element/3]).
 -export([add_elements/3]).
+-export([collect/2]).
 -export([context/1]).
 -export([del_element/3]).
 -export([from_riak_map/2]).
@@ -148,7 +164,7 @@ new(Data) when is_map(Data) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec new(Data :: map(), Spec :: spec()) -> t().
+-spec new(Data :: map(), Spec :: type_spec()) -> t().
 
 new(Data, Spec) ->
     from_map(Data, Spec).
@@ -173,7 +189,7 @@ new(Data, Spec) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec from_riak_map(
-    RMap :: riakc_map:crdt_map() | list(), Spec :: spec()) -> t().
+    RMap :: riakc_map:crdt_map() | list(), Spec :: type_spec()) -> t().
 
 from_riak_map(RMap, #{{'_', map} := _} = Spec0) ->
     from_riak_map(RMap, expand_spec(orddict:fetch_keys(RMap), Spec0));
@@ -201,7 +217,7 @@ from_riak_map(RMap, Spec) when is_list(RMap) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_riak_op(T :: t(), Spec :: spec()) ->
+-spec to_riak_op(T :: t(), Spec :: type_spec()) ->
     riakc_datatype:update(riakc_map:map_op()).
 
 to_riak_op(T, #{{'_', map} := _} = Spec0) ->
@@ -231,6 +247,7 @@ to_riak_op(T, Spec0) when is_map(Spec0) ->
         Ops ->
             {riakc_map:type(), {update, Ops}, T#babel_map.context}
     end.
+
 
 
 %% -----------------------------------------------------------------------------
@@ -351,6 +368,35 @@ get(Key, #babel_map{}, _) when not is_binary(Key) ->
 
 get(_, Map, _) ->
     error({badmap, Map}).
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec collect([key()], Map :: t()) -> [any()].
+
+collect(Keys, Map) ->
+    collect(Keys, Map, ?BADKEY).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec collect([key()], Map :: t(), Default :: any()) -> [any()].
+
+collect([Key], Map, Default) ->
+    try
+        [get(Key, Map, Default)]
+    catch
+        error:badkey ->
+            error({badkey, Key})
+    end;
+
+collect(Keys, Map, Default) when is_list(Keys) ->
+    collect(Keys, Map, Default, []).
 
 
 %% -----------------------------------------------------------------------------
@@ -663,7 +709,7 @@ from_term(Term, register, Type) ->
 
 
 %% @private
--spec from_riak_map(orddict:orddict(), riakc_datatype:context(), spec()) ->
+-spec from_riak_map(orddict:orddict(), riakc_datatype:context(), type_spec()) ->
     maybe_no_return(t()).
 
 from_riak_map(RMap, Context, Spec) when is_map(Spec) ->
@@ -714,8 +760,8 @@ expand_spec(Keys, Datatype, KeySpec) ->
 
 
 %% @private
--spec reverse_spec(#{riak_key() => type()}) ->
-    #{binary() => {riak_key(), type()}}.
+-spec reverse_spec(type_spec()) ->
+    #{binary() => {riak_key(), key_type_spec()}}.
 
 reverse_spec(Spec) when is_map(Spec) ->
     maps:fold(
@@ -775,6 +821,19 @@ to_binary(Value, Fun) when is_function(Fun, 2) ->
 
 to_binary(Value, Type) ->
     babel_utils:to_binary(Value, Type).
+
+
+%% @private
+collect([H|T], Map, Default, Acc) ->
+    try
+        collect(T, Map, Default, [get(H, Map, Default)|Acc])
+    catch
+        error:badkey ->
+            error({badkey, H})
+    end;
+
+collect([], _, _, Acc) ->
+    lists:reverse(Acc).
 
 
 %% @private

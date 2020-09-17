@@ -122,7 +122,3 @@
 -type maybe_no_return(T)    ::  T | no_return().
 -type maybe_error(T)        ::  T | {error, Reason :: any()}.
 -type typed_bucket()        ::  bucket_and_type().
-
-
--type babel_datatype()      ::  babel_map:t()
-                                | babel_set:t().

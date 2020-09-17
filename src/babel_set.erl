@@ -32,7 +32,7 @@
 }).
 
 -opaque t()             ::  #babel_set{}.
--type type()            ::  atom
+-type type_spec()       ::  atom
                             | existing_atom
                             | boolean
                             | integer
@@ -43,7 +43,7 @@
                             | fun((decode, binary()) -> any()).
 
 -export_type([t/0]).
--export_type([type/0]).
+-export_type([type_spec/0]).
 
 
 %% API
@@ -100,7 +100,7 @@ new(Data) when is_list(Data) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec from_riak_set(
-    RiakSet :: riakc_set:riakc_set() | ordsets:ordset(), Type :: type()) ->
+    RiakSet :: riakc_set:riakc_set() | ordsets:ordset(), Type :: type_spec()) ->
     maybe_no_return(t()).
 
 from_riak_set(Ordset, Type) when is_list(Ordset) ->
@@ -115,7 +115,7 @@ from_riak_set(RiakSet, Type) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_riak_op(T :: t(), Type :: type()) ->
+-spec to_riak_op(T :: t(), Type :: type_spec()) ->
     riakc_datatype:update(riakc_set:set_op()).
 
 to_riak_op(#babel_set{adds = [], removes = []}, _) ->
