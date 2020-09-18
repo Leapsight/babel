@@ -10,6 +10,7 @@
 all() ->
     [
         create_test,
+        create_test_2,
         to_riak_op_test,
         put_test,
         get_test
@@ -60,6 +61,13 @@ create_test(_) ->
     %% dbg:tpl(babel_map, '_', x),
 
     M = babel_map:new(data(), spec()),
+    ?assertEqual(true, babel_map:is_type(M)).
+
+create_test_2(_) ->
+    %% dbg:tracer(), dbg:p(all,c),
+    %% dbg:tpl(babel_map, '_', x),
+
+    M = babel_map:new(data1(), spec()),
     ?assertEqual(true, babel_map:is_type(M)).
 
 
@@ -155,6 +163,29 @@ data() ->
         <<"last_modified_by">> => <<"mrn:user:1">>,
         <<"created_timestamp">> => 1599835691640,
         <<"last_modified_timestamp">> => 1599835691640
+    }.
+
+
+data1() ->
+    #{
+        <<"version">> => <<"2.0">>,
+        <<"id">> => <<"mrn:business_account:1">>,
+        <<"account_type">> => <<"business">>,
+        <<"name">> => <<"Leapsight">>,
+        <<"active">> => true,
+        <<"operation_mode">> => <<"normal">>,
+        <<"country_id">> => <<"AR">>,
+        <<"number">> => <<"AC897698769">>,
+        <<"identification_type">> => <<"PASSPORT">>,
+        <<"identification_number">> => <<"874920948">>,
+        <<"address">> => #{
+            <<"address_line1">> => <<"Clement Street">>,
+            <<"address_line2">> => <<"Floor 8 Room B">>,
+            <<"city">> => <<"London">>,
+            <<"state">> => <<"London">>,
+            <<"country">> => <<"United Kingdom">>,
+            <<"postal_code">> => <<"SW12 2RT">>
+        }
     }.
 
 

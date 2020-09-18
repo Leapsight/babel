@@ -718,12 +718,14 @@ encode_fields(List) ->
 decode_fields(Data) ->
     [
         case X of
+            %% #{Key := Type} ->
+                %% {Key, binary_to_existing_atom(Type,  utf8)};
             {Key, Type} ->
                 {Key, binary_to_existing_atom(Type,  utf8)};
             Key ->
                 Key
         end
-        || X <- jsx:decode(Data)
+        || X <- jsx:decode(Data, [{return_maps, false}])
     ].
 
 
