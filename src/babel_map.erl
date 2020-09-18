@@ -654,7 +654,7 @@ from_map(Map, Spec0) when is_map(Spec0) ->
             {ok, {{Key, Datatype}, KeySpec}} ->
                 from_term(Value, Datatype, KeySpec);
             {ok, {Datatype, KeySpec}}
-            when Datatype == map orelse Datatype == set->
+            when Datatype == map orelse Datatype == set ->
                 from_term(Value, Datatype, KeySpec);
             error ->
                 error({missing_spec, Key})
@@ -776,13 +776,15 @@ reverse_spec(Spec) when is_map(Spec) ->
 
 %% @private
 init_values(Spec, Acc0) ->
+    %% We only set the missing container values
     Fun = fun
         ({_, counter}, _KeySpec, _) ->
             error(not_implemented);
         ({_, flag}, _KeySpec, _) ->
             error(not_implemented);
-        ({Key, register}, KeySpec, Acc) ->
-            maps:put(Key, from_binary(<<>>, KeySpec), Acc);
+        ({_, register}, _, Acc) ->
+            %% maps:put(Key, from_binary(<<>>, KeySpec), Acc);
+            Acc;
         ({Key, set}, _, Acc) ->
             maps:put(Key, babel_set:new(), Acc);
         ({Key, map}, KeySpec, Acc) when is_map(KeySpec) ->
