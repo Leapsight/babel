@@ -686,7 +686,7 @@ maybe_reverse(_, _, L) ->
 %% @end
 %% -----------------------------------------------------------------------------
 encode_list(List) ->
-    jsx:encode(List).
+    jsone:encode(List).
 
 
 %% -----------------------------------------------------------------------------
@@ -696,7 +696,7 @@ encode_list(List) ->
 %% @end
 %% -----------------------------------------------------------------------------
 decode_list(Data) ->
-    jsx:decode(Data).
+    jsone:decode(Data).
 
 
 %% -----------------------------------------------------------------------------
@@ -706,7 +706,7 @@ decode_list(Data) ->
 %% @end
 %% -----------------------------------------------------------------------------
 encode_fields(List) ->
-    jsx:encode(List).
+    jsone:encode(List).
 
 
 %% -----------------------------------------------------------------------------
@@ -718,14 +718,12 @@ encode_fields(List) ->
 decode_fields(Data) ->
     [
         case X of
-            %% #{Key := Type} ->
-                %% {Key, binary_to_existing_atom(Type,  utf8)};
             {Key, Type} ->
                 {Key, binary_to_existing_atom(Type,  utf8)};
             Key ->
                 Key
         end
-        || X <- jsx:decode(Data, [{return_maps, false}])
+        || X <- jsone:decode(Data, [{object_format, proplist}])
     ].
 
 
