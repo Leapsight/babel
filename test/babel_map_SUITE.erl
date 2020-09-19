@@ -57,16 +57,10 @@ end_per_suite(Config) ->
 
 
 create_test(_) ->
-    %% dbg:tracer(), dbg:p(all,c),
-    %% dbg:tpl(babel_map, '_', x),
-
     M = babel_map:new(data(), spec()),
     ?assertEqual(true, babel_map:is_type(M)).
 
 create_test_2(_) ->
-    %% dbg:tracer(), dbg:p(all,c),
-    %% dbg:tpl(babel_map, '_', x),
-
     M = babel_map:new(data1(), spec()),
     ?assertEqual(true, babel_map:is_type(M)).
 
@@ -191,43 +185,43 @@ data1() ->
 
 spec() ->
     #{
-        {<<"version">>, register} => binary,
-        {<<"id">>, register} => binary,
-        {<<"account_type">>, register} => binary,
-        {<<"name">>, register} => binary,
-        {<<"active">>, register} => boolean,
-        {<<"operation_mode">>, register} => binary,
-        {<<"country_id">>, register} => binary,
-        {<<"number">>, register} => binary,
-        {<<"identification_type">>, register} => binary,
-        {<<"identification_number">>, register} => binary,
-        {<<"address">>, map} => #{
-            {<<"address_line1">>, register} => binary,
-            {<<"address_line2">>, register} => binary,
-            {<<"city">>, register} => binary,
-            {<<"state">>, register} => binary,
-            {<<"country">>, register} => binary,
-            {<<"postal_code">>, register} => binary
-        },
+        <<"version">> => {register, binary},
+        <<"id">> => {register, binary},
+        <<"account_type">> => {register, binary},
+        <<"name">> => {register, binary},
+        <<"active">> => {register, boolean},
+        <<"operation_mode">> => {register, binary},
+        <<"country_id">> => {register, binary},
+        <<"number">> => {register, binary},
+        <<"identification_type">> => {register, binary},
+        <<"identification_number">> => {register, binary},
+        <<"address">> => {map, #{
+            <<"address_line1">> => {register, binary},
+            <<"address_line2">> => {register, binary},
+            <<"city">> => {register, binary},
+            <<"state">> => {register, binary},
+            <<"country">> => {register, binary},
+            <<"postal_code">> => {register, binary}
+        }},
         %% emails and phones are stored as maps of their values to their tag
         %% value e.g. #{<<"john.doe@example.com">> => <<"work">>}
         %% {register, binary} means "every key in the phones | emails map has
         %% a register associated and we keep the value of the registry as a
         %% binary
-        {<<"emails">>, map} => #{{'_', register} => binary},
-        {<<"phones">>, map} => #{{'_', register} => binary},
+        <<"emails">> => {map, #{'_' => {register, binary}}},
+        <<"phones">> => {map, #{'_' => {register, binary}}},
         %% services is a mapping of serviceID to service objects
         %% e.g. #{<<"mrn:service:1">> => #{<<"description">> => ...}
         %% {map, #{..}} means "every key in the services map has a map
         %% associated with it which is always of the same type, in this case a
         %% map with 3 properties: description, expired_data and enabled"
-        {<<"services">>, map} => #{{'_', map} => #{
-            {<<"description">>, register} => binary,
-            {<<"expiry_date">>, register} => binary,
-            {<<"enabled">>, register} => boolean
-        }},
-        {<<"created_by">>, register} => binary,
-        {<<"last_modified_by">>, register} => binary,
-        {<<"created_timestamp">>, register} => integer,
-        {<<"last_modified_timestamp">>, register} => integer
+        <<"services">> => {map, #{'_' => {map, #{
+            <<"description">> => {register, binary},
+            <<"expiry_date">> => {register, binary},
+            <<"enabled">> => {register, boolean}
+        }}}},
+        <<"created_by">> => {register, binary},
+        <<"last_modified_by">> => {register, binary},
+        <<"created_timestamp">> => {register, integer},
+        <<"last_modified_timestamp">> => {register, integer}
     }.
