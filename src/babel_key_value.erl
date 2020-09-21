@@ -25,7 +25,10 @@
 
 -define(BADKEY, '$error_badkey').
 
--type t()           ::  map() | [proplists:property()] | riakc_map:crdt_map().
+-type t()           ::  map()
+                        | [proplists:property()]
+                        | babel_map:t()
+                        | riakc_map:crdt_map().
 -type key()         ::  atom()
                         | binary()
                         | tuple()
@@ -111,7 +114,6 @@ get([H|T], KVTerm, Default) when is_map(KVTerm) ->
     end;
 
 get([{_, _} = H|T], KVTerm, Default) ->
-
     riakc_map:is_type(KVTerm) orelse error(badarg),
 
     case riakc_map:find(H, KVTerm) of
@@ -120,6 +122,10 @@ get([{_, _} = H|T], KVTerm, Default) ->
         error ->
             maybe_badkey(Default)
     end;
+
+get(Path, KVTerm, Default) when is_list(Path) ->
+    babel_map:is_type(KVTerm) orelse error(badarg),
+    babel_map:get(Path, KVTerm, Default);
 
 get(Key, KVTerm, Default) when is_map(KVTerm) ->
     maybe_badkey(maps:get(Key, KVTerm, Default));
@@ -133,7 +139,6 @@ get(Key, KVTerm, Default) when is_list(KVTerm) ->
     end;
 
 get({_, _} = Key, KVTerm, Default) ->
-
     riakc_map:is_type(KVTerm) orelse error(badarg),
 
     case riakc_map:find(Key, KVTerm) of
@@ -143,8 +148,9 @@ get({_, _} = Key, KVTerm, Default) ->
             maybe_badkey(Default)
     end;
 
-get(_, _, _) ->
-    error(badarg).
+get(Key, KVTerm, Default) ->
+    babel_map:is_type(KVTerm) orelse error(badarg),
+    babel_map:get(Key, KVTerm, Default).
 
 
 %% -----------------------------------------------------------------------------
@@ -194,9 +200,19 @@ when (is_atom(H) orelse is_binary(H)) andalso is_map(KVTerm)->
     InnerTerm = set(T, Value, get(H, KVTerm, #{})),
     maps:put(H, InnerTerm, KVTerm);
 
-set([H|T], Value, KVTerm) ->
-    InnerTerm = set(T, Value, get(H, KVTerm, riakc_map:new())),
-    riakc_map:update(H, fun(_) -> InnerTerm end, KVTerm);
+set([H|T] = L, Value, KVTerm) ->
+    case babel_map:is_type(KVTerm) of
+        true ->
+            babel_map:set(L, Value, KVTerm);
+        false ->
+            case riakc_map:is_type(KVTerm) of
+                true ->
+                    InnerTerm = set(T, Value, get(H, KVTerm, riakc_map:new())),
+                    riakc_map:update(H, fun(_) -> InnerTerm end, KVTerm);
+                false ->
+                    error(badarg)
+            end
+    end;
 
 set([], _, _)  ->
     error(badkey);
@@ -213,8 +229,9 @@ set({_, Type} = Key, Value, KVTerm) ->
     riakc_map:is_type(KVTerm) orelse error(badarg),
     riakc_map:update(Key, riak_update_fun(Type, Value), KVTerm);
 
-set(_, _, _) ->
-    error(badarg).
+set(Key, Value, KVTerm) ->
+    babel_map:is_type(KVTerm) orelse error(badarg),
+    babel_map:set(Key, Value, KVTerm).
 
 
 
