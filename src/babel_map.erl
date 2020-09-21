@@ -688,8 +688,9 @@ from_riak_map(RMap, Context, Spec) when is_map(Spec) ->
     end,
     Values0 = orddict:fold(Convert, maps:new(), RMap),
 
-    %% Initialise values for Spec kyes not present in RMap
-    MissingKeys = lists:subtract(maps:keys(Spec), orddict:fetch_keys(RMap)),
+    %% Initialise values for Spec keys not present in RMap
+    Keys = [Key || {Key, _} <- orddict:fetch_keys(RMap)],
+    MissingKeys = lists:subtract(maps:keys(Spec), Keys),
     Values1 = init_values(maps:with(MissingKeys, Spec), Values0),
 
     #babel_map{values = Values1, context = Context}.
