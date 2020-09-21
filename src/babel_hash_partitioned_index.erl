@@ -17,7 +17,17 @@
 %% =============================================================================
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc A hash-partitioned index is an index whose contents (index entries)
+%% have been partitioned amongst a fixed number of parts (called partitions)
+%% using a hashing algorithm to determine in which partition and entry should be
+%% located.
+%%
+%% By partitioning an index into multiple physical parts, you are accessing much
+%% smaller objects which makes it faster and more reliable.
+%%
+%% With hash partitioning, an index entry is placed into a partition based
+%% on the result of passing the partitioning key into a hashing algorithm.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -module(babel_hash_partitioned_index).
@@ -546,7 +556,6 @@ iterator_move(_Action, _Iterator, _Config) ->
 
 iterator_done(#babel_hash_partitioned_index_iter{done = Value}) ->
     Value.
-
 
 
 %% -----------------------------------------------------------------------------

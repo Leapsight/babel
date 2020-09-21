@@ -139,7 +139,7 @@ to_riak_op(#babel_set{adds = A, removes = R, context = C}, Type) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc %% @doc Returns the symbolic name of this container.
+%% @doc Returns the symbolic name of this container.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec type() -> set.
