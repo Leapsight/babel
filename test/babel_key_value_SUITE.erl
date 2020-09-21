@@ -16,7 +16,8 @@ all() ->
         get_1_test,
         set_1_test,
         crdt_get_1_test,
-        crdt_set_1_test
+        crdt_set_1_test,
+        babel_map_1_test
     ].
 
 
@@ -149,3 +150,8 @@ crdt_set_1_test(_) ->
         riakc_map:new(),
         Values
     ).
+
+
+babel_map_1_test(_) ->
+    M0 = babel_map:new(#{<<"foo">> => babel_map:new(#{<<"bar">> => 1})}),
+    1 = babel_key_value:get([<<"foo">>, <<"bar">>], M0).

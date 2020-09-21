@@ -620,7 +620,12 @@ from_map(Map, Spec) when is_map(Spec) ->
                 error({missing_spec, Key})
         end
     end,
-    Values = maps:map(ConvertType, Map),
+    Values0 = maps:map(ConvertType, Map),
+
+    %% Initialise values for Spec keys not present in Map
+    Keys = maps:keys(Map),
+    MissingKeys = lists:subtract(maps:keys(Spec), Keys),
+    Values = init_values(maps:with(MissingKeys, Spec), Values0),
 
     #babel_map{
         values = Values,
@@ -847,7 +852,7 @@ expand_spec(Keys, Spec) when is_map(Spec) ->
             error({badspec, Spec})
     end;
 
-expand_spec(Keys, {Datatype, KeySpec} = TypeMapping) ->
+expand_spec(Keys, {Datatype, _} = TypeMapping) ->
     Fun = fun
         ({Key, X}, Acc) when X == Datatype ->
             %% All Keys in the Riak Map should be of the same datatype when

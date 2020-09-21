@@ -83,7 +83,7 @@ put_test(_) ->
     {ok, M1} = babel:put(
         {<<"index_data">>, <<"test">>},<<"to_riak_op_test">>, M0, spec(), Opts
     ),
-    ?assertEqual(true, babel_map:is_type(M1)).
+    ?assertEqual(babel_map:value(M0), babel_map:value(M1)).
 
 
 get_test(_) ->
