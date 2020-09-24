@@ -78,7 +78,7 @@
     values = #{}            ::  #{key() => value()},
     updates = []            ::  ordsets:ordset(key()),
     removes = []            ::  ordsets:ordset(key()),
-    context = undefined     ::  riakc_datatype:context()
+    context                 ::  riakc_datatype:context() | undefined
 }).
 
 -opaque t()                 ::  #babel_map{}.
@@ -274,9 +274,9 @@ value(#babel_map{values = V}) ->
                     Term;
                 set ->
                     babel_set:value(Term);
-                counter ->
-                    error(not_implemented);
                 flag ->
+                    babel_flag:value(Term);
+                counter ->
                     error(not_implemented)
             end
     end,
@@ -643,8 +643,8 @@ from_term(Term, set, Spec) when is_list(Term) ->
 from_term(Term, counter, _) when is_integer(Term) ->
     error(not_implemented);
 
-from_term(Term, flag, _) when is_boolean(Term) ->
-    error(not_implemented);
+from_term(Term, flag, boolean) when is_boolean(Term) ->
+    babel_flag:new(Term, boolean);
 
 from_term(Term, register, atom) when is_atom(Term) ->
     Term;
@@ -718,10 +718,10 @@ init_values(Spec, Acc0) ->
         (_, {register, _}, Acc) ->
             Acc;
 
-        (_, {counter, _KeySpec}, _) ->
-            error(not_implemented);
+        (Key, {flag, _}, Acc) ->
+            maps:put(Key, babel_flag:new(), Acc);
 
-        (_, {flag, _KeySpec}, _) ->
+        (_, {counter, _KeySpec}, _) ->
             error(not_implemented)
     end,
     maps:fold(Fun, Acc0, Spec).
@@ -903,10 +903,13 @@ prepare_update_ops(T, Spec) ->
         ToOp({_, register}, undefined, Acc) ->
             Acc;
 
-        ToOp({{_, counter}, _KeySpec}, _V, _Acc) ->
-            error(not_implemented);
+        ToOp({{_, flag} = RKey, Type}, Flag, Acc) ->
+            case babel_flag:to_riak_op(Flag, Type) of
+                undefined -> Acc;
+                {_, Op, _} -> [{update, RKey, Op} | Acc]
+            end;
 
-        ToOp({{_, flag}, _KeySpec}, _V, _Acc) ->
+        ToOp({{_, counter}, _KeySpec}, _V, _Acc) ->
             error(not_implemented);
 
         ToOp(Key, Value, Acc) ->

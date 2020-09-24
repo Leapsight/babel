@@ -18,7 +18,7 @@
 
 %% -----------------------------------------------------------------------------
 %% @doc This module acts as entry point for a number of Babel features and
-%% provides some of the `riakc_pb_socke' module functions adapted for babel
+%% provides some of the `riakc_pb_socket' module functions adapted for babel
 %% datatypes.
 %% @end
 %% -----------------------------------------------------------------------------
@@ -129,7 +129,7 @@ get(TypedBucket, Key, Spec, Opts0) ->
     | {error, Reason :: term()}.
 
 put(TypedBucket, Key, Datatype, Spec, Opts) ->
-    case babel_reliable:is_in_workflow() of
+    case reliable:is_in_workflow() of
         false ->
             do_put(TypedBucket, Key, Datatype, Spec, Opts);
         true ->
@@ -149,7 +149,7 @@ put(TypedBucket, Key, Datatype, Spec, Opts) ->
     | {error, Reason :: term()}.
 
 delete(TypedBucket, Key, Opts) ->
-    case babel_reliable:is_in_workflow() of
+    case reliable:is_in_workflow() of
         false ->
             do_delete(TypedBucket, Key, Opts);
         true ->
@@ -289,7 +289,7 @@ workflow(Fun) ->
     | no_return().
 
 workflow(Fun, Opts) ->
-    babel_reliable:workflow(Fun, Opts).
+    reliable:workflow(Fun, Opts).
 
 
 %% -----------------------------------------------------------------------------
@@ -310,7 +310,7 @@ workflow(Fun, Opts) ->
     babel_index_collection:t() | no_return().
 
 create_collection(BucketPrefix, Name) ->
-    ok = babel_reliable:ensure_in_workflow(),
+    ok = reliable:ensure_in_workflow(),
 
     Collection = babel_index_collection:new(BucketPrefix, Name),
     CollectionId = babel_index_collection:id(Collection),
@@ -321,7 +321,7 @@ create_collection(BucketPrefix, Name) ->
 
     WorkItem = fun() -> babel_index_collection:to_update_item(Collection) end,
     WorkflowItem = {CollectionId, {update, WorkItem}},
-    ok = babel_reliable:add_workflow_items([WorkflowItem]),
+    ok = reliable:add_workflow_items([WorkflowItem]),
 
     Collection.
 
@@ -336,13 +336,13 @@ create_collection(BucketPrefix, Name) ->
     ok | no_return().
 
 delete_collection(Collection) ->
-    ok = babel_reliable:ensure_in_workflow(),
+    ok = reliable:ensure_in_workflow(),
 
     CollectionId = babel_index_collection:id(Collection),
     WorkItem = fun() -> babel_index_collection:to_delete_item(Collection) end,
     WorkflowItem = {CollectionId, {delete, WorkItem}},
 
-    babel_reliable:add_workflow_items([WorkflowItem]).
+    reliable:add_workflow_items([WorkflowItem]).
 
 
 %% -----------------------------------------------------------------------------
@@ -373,7 +373,7 @@ delete_collection(Collection) ->
     babel_index_collection:t() | no_return().
 
 create_index(Index, Collection) ->
-    ok = babel_reliable:ensure_in_workflow(),
+    ok = reliable:ensure_in_workflow(),
 
     %% It is an error add and index to a collection scheduled to be deleted
     ok = ensure_not_deleted(babel_index_collection:id(Collection)),
@@ -443,7 +443,7 @@ rebuild_index(_Index, _BucketType, _Bucket, _Opts) ->
     ok | no_return().
 
 update_indices(Actions, Collection, RiakOpts) when is_list(Actions) ->
-    ok = babel_reliable:ensure_in_workflow(),
+    ok = reliable:ensure_in_workflow(),
 
     CollectionId = babel_index_collection:id(Collection),
     Indices = babel_index_collection:indices(Collection),
@@ -465,13 +465,13 @@ update_indices(Actions, Collection, RiakOpts) when is_list(Actions) ->
             %% We have not modified the collection
             CollWorkflowItem = {CollectionId, undefined},
 
-            ok = babel_reliable:add_workflow_items(
+            ok = reliable:add_workflow_items(
                 [CollWorkflowItem | PartitionItems]
             ),
 
             %% If there is an update on the collection we want it to occur
             %% before the partition updates
-            babel_reliable:add_workflow_precedence(
+            reliable:add_workflow_precedence(
                 CollectionId, [Id || {Id, _} <- PartitionItems]
             )
         end,
@@ -513,14 +513,14 @@ delete_index(Index, Collection0) ->
             || X <- babel_index:partition_identifiers(Index)
         ],
 
-        ok = babel_reliable:add_workflow_items(
+        ok = reliable:add_workflow_items(
             [CollectionItem | PartitionItems]
         ),
 
         %% We need to first remove the index from the collection so that no more
         %% entries are added to the partitions, then we need to remove the partition
         _ = [
-            babel_reliable:add_workflow_precedence([CollectionId], X)
+            reliable:add_workflow_precedence([CollectionId], X)
             || {X, _} <- PartitionItems
         ],
 
@@ -563,12 +563,12 @@ do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
 
 %% @private
 schedule_put(TypedBucket, Key, Datatype, Spec, _Opts0) ->
-    ok = babel_reliable:ensure_in_workflow(),
+    ok = reliable:ensure_in_workflow(),
     Id = {TypedBucket, Key},
     Type = type(Datatype),
     Item = to_update_item(Type, TypedBucket, Key, Datatype, Spec),
     WorkflowItem = {Id, {update, Item}},
-    ok = babel_reliable:add_workflow_items([WorkflowItem]),
+    ok = reliable:add_workflow_items([WorkflowItem]),
     {scheduled, Id}.
 
 
@@ -589,11 +589,11 @@ do_delete(TypedBucket, Key, Opts0) ->
 
 %% @private
 schedule_delete(TypedBucket, Key, _Opts0) ->
-    ok = babel_reliable:ensure_in_workflow(),
+    ok = reliable:ensure_in_workflow(),
     Id = {TypedBucket, Key},
     Item = to_delete_item(TypedBucket, Key),
     WorkflowItem = {Id, {delete, Item}},
-    ok = babel_reliable:add_workflow_items([WorkflowItem]),
+    ok = reliable:add_workflow_items([WorkflowItem]),
     {scheduled, Id}.
 
 
@@ -614,7 +614,7 @@ do_create_index(Index, Collection) ->
         babel_index_collection:to_update_item(NewCollection)
     end,
     CollWorkflowItem = {CollectionId, {update, CollWorkItem}},
-    ok = babel_reliable:add_workflow_items(
+    ok = reliable:add_workflow_items(
         [CollWorkflowItem | PartitionItems]
     ),
 
@@ -622,7 +622,7 @@ do_create_index(Index, Collection) ->
     %% write so that if the index is present in a subsequent read of
     %% the collection, it means its partitions have been already
     %% written to Riak.
-    ok = babel_reliable:add_workflow_precedence(
+    ok = reliable:add_workflow_precedence(
         [Id || {Id, _} <- PartitionItems], CollectionId
     ),
 
@@ -635,7 +635,7 @@ do_create_index(Index, Collection) ->
 %% @end
 %% -----------------------------------------------------------------------------
 maybe_already_exists(Id) ->
-    case babel_reliable:find_workflow_item(Id) of
+    case reliable:find_workflow_item(Id) of
         {ok, _} ->
             throw({already_exists, Id});
         error ->
@@ -649,7 +649,7 @@ maybe_already_exists(Id) ->
 %% @end
 %% -----------------------------------------------------------------------------
 ensure_not_deleted(Id) ->
-    case babel_reliable:find_workflow_item(Id) of
+    case reliable:find_workflow_item(Id) of
         {ok, {Id, {delete, _}}} ->
             throw({scheduled_for_delete, Id});
         {ok, {Id, _}} ->
@@ -664,7 +664,7 @@ ensure_not_deleted(Id) ->
     babel_index:t(),
     [babel_index_partition:t()],
     Mode :: eager | lazy) ->
-    [babel_reliable:workflow_item()].
+    [reliable:workflow_item()].
 
 partition_update_items(Collection, Index, Partitions, Mode) ->
     [

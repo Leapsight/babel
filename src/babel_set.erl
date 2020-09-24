@@ -28,7 +28,7 @@
     adds = []           ::  ordsets:ordset(any()),
     removes = []        ::  ordsets:ordset(any()),
     size = 0            ::  non_neg_integer(),
-    context = undefined ::  riakc_datatype:context()
+    context             ::  riakc_datatype:context() | undefined
 }).
 
 -opaque t()             ::  #babel_set{}.
@@ -108,7 +108,8 @@ from_riak_set(Ordset, Type) when is_list(Ordset) ->
     new(Values);
 
 from_riak_set(RiakSet, Type) ->
-    from_riak_set(riakc_set:value(RiakSet), Type).
+    Set = from_riak_set(riakc_set:value(RiakSet), Type),
+    Set#babel_set{context = element(5, RiakSet)}.
 
 
 %% -----------------------------------------------------------------------------

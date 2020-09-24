@@ -74,7 +74,7 @@
             (_) -> false
         end
     },
-    on_cycle => #{
+    on_each_cycle => #{
         description => "MFA to eval when we have done the full circle",
         required => false,
         allow_null => false,

@@ -185,17 +185,23 @@ delete_index_test(_) ->
     },
 
     Fun = fun() ->
-        Collection = babel_index_collection:fetch(
+        Res = babel_index_collection:lookup(
             <<"mytenant">>, <<"users">>, RiakOpts
         ),
-        try
-            Index = babel_index_collection:index(
-                <<"users_by_email">>, Collection),
-            _Collection1 = babel:delete_index(Index, Collection),
-            ok
-        catch
-            error:badindex ->
-                ok
+
+        case Res of
+            {error, not_found} ->
+                ok;
+            {ok, Collection} ->
+                try
+                    Index = babel_index_collection:index(
+                        <<"users_by_email">>, Collection),
+                    _Collection1 = babel:delete_index(Index, Collection),
+                    ok
+                catch
+                    error:badindex ->
+                        ok
+                end
         end
     end,
 

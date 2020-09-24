@@ -78,7 +78,7 @@ put_test(_) ->
 
     Opts = #{return_body => true, connection => Conn},
 
-    ?assertEqual(false, babel_reliable:is_in_workflow()),
+    ?assertEqual(false, reliable:is_in_workflow()),
 
     {ok, M1} = babel:put(
         {<<"index_data">>, <<"test">>},<<"to_riak_op_test">>, M0, spec(), Opts
