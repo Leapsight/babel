@@ -116,10 +116,12 @@
 -export([context/1]).
 -export([del_element/3]).
 -export([from_riak_map/2]).
+-export([find/2]).
 -export([get/2]).
 -export([get/3]).
 -export([get_type/1]).
 -export([is_type/1]).
+-export([merge/2]).
 -export([new/0]).
 -export([new/1]).
 -export([new/2]).
@@ -129,6 +131,8 @@
 -export([type/0]).
 -export([update/3]).
 -export([value/1]).
+-export([enable/2]).
+-export([disable/2]).
 
 
 
@@ -282,6 +286,20 @@ value(#babel_map{values = V}) ->
     end,
     maps:map(Fun, V).
 
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec find(Key :: key(), T :: t()) -> {ok, any()} | error.
+
+find(Key, T) ->
+    case get(Key, T, error) of
+        error ->
+            error;
+        Value ->
+            {ok, Value}
+    end.
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns value `Value' associated with `Key' if `T' contains `Key'.
@@ -600,11 +618,126 @@ remove(Key, T) ->
     do_remove(Key, T).
 
 
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec enable(Key :: key(), T :: t()) -> NewT :: t().
+
+enable(_Key, _T) ->
+    error(not_implemented).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec disable(Key :: key(), T :: t()) -> NewT :: t().
+
+disable(_Key, _T) ->
+    error(not_implemented).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Merges two maps into a single map `Map3'.
+%% If two keys exist in both maps, the value in `T1' is superseded by the
+%% value in `T2'.
+%% The function implements a deep merge
+%%
+%% The call fails with a {badmap,Map} exception if `T1' or `T2' is not a map.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec merge(T1 :: t(), T2 :: t() | map()) -> Map3 :: t().
+
+merge(#babel_map{} = T1, #babel_map{values = V2}) ->
+
+    Fun = fun
+        (Key, #babel_map{} = T2i, #babel_map{values = AccValues} = Acc) ->
+            case maps:find(Key, AccValues) of
+                {ok, #babel_map{} = T1i} ->
+                    Acc#babel_map{
+                        values = maps:put(Key, merge(T1i, T2i), AccValues),
+                        updates = ordsets:add_element(
+                            Key, Acc#babel_map.updates
+                        )
+                    };
+                {ok, Term} ->
+                    error({badmap, Term});
+                error ->
+                    Acc#babel_map{
+                        values = maps:put(Key, set(Key, T2i, Acc), AccValues),
+                        updates = ordsets:add_element(
+                            Key, Acc#babel_map.updates
+                        )
+                    }
+            end;
+
+        (Key, Term, Acc) ->
+            case get_type(Term) of
+                register ->
+                    %% Registers are implicit in babel
+                    %% We update the value in T1
+                    set(Key, Term, Acc);
+                set ->
+                    add_elements(Key, babel_set:value(Term), Acc);
+                flag ->
+                    case babel_flag:value(Term) of
+                        true ->
+                            enable(Key, Acc);
+                        false ->
+                            disable(Key, Acc)
+                    end;
+                counter ->
+                    error(not_implemented)
+            end
+    end,
+    maps:fold(Fun, T1, V2).
+
+
+
+%% %% -----------------------------------------------------------------------------
+%% %% @doc
+%% %% @end
+%% %% -----------------------------------------------------------------------------
+%% -spec merge(Key, Value, T) -> NewT :: any().
+
+
+%% merge([H|[]], Value, Map) ->
+%%     merge(H, Value, Map);
+
+%% merge([H|T], Value, #babel_map{values = V} = Map) ->
+%%     case maps:find(H, V) of
+%%         {ok, #babel_map{} = HMap} ->
+%%             Map#babel_map{
+%%                 values = maps:put(H, set(T, Value, HMap), V),
+%%                 updates = ordsets:add_element(H, Map#babel_map.updates)
+%%             };
+%%         {ok, Term} ->
+%%             error({badmap, Term});
+%%         error ->
+%%             Map#babel_map{
+%%                 values = maps:put(H, set(T, Value, new()), V),
+%%                 updates = ordsets:add_element(H, Map#babel_map.updates)
+%%             }
+%%     end;
+
+%% merge(Key, Value, #babel_map{} = Map) when is_binary(Key) ->
+%%     Map#babel_map{
+%%         values = maps:put(Key, Value, Map#babel_map.values),
+%%         updates = ordsets:add_element(Key, Map#babel_map.updates)
+%%     };
+
+%% merge(Key, _, #babel_map{}) when not is_binary(Key) ->
+%%     error({badkey, Key});
+
+%% merge(_, _, Map) ->
+%%     error({badmap, Map}).
+
+
 
 %% =============================================================================
 %% PRIVATE
 %% =============================================================================
-
 
 
 %% @private
