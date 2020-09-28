@@ -227,7 +227,7 @@ store(BucketType, BucketPrefix, Key, Partition, RiakOpts) ->
     },
 
     Opts1 = babel:validate_riak_opts(Opts0),
-    ReqOpts = maps:to_list(maps:without([connection], Opts1)),
+    ReqOpts = babel_utils:opts_to_riak_opts(Opts1),
     Conn = babel:get_connection(Opts1),
     TypedBucket = typed_bucket(BucketType, BucketPrefix),
     Op = riakc_map:to_op(to_riak_object(Partition)),
@@ -336,7 +336,7 @@ lookup(BucketType, BucketPrefix, Key, RiakOpts) ->
 
 delete(BucketType, BucketPrefix, Key, RiakOpts) ->
     Opts = babel:validate_riak_opts(RiakOpts),
-    ReqOpts = maps:to_list(maps:without([connection], Opts)),
+    ReqOpts = babel_utils:opts_to_riak_opts(Opts),
     Conn = babel:get_connection(Opts),
     TypedBucket = typed_bucket(BucketType, BucketPrefix),
 
@@ -369,7 +369,7 @@ typed_bucket(Type, Prefix) ->
 %% @private
 maybe_lookup(TypedBucket, Key, RiakOpts, undefined) ->
     Opts = babel:validate_riak_opts(RiakOpts),
-    ReqOpts = maps:to_list(maps:without([connection], Opts)),
+    ReqOpts = babel_utils:opts_to_riak_opts(Opts),
     Conn = babel:get_connection(Opts),
 
     case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, ReqOpts) of

@@ -367,7 +367,7 @@ to_delete_item(#babel_index_collection{} = Collection) ->
 store(Collection, RiakOpts) ->
     Opts = babel:validate_riak_opts(RiakOpts),
     Conn = babel:get_connection(Opts),
-    ReqOpts = maps:to_list(maps:without([connection], Opts)),
+    ReqOpts = babel_utils:opts_to_riak_opts(Opts),
 
     Key = Collection#babel_index_collection.id,
     Object = Collection#babel_index_collection.object,
@@ -424,7 +424,7 @@ when is_binary(BucketPrefix) andalso is_binary(Key) ->
         r => quorum,
         pr => quorum
     },
-    ReqOpts = maps:to_list(maps:without([connection], Opts1)),
+    ReqOpts = babel_utils:opts_to_riak_opts(Opts1),
     TypeBucket = typed_bucket(BucketPrefix),
 
     case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, ReqOpts) of
@@ -454,7 +454,7 @@ when is_binary(BucketPrefix) andalso is_binary(Key) ->
         pr => quorum,
         pw => quorum
     },
-    ReqOpts = maps:to_list(maps:without([connection], Opts1)),
+    ReqOpts = babel_utils:opts_to_riak_opts(Opts1),
     TypeBucket = typed_bucket(BucketPrefix),
 
     case riakc_pb_socket:delete(Conn, TypeBucket, Key, ReqOpts) of

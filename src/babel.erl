@@ -98,9 +98,9 @@ type(Term) when is_tuple(Term) ->
 get(TypedBucket, Key, Spec, Opts0) ->
     Opts = validate_riak_opts(Opts0),
     Conn = get_connection(Opts),
-    RiakOpts = maps:to_list(Opts),
+    ReqOpts = babel_utils:opts_to_riak_opts(Opts),
 
-    case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, RiakOpts) of
+    case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, ReqOpts) of
         {ok, Object} ->
             Type = riak_type(Object),
             {ok, to_babel_datatype(Type, Object, Spec)};
