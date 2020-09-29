@@ -576,7 +576,7 @@ schedule_put(TypedBucket, Key, Datatype, Spec, _Opts0) ->
 do_delete(TypedBucket, Key, Opts0) ->
     Opts = validate_riak_opts(Opts0),
     Conn = get_connection(Opts),
-    RiakOpts = maps:to_list(Opts),
+    RiakOpts = babel_utils:opts_to_riak_opts(Opts),
 
     case riakc_pb_socket:delete(Conn, TypedBucket, Key, RiakOpts) of
         ok ->
