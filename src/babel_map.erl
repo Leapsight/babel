@@ -640,9 +640,10 @@ disable(_Key, _T) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Merges two maps into a single map `Map3'.
-%% If two keys exist in both maps, the value in `T1' is superseded by the
-%% value in `T2'.
-%% The function implements a deep merge
+%% The function implements a deep merge.
+%% This function implements minimal type checking so merging two maps that use
+%% different type specs can potentially result in an exception being thrown or
+%% in an invalid map at time of storing.
 %%
 %% The call fails with a {badmap,Map} exception if `T1' or `T2' is not a map.
 %% @end
@@ -662,6 +663,7 @@ merge(#babel_map{} = T1, #babel_map{values = V2}) ->
                         )
                     };
                 {ok, Term} ->
+                    %% Not a babel map
                     error({badmap, Term});
                 error ->
                     Acc#babel_map{
@@ -673,65 +675,9 @@ merge(#babel_map{} = T1, #babel_map{values = V2}) ->
             end;
 
         (Key, Term, Acc) ->
-            case get_type(Term) of
-                register ->
-                    %% Registers are implicit in babel
-                    %% We update the value in T1
-                    set(Key, Term, Acc);
-                set ->
-                    add_elements(Key, babel_set:value(Term), Acc);
-                flag ->
-                    case babel_flag:value(Term) of
-                        true ->
-                            enable(Key, Acc);
-                        false ->
-                            disable(Key, Acc)
-                    end;
-                counter ->
-                    error(not_implemented)
-            end
+            maybe_merge(Key, Term, Acc)
     end,
     maps:fold(Fun, T1, V2).
-
-
-
-%% %% -----------------------------------------------------------------------------
-%% %% @doc
-%% %% @end
-%% %% -----------------------------------------------------------------------------
-%% -spec merge(Key, Value, T) -> NewT :: any().
-
-
-%% merge([H|[]], Value, Map) ->
-%%     merge(H, Value, Map);
-
-%% merge([H|T], Value, #babel_map{values = V} = Map) ->
-%%     case maps:find(H, V) of
-%%         {ok, #babel_map{} = HMap} ->
-%%             Map#babel_map{
-%%                 values = maps:put(H, set(T, Value, HMap), V),
-%%                 updates = ordsets:add_element(H, Map#babel_map.updates)
-%%             };
-%%         {ok, Term} ->
-%%             error({badmap, Term});
-%%         error ->
-%%             Map#babel_map{
-%%                 values = maps:put(H, set(T, Value, new()), V),
-%%                 updates = ordsets:add_element(H, Map#babel_map.updates)
-%%             }
-%%     end;
-
-%% merge(Key, Value, #babel_map{} = Map) when is_binary(Key) ->
-%%     Map#babel_map{
-%%         values = maps:put(Key, Value, Map#babel_map.values),
-%%         updates = ordsets:add_element(Key, Map#babel_map.updates)
-%%     };
-
-%% merge(Key, _, #babel_map{}) when not is_binary(Key) ->
-%%     error({badkey, Key});
-
-%% merge(_, _, Map) ->
-%%     error({badmap, Map}).
 
 
 
@@ -975,6 +921,52 @@ get_type(_) ->
     register.
 
 
+
+maybe_merge(Key, Term2, Acc) ->
+    Type = get_type(Term2),
+
+    case find(Key, Acc) of
+        {ok, Term1} ->
+            Type == get_type(Term1) orelse badtype(Type, Key),
+            merge(Key, Term2, Acc, Type);
+        error ->
+            merge(Key, Term2, Acc, Type)
+    end.
+
+
+merge(Key, Value, Acc, register) ->
+    set(Key, Value, Acc);
+
+merge(Key, Set, Acc, set) ->
+    add_elements(Key, babel_set:value(Set), Acc);
+
+merge(Key, Set, Acc, flag) ->
+    case babel_flag:value(Set) of
+        true ->
+            enable(Key, Acc);
+        false ->
+            disable(Key, Acc)
+    end;
+
+merge(_Key, _Counter, _Acc, counter) ->
+    error(not_implemented).
+
+badtype(register, Key) ->
+    error({badregister, Key});
+
+badtype(map, Key) ->
+    error({badmap, Key});
+
+badtype(set, Key) ->
+    error({badset, Key});
+
+badtype(flag, Key) ->
+    error({badflag, Key});
+
+badtype(coutner, Key) ->
+    error({badcounter, Key}).
+
+
 %% @private
 expand_spec(Keys, Spec) when is_map(Spec) ->
     case maps:to_list(Spec) of
@@ -997,20 +989,6 @@ expand_spec(Keys, {Datatype, _} = TypeMapping) ->
             maps:put(Key, TypeMapping, Acc)
     end,
     lists:foldl(Fun, maps:new(), Keys).
-
-
-%% @private
--spec reverse_spec(type_spec()) ->
-    #{binary() => {riak_key(), erl_type()}}.
-
-reverse_spec(Spec) when is_map(Spec) ->
-    maps:fold(
-        fun({Key, _} = RKey, KeySpec, Acc) ->
-            maps:put(Key, {RKey, KeySpec}, Acc)
-        end,
-        maps:new(),
-        Spec
-    ).
 
 
 %% @private
