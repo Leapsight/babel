@@ -31,12 +31,23 @@
         kernel,
         stdlib,
         cache,
+        sbroker,
         gproc,
-        riakc,
+        utils,
+        jsone,
+        leap,
+        riakc
+    ]},
+    {included_applications, [
         reliable
     ]},
     {env, []},
-    {modules, []},
+    {maintainers, ["Alejandro M. Ramallo"]},
     {licenses, ["Apache 2.0"]},
-    {links, []}
+    {links, [
+        {"Gitlab", "https://gitlab.com/leapsight/babel"},
+        {"Github", "https://github/leapsight/babel"},
+        {"Docs", "https://github/leapsight/babel"},
+        {"Website", "https://github/leapsight/babel"}
+    ]}
 ]}.

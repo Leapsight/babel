@@ -26,7 +26,7 @@ opts() = #{partition_key =&gt; binary(), on_terminate =&gt; fun((Reason::any()) 
 
 
 <pre><code>
-work_item() = <a href="reliable_storage_backend.md#type-work_item">reliable_storage_backend:work_item()</a> | fun(() -&gt; <a href="reliable_storage_backend.md#type-work_item">reliable_storage_backend:work_item()</a>)
+work_item() = <a href="reliable_worker.md#type-work_item">reliable_worker:work_item()</a> | fun(() -&gt; <a href="reliable_worker.md#type-work_item">reliable_worker:work_item()</a>)
 </code></pre>
 
 

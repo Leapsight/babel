@@ -107,7 +107,7 @@ Example: Creating an index and adding it to an existing collection
            ok = babel:create_index(Index, Collection0),
            ok
       end).
-  > {ok, {<<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}}
+  > {scheduled, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
 ```
 
 
@@ -291,7 +291,7 @@ Example: Creating various babel objects and scheduling
            _CollextionY1 = babel:create_index(IndexB, CollectionY0),
            ok
       end).
-  > {ok, {<<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}}
+  > {scheduled, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
 ```
 
 The resulting workflow execution will schedule the writes and deletes in the

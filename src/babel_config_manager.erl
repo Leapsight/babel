@@ -133,11 +133,12 @@ do_init() ->
 
 
 apply_reliable_config(_State) ->
-    case babel_config:get(reliable_instances, undefined) of
+    case babel_config:get(reliable, undefined) of
         undefined ->
-            exit({missing_configuration, reliable_instances});
-        Instances ->
-            application:set_env(reliable, instances, Instances)
+            %% Use Reliable defaults
+            ok;
+        Config when is_list(Config) ->
+            application:set_env([{reliable, Config}])
     end.
 
 

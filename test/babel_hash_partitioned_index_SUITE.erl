@@ -157,7 +157,7 @@ huge_index_test(_) ->
         ok
     end,
 
-    {ok, _} =  babel:workflow(Fun),
+    {scheduled, _, ok} =  babel:workflow(Fun),
 
     %% we wait 5 secs for reliable to perform the work
     timer:sleep(5000),
@@ -199,7 +199,7 @@ huge_index_test(_) ->
         ok
     end,
 
-    {ok, {_, ok}} =  babel:workflow(Fun2),
+    {scheduled, _, ok} =  babel:workflow(Fun2),
 
     timer:sleep(5000),
 
@@ -267,7 +267,7 @@ accounts_by_identification_type_and_number_test(_) ->
         _ = babel:create_index(Index, Collection),
         ok
     end,
-    {ok, {_, ok}} = babel:workflow(Create),
+    {scheduled, _, ok} = babel:workflow(Create),
 
     timer:sleep(5000),
 
@@ -291,7 +291,7 @@ accounts_by_identification_type_and_number_test(_) ->
         ok = babel:update_indices(Actions, Collection, RiakOpts),
         ok
     end,
-    {ok, {_, ok}} = babel:workflow(Update),
+    {scheduled, _, ok} = babel:workflow(Update),
 
     timer:sleep(5000),
 

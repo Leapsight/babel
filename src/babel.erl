@@ -210,7 +210,8 @@ execute(Fun, Opts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun :: fun(() -> any())) ->
-    {ok, {WorkId :: binary(), ResultOfFun :: any()}}
+    {ok, ResultOfFun :: any()}
+    | {scheduled, WorkRef :: reliable_worker:work_ref(), ResultOfFun :: any()}
     | {error, Reason :: any()}
     | no_return().
 
@@ -261,7 +262,7 @@ workflow(Fun) ->
 %%          _CollextionY1 = babel:create_index(IndexB, CollectionY0),
 %%          ok
 %%     end).
-%% > {ok, {<<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}}
+%% > {scheduled, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
 %% '''
 %%
 %% The resulting workflow execution will schedule the writes and deletes in the
@@ -284,7 +285,8 @@ workflow(Fun) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun ::fun(() -> any()), Opts :: babel_workflow:opts()) ->
-    {ok, {WorkId :: binary(), ResultOfFun :: any()}}
+    {ok, ResultOfFun :: any()}
+    | {scheduled, WorkRef :: reliable_worker:work_ref(), ResultOfFun :: any()}
     | {error, Reason :: any()}
     | no_return().
 
@@ -363,7 +365,7 @@ delete_collection(Collection) ->
 %%          ok = babel:create_index(Index, Collection0),
 %%          ok
 %%     end).
-%% > {ok, {<<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}}
+%% > {scheduled, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
 %% '''
 %%
 %% @end
@@ -488,6 +490,7 @@ update_indices(Actions, Collection, RiakOpts) when is_list(Actions) ->
     babel_index_collection:t().
 
 delete_index(Index, Collection0) ->
+    ok = reliable:ensure_in_workflow(),
     IndexName = babel_index:name(Index),
 
     try

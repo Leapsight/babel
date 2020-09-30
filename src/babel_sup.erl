@@ -24,13 +24,13 @@
 -module(babel_sup).
 -behaviour(supervisor).
 
--define(SUPERVISOR(Id, Args, Restart, Timeout), #{
+-define(SUPERVISOR(Id, Mod, Args, Restart, Timeout), #{
     id => Id,
-    start => {Id, start_link, Args},
+    start => {Mod, start_link, Args},
     restart => Restart,
     shutdown => Timeout,
     type => supervisor,
-    modules => [Id]
+    modules => [Mod]
 }).
 
 -define(WORKER(Id, Mod, Args, Restart, Timeout), #{
@@ -82,7 +82,11 @@ init([]) ->
     Children = [
         %% babel_config_manager should be first process to be started
         ?WORKER(
-            babel_config_manager, babel_config_manager, [], permanent, 30000
+            babel_config_manager,
+            babel_config_manager,
+            [],
+            permanent,
+            30000
         ),
         ?WORKER(
             babel_index_collection,
@@ -95,6 +99,34 @@ init([]) ->
             babel_index_partition,
             cache,
             [babel_index_partition, [{n, 10}, {ttl, TTL}]],
+            permanent,
+            5000
+        ),
+        %% ?SUPERVISOR(
+        %%     babel_riak_connection_sup,
+        %%     babel_riak_connection_sup,
+        %%     [],
+        %%     permanent,
+        %%     5000
+        %% ),
+        %% ?WORKER(
+        %%     babel_riak_connection_broker,
+        %%     babel_riak_connection_broker,
+        %%     [],
+        %%     permanent,
+        %%     5000
+        %% ),
+        %% ?WORKER(
+        %%     babel_riak_pool,
+        %%     babel_riak_pool,
+        %%     [],
+        %%     permanent,
+        %%     5000
+        %% ),
+        ?SUPERVISOR(
+            reliable_sup,
+            reliable_sup,
+            [],
             permanent,
             5000
         )
