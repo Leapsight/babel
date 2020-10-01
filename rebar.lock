@@ -24,7 +24,7 @@
   0},
  {<<"reliable">>,
   {git,"https://gitlab.com/leapsight/reliable.git",
-       {ref,"9fd8949d713bad0caa27111a98f526941759a2aa"}},
+       {ref,"dbf420d6cfd00ed3b99412fe3071c8b3a7b47725"}},
   0},
  {<<"riak_pb">>,
   {git,"https://github.com/basho/riak_pb",
