@@ -823,8 +823,8 @@ from_datatype({_, register}, Value, Fun) when is_function(Fun, 2) ->
 from_datatype({_, register}, Value, Type) ->
     babel_utils:from_binary(Value, Type);
 
-from_datatype({_, set}, Value, #{binary := _} = Spec) ->
-    babel_set:from_riak_set(Value, Spec);
+from_datatype({_, set}, Value, Type) ->
+    babel_set:from_riak_set(Value, Type);
 
 from_datatype({_, map}, Value, Spec) ->
     from_riak_map(Value, Spec);
