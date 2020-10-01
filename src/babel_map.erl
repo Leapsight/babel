@@ -98,7 +98,6 @@
                                 | list
                                 | fun((encode, any()) -> value())
                                 | fun((decode, value()) -> any()).
--type riak_key()            ::  {binary(), datatype()}.
 -type key_path()            ::  binary() | [binary()].
 -type value()               ::  any().
 -type update_fun()          ::  fun((babel:datatype() | term()) ->
@@ -133,6 +132,7 @@
 -export([value/1]).
 -export([enable/2]).
 -export([disable/2]).
+-export([size/1]).
 
 
 
@@ -238,6 +238,16 @@ to_riak_op(T, Spec) when is_map(Spec) ->
 -spec type() -> map.
 
 type() -> map.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the size of the values of the container
+%% @end
+%% -----------------------------------------------------------------------------
+-spec size(T :: t()) -> non_neg_integer().
+
+size(#babel_map{values = Values}) ->
+    maps:size(Values).
 
 
 %% -----------------------------------------------------------------------------
@@ -821,14 +831,6 @@ from_datatype({_, map}, Value, Spec) ->
 
 from_datatype(_Key, _RiakMap, _Type) ->
     error(not_implemented).
-
-
-%% @private
-from_binary(Value, Fun) when is_function(Fun, 2) ->
-    Fun(decode, Value);
-
-from_binary(Value, Type) ->
-    babel_utils:from_binary(Value, Type).
 
 
 %% @private
