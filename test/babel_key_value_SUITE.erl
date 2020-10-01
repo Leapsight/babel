@@ -1,6 +1,7 @@
 -module(babel_key_value_SUITE).
 -include_lib("eunit/include/eunit.hrl").
 -compile(export_all).
+-compile([nowarn_export_all, export_all]).
 
 
 all() ->

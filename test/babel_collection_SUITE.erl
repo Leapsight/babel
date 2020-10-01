@@ -2,8 +2,7 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/assert.hrl").
 
--export([all/0]).
-
+-compile(export_all).
 -compile([nowarn_export_all, export_all]).
 
 
@@ -15,11 +14,7 @@ all() ->
 
 
 init_per_suite(Config) ->
-    ok = babel_config:set(
-        [bucket_types, index_collection], <<"index_collection">>),
-    ok = babel_config:set(
-        [bucket_types, index_data], <<"index_data">>),
-
+    ok = common:setup(),
     Config.
 
 end_per_suite(Config) ->

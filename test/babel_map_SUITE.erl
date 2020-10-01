@@ -2,8 +2,7 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/assert.hrl").
 
--export([all/0]).
-
+-compile(export_all).
 -compile([nowarn_export_all, export_all]).
 
 
@@ -26,36 +25,8 @@ all() ->
 
 
 init_per_suite(Config) ->
-    Env = [
-        {babel, [
-            {reliable_instances, ["test_1", "test_2", "test_3"]},
-            {bucket_types, [
-                {index_collection, <<"index_collection">>},
-                {index_data, <<"index_data">>}
-            ]}
-        ]},
-        {kernel, [
-            {logger, [
-                {handler, default, logger_std_h, #{
-                    formatter => {logger_formatter, #{ }}
-                }}
-            ]}
-        ]}
-    ],
-    application:set_env(Env),
-
-    ok = babel_config:set(
-        [bucket_types, index_collection], <<"index_collection">>),
-    ok = babel_config:set(
-        [bucket_types, index_data], <<"index_data">>),
-
-    %% Start the application.
-    application:ensure_all_started(reliable),
-    application:ensure_all_started(babel),
+    ok = common:setup(),
     meck:unload(),
-
-    ct:pal("Config ~p", [application:get_all_env(reliable)]),
-
     Config.
 
 end_per_suite(Config) ->
