@@ -58,6 +58,7 @@
 -export([is_type/1]).
 -export([new/0]).
 -export([new/1]).
+-export([new/2]).
 -export([original_value/1]).
 -export([size/1]).
 -export([to_riak_op/2]).
@@ -90,6 +91,18 @@ new() ->
 -spec new(Data :: ordsets:ordset(any())) -> t().
 
 new(Data) when is_list(Data) ->
+    Adds = ordsets:from_list(Data),
+    #babel_set{adds = Adds, size = ordsets:size(Adds)}.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec new(Data :: ordsets:ordset(any()), Type :: type_spec())  -> t().
+
+new(Data, _Type) when is_list(Data) ->
+    %% TODO validate all elements are of type Type
     Adds = ordsets:from_list(Data),
     #babel_set{adds = Adds, size = ordsets:size(Adds)}.
 
