@@ -98,7 +98,7 @@ handle_info(Info, State) ->
     ?LOG_DEBUG(#{
         message => "Unexpected message",
         state => State,
-        message => Info
+        event => Info
     }),
     {noreply, State}.
 
