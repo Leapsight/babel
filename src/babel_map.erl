@@ -712,13 +712,12 @@ from_map(Map, Spec) when is_map(Spec) ->
     Values0 = maps:map(ConvertType, Map),
 
     %% Initialise values for Spec keys not present in Map
-    Keys = maps:keys(Map),
-    MissingKeys = lists:subtract(maps:keys(Spec), Keys),
-    Values = init_values(maps:with(MissingKeys, Spec), Values0),
-
+    %% Keys = maps:keys(Map),
+    %% MissingKeys = lists:subtract(maps:keys(Spec), Keys),
+    %% Values = init_values(maps:with(MissingKeys, Spec), Values0),
     #babel_map{
-        values = Values,
-        updates = ordsets:from_list(maps:keys(Values))
+        values = Values0,
+        updates = ordsets:from_list(maps:keys(Values0))
     }.
 
 
@@ -783,11 +782,11 @@ from_riak_map(RMap, Context, Spec) when is_map(Spec) ->
     Values0 = orddict:fold(Convert, maps:new(), RMap),
 
     %% Initialise values for Spec keys not present in RMap
-    Keys = [Key || {Key, _} <- orddict:fetch_keys(RMap)],
-    MissingKeys = lists:subtract(maps:keys(Spec), Keys),
-    Values1 = init_values(maps:with(MissingKeys, Spec), Values0),
+    %% Keys = [Key || {Key, _} <- orddict:fetch_keys(RMap)],
+    %% MissingKeys = lists:subtract(maps:keys(Spec), Keys),
+    %% Values1 = init_values(maps:with(MissingKeys, Spec), Values0),
 
-    #babel_map{values = Values1, context = Context}.
+    #babel_map{values = Values0, context = Context}.
 
 
 %% @private
@@ -795,25 +794,25 @@ modified_keys(#babel_map{updates = U, removes = R}) ->
     ordsets:union(U, R).
 
 %% @private
-init_values(Spec, Acc0) ->
-    %% We only set the missing container values
-    Fun = fun
-        (Key, {map, KeySpec}, Acc) when is_map(KeySpec) ->
-            maps:put(Key, babel_map:new(), Acc);
+%% init_values(Spec, Acc0) ->
+%%     %% We only set the missing container values
+%%     Fun = fun
+%%         (Key, {map, KeySpec}, Acc) when is_map(KeySpec) ->
+%%             maps:put(Key, babel_map:new(), Acc);
 
-        (Key, {set, _}, Acc) ->
-            maps:put(Key, babel_set:new(), Acc);
+%%         (Key, {set, _}, Acc) ->
+%%             maps:put(Key, babel_set:new(), Acc);
 
-        (_, {register, _}, Acc) ->
-            Acc;
+%%         (_, {register, _}, Acc) ->
+%%             Acc;
 
-        (Key, {flag, _}, Acc) ->
-            maps:put(Key, babel_flag:new(), Acc);
+%%         (Key, {flag, _}, Acc) ->
+%%             maps:put(Key, babel_flag:new(), Acc);
 
-        (_, {counter, _KeySpec}, _) ->
-            error(not_implemented)
-    end,
-    maps:fold(Fun, Acc0, Spec).
+%%         (_, {counter, _KeySpec}, _) ->
+%%             error(not_implemented)
+%%     end,
+%%     maps:fold(Fun, Acc0, Spec).
 
 
 %% @private
