@@ -22,7 +22,7 @@ do_setup() ->
                 {riak_host, "127.0.0.1"},
                 {riak_port, 8087},
                 {instance_name, <<"babel_test">>},
-                {number_of_instances, 5}
+                {number_of_partitions, 5}
             ]},
             {reliable_instances, ["test_1", "test_2", "test_3"]},
             {bucket_types, [
