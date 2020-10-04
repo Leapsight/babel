@@ -11,7 +11,7 @@ all() ->
         index_2_test,
         index_3_test,
         index_4_test,
-        huge_index_test,
+        %% huge_index_test,
         accounts_by_identification_type_and_number_test
     ].
 
@@ -34,9 +34,9 @@ index_1_test(_) ->
             sort_ordering => asc,
             number_of_partitions => 8,
             partition_algorithm => jch,
-            partition_by => [{<<"email">>, register}],
-            index_by => [{<<"email">>, register}],
-            covered_fields => [{<<"user_id">>, register}]
+            partition_by => [<<"email">>],
+            index_by => [<<"email">>],
+            covered_fields => [<<"user_id">>]
         }
     },
     Index = babel_index:new(Conf),
@@ -59,11 +59,11 @@ index_2_test(_) ->
             sort_ordering => asc,
             number_of_partitions => 8,
             partition_algorithm => jch,
-            partition_by => [{<<"email">>, register}],
-            index_by => [{<<"email">>, register}],
+            partition_by => [<<"email">>],
+            index_by => [<<"email">>],
             covered_fields => [
-                {<<"user_id">>, register},
-                {<<"account_id">>, register}
+                <<"user_id">>,
+                <<"account_id">>
             ]
         }
     },
@@ -83,9 +83,9 @@ index_3_test(_) ->
             sort_ordering => asc,
             number_of_partitions => 8,
             partition_algorithm => jch,
-            partition_by => [{<<"email">>, register}],
-            index_by => [{<<"email">>, register}],
-            covered_fields => [{<<"user_id">>, register}]
+            partition_by => [<<"email">>],
+            index_by => [<<"email">>],
+            covered_fields => [<<"user_id">>]
         }
     },
     Index = babel_index:new(Conf),
@@ -104,15 +104,15 @@ index_4_test(_) ->
             sort_ordering => asc,
             number_of_partitions => 8,
             partition_algorithm => jch,
-            partition_by => [{<<"email">>, register}],
-            aggregate_by => [{<<"post_code">>, register}],
+            partition_by => [<<"email">>],
+            aggregate_by => [<<"post_code">>],
             index_by => [
-                {<<"post_code">>, register},
-                {<<"email">>, register}
+                <<"post_code">>,
+                <<"email">>
             ],
             covered_fields => [
-                {<<"user_id">>, register},
-                {<<"account_id">>, register}
+                <<"user_id">>,
+                <<"account_id">>
             ]
         }
     },
@@ -133,15 +133,15 @@ huge_index_test(_) ->
             sort_ordering => asc,
             number_of_partitions => 8,
             partition_algorithm => jch,
-            partition_by => [{<<"post_code">>, register}],
-            aggregate_by => [{<<"post_code">>, register}],
+            partition_by => [<<"post_code">>],
+            aggregate_by => [<<"post_code">>],
             index_by => [
-                {<<"post_code">>, register},
-                {<<"email">>, register}
+                <<"post_code">>,
+                <<"email">>
             ],
             covered_fields => [
-                {<<"user_id">>, register},
-                {<<"account_id">>, register}
+                <<"user_id">>,
+                <<"account_id">>
             ]
         }
     },
@@ -178,10 +178,10 @@ huge_index_test(_) ->
             %% Not a CRDT but becuase we use babel_key_value we can get away
             %% with it
             Obj = #{
-                {<<"email">>, register} => <<UserId/binary, "@example.com">>,
-                {<<"user_id">>, register} => <<"mrn:user:", UserId/binary>>,
-                {<<"account_id">>, register} => <<"mrn:account:", AccId/binary>>,
-                {<<"post_code">>, register} => <<"PC", PostCode/binary>>
+                <<"email">> => <<UserId/binary, "@example.com">>,
+                <<"user_id">> => <<"mrn:user:", UserId/binary>>,
+                <<"account_id">> => <<"mrn:account:", AccId/binary>>,
+                <<"post_code">> => <<"PC", PostCode/binary>>
             },
             {update, Obj}
         end || X <- lists:seq(1, 2), Y <- lists:seq(1, 5000)
@@ -207,20 +207,20 @@ huge_index_test(_) ->
         <<"users_by_post_code_and_email">>, Collection),
 
     Pattern1 = #{
-        {<<"post_code">>, register} => <<"PC1">>
+        <<"post_code">> => <<"PC1">>
     },
     Res1 = babel_index:match(Pattern1, Index, RiakOpts),
     ?assertEqual(5000, length(Res1)),
 
     Pattern2 = #{
-        {<<"post_code">>, register} => <<"PC1">>,
-        {<<"email">>, register} => <<"1@example.com">>
+        <<"post_code">> => <<"PC1">>,
+        <<"email">> => <<"1@example.com">>
     },
     Res2 = babel_index:match(Pattern2, Index, RiakOpts),
     ?assertEqual(1, length(Res2)),
 
     ?assertEqual(
-        [{<<"account_id">>, register}, {<<"user_id">>, register}],
+        [<<"account_id">>, <<"user_id">>],
         maps:keys(hd(Res2))
     ),
 
@@ -249,14 +249,14 @@ accounts_by_identification_type_and_number_test(_) ->
                 number_of_partitions => 128,
                 partition_algorithm => jch,
                 partition_by => [
-                    {<<"identification_type">>, register},
-                    {<<"identification_number">>, register}
+                    <<"identification_type">>,
+                    <<"identification_number">>
                 ],
                 index_by => [
-                    {<<"identification_type">>, register},
-                    {<<"identification_number">>, register}
+                    <<"identification_type">>,
+                    <<"identification_number">>
                 ],
-                covered_fields => [{<<"account_id">>, register}]
+                covered_fields => [<<"account_id">>]
             }
         },
         Index = babel_index:new(Conf),
@@ -273,9 +273,9 @@ accounts_by_identification_type_and_number_test(_) ->
             begin
                 ID = integer_to_binary(X),
                 Obj = #{
-                    {<<"identification_type">>, register} => Type,
-                    {<<"identification_number">>, register} => ID,
-                    {<<"account_id">>, register} => <<"mrn:account:", ID/binary>>
+                    <<"identification_type">> => Type,
+                    <<"identification_number">> => ID,
+                    <<"account_id">> => <<"mrn:account:", ID/binary>>
                 },
                 {update, Obj}
             end || Type <- [<<"DNI">>, <<"CUIL">>], X <- lists:seq(1, 5000)
@@ -285,12 +285,20 @@ accounts_by_identification_type_and_number_test(_) ->
             BucketPrefix, Accounts, RiakOpts),
         Index = babel_index_collection:index(
             <<"accounts_by_identification_type_and_number">>, Collection),
+
         ok = babel:update_indices(Actions, Collection, RiakOpts),
         ok
     end,
-    {scheduled, _, ok} = babel:workflow(Update),
 
-    timer:sleep(5000),
+    Ts0 = erlang:system_time(millisecond),
+    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(gen_server, 'reply', []),
+    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_worker, 'enqueue', x),
+    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_worker, 'handle_call', x),
+    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_riak_storage_backend, 'enqueue', x),
+    {scheduled, _, ok} = babel:workflow(Update, #{timeout => 5000}),
+    Ts1 = erlang:system_time(millisecond),
+    ct:pal("elapsed_time_secs = ~p", [(Ts1 - Ts0) / 1000]),
+    timer:sleep(15000),
 
     Collection = babel_index_collection:fetch(BucketPrefix, Accounts, RiakOpts),
     Idx = babel_index_collection:index(
@@ -298,9 +306,10 @@ accounts_by_identification_type_and_number_test(_) ->
     ),
 
     Pattern = #{
-        {<<"identification_type">>, register} => <<"DNI">>,
-        {<<"identification_number">>, register} => <<"3500">>
+        <<"identification_type">> => <<"DNI">>,
+        <<"identification_number">> => <<"1">>
     },
 
     Res = babel_index:match(Pattern, Idx, RiakOpts),
-    ?assertEqual(1, length(Res)).
+    ?assertEqual(1, length(Res)),
+    ok.

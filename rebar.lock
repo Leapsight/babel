@@ -1,5 +1,6 @@
 {"1.2.0",
-[{<<"base62">>,
+[{<<"backoff">>,{pkg,<<"backoff">>,<<"1.1.6">>},1},
+ {<<"base62">>,
   {git,"https://gitlab.com/leapsight/base62.git",
        {ref,"6e1c622c2e9bba51fadba44fa050d4b4ae706890"}},
   2},
@@ -24,7 +25,7 @@
   0},
  {<<"reliable">>,
   {git,"https://gitlab.com/leapsight/reliable.git",
-       {ref,"b4d54e4efa1d63c4055a6cc7f03125ad2678fd52"}},
+       {ref,"d7a7e589c660c56a545db892a2f3bb1b4f6eb0a4"}},
   0},
  {<<"riak_pb">>,
   {git,"https://github.com/basho/riak_pb",
@@ -41,11 +42,13 @@
   0}]}.
 [
 {pkg_hash,[
+ {<<"backoff">>, <<"83B72ED2108BA1EE8F7D1C22E0B4A00CFE3593A67DBC792799E8CCE9F42F796B">>},
  {<<"cache">>, <<"1E585CD9777C1F71E9038D61059D07438643C0022FDC6E2F7C2899B4A45C593E">>},
  {<<"gproc">>, <<"CEA02C578589C61E5341FCE149EA36CCEF236CC2ECAC8691FBA408E7EA77EC2F">>},
  {<<"jsone">>, <<"87ADEA283C9CF24767B4DEED44602989A5331156DF5D60A2660E9C9114D54046">>},
  {<<"sbroker">>, <<"28FF1B5E58887C5098539F236307B36FE1D3EDAA2ACFF9D6A3D17C2DCAFEBBD0">>}]},
 {pkg_hash_ext,[
+ {<<"backoff">>, <<"CF0CFFF8995FB20562F822E5CC47D8CCF664C5ECDC26A684CBE85C225F9D7C39">>},
  {<<"cache">>, <<"E5559E1D71C5EF511C04E395F4B37AA71FA4A50ECC7365CA41DDEF0746FE907E">>},
  {<<"gproc">>, <<"580ADAFA56463B75263EF5A5DF4C86AF321F68694E7786CB057FD805D1E2A7DE">>},
  {<<"jsone">>, <<"170C171CE7F6DD70C858065154A3305B8564833C6DCCA17E10B676CA31EA976F">>},
