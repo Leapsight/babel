@@ -35,6 +35,7 @@
         gproc,
         utils,
         jsone,
+        backoff,
         leap,
         riakc
     ]},
