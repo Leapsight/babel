@@ -37,6 +37,7 @@
         jsone,
         backoff,
         leap,
+        riak_pool,
         riakc
     ]},
     {included_applications, [

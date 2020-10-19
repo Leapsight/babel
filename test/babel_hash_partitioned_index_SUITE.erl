@@ -292,9 +292,9 @@ accounts_by_identification_type_and_number_test(_) ->
 
     Ts0 = erlang:system_time(millisecond),
     %% dbg:tracer(), dbg:p(all,c), dbg:tpl(gen_server, 'reply', []),
-    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_worker, 'enqueue', x),
-    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_worker, 'handle_call', x),
-    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_riak_storage_backend, 'enqueue', x),
+    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_partition_worker, 'enqueue', x),
+    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_partition_worker, 'handle_call', x),
+    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_riak_store_backend, 'enqueue', x),
     {scheduled, _, ok} = babel:workflow(Update, #{timeout => 5000}),
     Ts1 = erlang:system_time(millisecond),
     ct:pal("elapsed_time_secs = ~p", [(Ts1 - Ts0) / 1000]),

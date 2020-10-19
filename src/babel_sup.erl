@@ -77,17 +77,11 @@ start_link() ->
 
 
 init([]) ->
+    %% We first initialise the config
+    ok = babel_config:init(),
     TTL = babel_config:get(cache_ttl_secs, 60),
 
     Children = [
-        %% babel_config_manager should be first process to be started
-        ?WORKER(
-            babel_config_manager,
-            babel_config_manager,
-            [],
-            permanent,
-            30000
-        ),
         ?WORKER(
             babel_index_collection,
             cache,
@@ -102,27 +96,6 @@ init([]) ->
             permanent,
             5000
         ),
-        %% ?SUPERVISOR(
-        %%     babel_riak_connection_sup,
-        %%     babel_riak_connection_sup,
-        %%     [],
-        %%     permanent,
-        %%     5000
-        %% ),
-        %% ?WORKER(
-        %%     babel_riak_connection_broker,
-        %%     babel_riak_connection_broker,
-        %%     [],
-        %%     permanent,
-        %%     5000
-        %% ),
-        %% ?WORKER(
-        %%     babel_riak_pool,
-        %%     babel_riak_pool,
-        %%     [],
-        %%     permanent,
-        %%     5000
-        %% ),
         ?SUPERVISOR(
             reliable_sup,
             reliable_sup,

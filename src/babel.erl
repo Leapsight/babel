@@ -211,7 +211,7 @@ execute(Fun, Opts) ->
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun :: fun(() -> any())) ->
     {ok, ResultOfFun :: any()}
-    | {scheduled, WorkRef :: reliable_worker:work_ref(), ResultOfFun :: any()}
+    | {scheduled, WorkRef :: reliable_partition_worker:work_ref(), ResultOfFun :: any()}
     | {error, Reason :: any()}
     | no_return().
 
@@ -286,7 +286,7 @@ workflow(Fun) ->
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun ::fun(() -> any()), Opts :: babel_workflow:opts()) ->
     {ok, ResultOfFun :: any()}
-    | {scheduled, WorkRef :: reliable_worker:work_ref(), ResultOfFun :: any()}
+    | {scheduled, WorkRef :: reliable_partition_worker:work_ref(), ResultOfFun :: any()}
     | {error, Reason :: any()}
     | no_return().
 

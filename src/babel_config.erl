@@ -22,8 +22,15 @@
 %% -----------------------------------------------------------------------------
 -module(babel_config).
 -behaviour(app_config).
+-include_lib("kernel/include/logger.hrl").
 
 -define(APP, babel).
+
+-define(CONFIG, [
+    {riakc, [
+        {allow_listing, true}
+    ]}
+]).
 
 
 -export([init/0]).
@@ -44,7 +51,12 @@
 %% @end
 %% -----------------------------------------------------------------------------
 init() ->
-    app_config:init(?APP, #{callback_mod => ?MODULE}).
+    %% _ = logger:set_application_level(babel, info),
+    %% _ = logger:set_application_level(reliable, error),
+    ok = app_config:init(?APP, #{callback_mod => ?MODULE}),
+    ok = apply_reliable_config(),
+    apply_private_config().
+
 
 
 
@@ -76,3 +88,42 @@ get(Key, Default) ->
 
 set(Key, Value) ->
     app_config:set(?APP, Key, Value).
+
+
+
+
+%% =============================================================================
+%% PRIVATE
+%% =============================================================================
+
+
+
+%% @private
+apply_reliable_config() ->
+    case babel_config:get(reliable, undefined) of
+        undefined ->
+            %% Use Reliable defaults
+            ok;
+        Config when is_list(Config) ->
+            application:set_env([{reliable, Config}])
+    end.
+
+
+%% @private
+apply_private_config() ->
+    % ?LOG_DEBUG("Babel private configuration started"),
+    try
+        _ = [
+            ok = application:set_env(App, Param, Val)
+            || {App, Params} <- ?CONFIG, {Param, Val} <- Params
+        ],
+        ok
+    catch
+        error:Reason:Stacktrace ->
+            ?LOG_ERROR(#{
+                message => "Error while applying private configuration options",
+                reason => Reason,
+                stacktrace => Stacktrace
+            }),
+            {stop, Reason}
+    end.
