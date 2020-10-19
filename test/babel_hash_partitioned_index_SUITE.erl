@@ -149,7 +149,7 @@ huge_index_test(_) ->
     %% We schedule the creation of a new collection and we add the index
     Fun = fun() ->
         Index = babel_index:new(Conf),
-        Collection0 = babel_index_collection:new(<<"mytenant">>, <<"users">>),
+        Collection0 = babel_index_collection:new(<<"babel_test">>, <<"users">>),
         _Collection1 = babel:create_index(Index, Collection0),
         ok
     end,
@@ -190,7 +190,7 @@ huge_index_test(_) ->
     Fun2 = fun() ->
         %% We fetch the collection from Riak KV
         Collection = babel_index_collection:fetch(
-            <<"mytenant">>, <<"users">>, RiakOpts
+            <<"babel-test">>, <<"users">>, RiakOpts
         ),
         ok = babel:update_indices(Actions, Collection, RiakOpts),
         ok
@@ -201,7 +201,7 @@ huge_index_test(_) ->
     timer:sleep(5000),
 
     Collection = babel_index_collection:fetch(
-        <<"mytenant">>, <<"users">>, RiakOpts
+        <<"babel-test">>, <<"users">>, RiakOpts
     ),
     Index = babel_index_collection:index(
         <<"users_by_post_code_and_email">>, Collection),
@@ -228,8 +228,9 @@ huge_index_test(_) ->
 
 
 accounts_by_identification_type_and_number_test(_) ->
-    BucketPrefix = <<"strix">>,
+    BucketPrefix = <<"babel-test">>,
     Accounts = <<"accounts">>,
+    IndexName = <<"accounts_by_identification_type_and_number">>,
 
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
@@ -240,7 +241,7 @@ accounts_by_identification_type_and_number_test(_) ->
 
     Create = fun() ->
         Conf = #{
-            name => <<"accounts_by_identification_type_and_number">>,
+            name => IndexName,
             bucket_type => <<"index_data">>,
             bucket_prefix => BucketPrefix,
             type => babel_hash_partitioned_index,
@@ -266,7 +267,7 @@ accounts_by_identification_type_and_number_test(_) ->
     end,
     {scheduled, _, ok} = babel:workflow(Create),
 
-    timer:sleep(5000),
+    timer:sleep(10000),
 
     Update = fun() ->
         Actions = [
@@ -283,9 +284,9 @@ accounts_by_identification_type_and_number_test(_) ->
 
         Collection = babel_index_collection:fetch(
             BucketPrefix, Accounts, RiakOpts),
-        Index = babel_index_collection:index(
-            <<"accounts_by_identification_type_and_number">>, Collection),
-
+        dbg:tracer(), dbg:p(all,c),
+        dbg:tpl(babel_index_collection, '_', []),
+        _Index = babel_index_collection:index(IndexName, Collection),
         ok = babel:update_indices(Actions, Collection, RiakOpts),
         ok
     end,
@@ -301,9 +302,7 @@ accounts_by_identification_type_and_number_test(_) ->
     timer:sleep(15000),
 
     Collection = babel_index_collection:fetch(BucketPrefix, Accounts, RiakOpts),
-    Idx = babel_index_collection:index(
-        <<"accounts_by_identification_type_and_number">>, Collection
-    ),
+    Idx = babel_index_collection:index(IndexName, Collection),
 
     Pattern = #{
         <<"identification_type">> => <<"DNI">>,
