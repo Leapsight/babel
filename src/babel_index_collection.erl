@@ -454,10 +454,10 @@ when is_binary(BucketPrefix) andalso is_binary(Key) ->
         pr => quorum,
         pw => quorum
     },
-    ReqOpts = babel_utils:opts_to_riak_opts(Opts1),
+    RiakOpts = babel_utils:opts_to_riak_opts(Opts1),
     TypeBucket = typed_bucket(BucketPrefix),
 
-    case riakc_pb_socket:delete(Conn, TypeBucket, Key, ReqOpts) of
+    case riakc_pb_socket:delete(Conn, TypeBucket, Key, RiakOpts) of
         ok -> ok;
         {error, {notfound, _}} -> {error, not_found};
         {error, _} = Error -> Error
