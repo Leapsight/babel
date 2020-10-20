@@ -22,7 +22,7 @@
  {<<"key_value">>,
   {git,"https://gitlab.com/leapsight/key_value.git",
        {ref,"8fffd1b7ca520cf488251c9d32ffd0959c2ab039"}},
-  2},
+  1},
  {<<"ksuid">>,
   {git,"https://gitlab.com/leapsight/ksuid.git",
        {ref,"c1f00dabddac1e3108bfaf5917cb6674f3b843f2"}},
@@ -51,7 +51,7 @@
  {<<"sbroker">>,{pkg,<<"sbroker">>,<<"1.0.0">>},0},
  {<<"utils">>,
   {git,"https://gitlab.com/leapsight/utils.git",
-       {ref,"572fce2c668d3cd445145b27744ac961f6b0150d"}},
+       {ref,"71e7fa169f1195067717d32f9c725377c4f76212"}},
   0}]}.
 [
 {pkg_hash,[
