@@ -38,6 +38,7 @@
         backoff,
         leap,
         riak_pool,
+        pooler,
         riakc
     ]},
     {included_applications, [
