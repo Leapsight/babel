@@ -51,6 +51,8 @@
 -export([add_elements/2]).
 -export([context/1]).
 -export([del_element/2]).
+-export([del_elements/2]).
+-export([set_elements/2]).
 -export([fold/3]).
 -export([from_riak_set/2]).
 -export([is_element/2]).
@@ -105,6 +107,7 @@ new(Data, _Type) when is_list(Data) ->
     %% TODO validate all elements are of type Type
     Adds = ordsets:from_list(Data),
     #babel_set{adds = Adds, size = ordsets:size(Adds)}.
+
 
 
 %% -----------------------------------------------------------------------------
@@ -255,17 +258,46 @@ add_elements(Elements, #babel_set{adds = A0, size = S0} = T) ->
 %% -----------------------------------------------------------------------------
 -spec del_element(Element :: any(), T :: t()) -> t() | no_return().
 
-del_element(_, #babel_set{context = undefined}) ->
+del_element(Element, T) ->
+    del_elements([Element], T).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Removes an element from the set.
+%% You may remove an element that does not appear in the original
+%% set value. This is non-intuitive, but acts as a safety feature: a
+%% client code path that requires an element to be present in the set
+%% (or removed) can ensure that intended state by applying an
+%% operation.
+%% @throws context_required
+%% @end
+%% -----------------------------------------------------------------------------
+-spec del_elements(Elements :: [any()], T :: t()) -> t() | no_return().
+
+del_elements(_, #babel_set{context = undefined}) ->
     throw(context_required);
 
-del_element(Element, #babel_set{removes = R0, size = S0} = T) ->
-    R1 = ordsets:add_element(Element, R0),
+del_elements(Elements, #babel_set{removes = R0, size = S0} = T) ->
+    R1 = lists:foldl(fun ordsets:add_element/2, R0, Elements),
     S1 = S0 + ordsets:size(R1) - ordsets:size(R0),
 
     T#babel_set{
         removes = R1,
         size = S1
     }.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec set_elements(Elements :: [any()], T :: t()) -> NewT :: t().
+
+set_elements(Elements, #babel_set{} = T0) ->
+    Value = value(T0),
+    NewValue = ordsets:from_list(Elements),
+    T1 = del_elements(ordsets:subtract(Value, NewValue), T0),
+    add_elements(ordsets:subtract(NewValue, Value), T1).
 
 
 %% -----------------------------------------------------------------------------
