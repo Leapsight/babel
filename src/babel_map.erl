@@ -132,6 +132,7 @@
 -export([new/0]).
 -export([new/1]).
 -export([new/2]).
+-export([put/3]).
 -export([remove/2]).
 -export([set/3]).
 -export([set_elements/3]).
@@ -201,12 +202,6 @@ new(Data, Spec, Ctxt) ->
 %%         values = Values,
 %%         updates = ordsets:from_list(maps:keys(Values))
 %%     };
-
-%% new(Data, {_, _}) ->
-%%     #babel_map{
-%%         values = Data,
-%%         updates = ordsets:from_list(maps:keys(Data))
-%%     }.
 
 
 %% -----------------------------------------------------------------------------
@@ -441,6 +436,17 @@ collect(Keys, Map, Default) when is_list(Keys) ->
     NewMap :: maybe_no_return(t()).
 
 set(Key, Value, Map) ->
+    mutate(Key, Value, Map).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Same as {@set/3}.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec put(Key :: key(), Value :: value(), Map :: t()) ->
+    NewMap :: maybe_no_return(t()).
+
+put(Key, Value, Map) ->
     mutate(Key, Value, Map).
 
 
