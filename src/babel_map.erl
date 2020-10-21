@@ -112,6 +112,7 @@
 -export([add_element/3]).
 -export([add_elements/3]).
 -export([collect/2]).
+-export([collect/3]).
 -export([context/1]).
 -export([decrement/2]).
 -export([decrement/3]).
@@ -211,8 +212,6 @@ new(Data, Spec, Ctxt) ->
 -spec from_riak_map(
     RMap :: riakc_map:crdt_map() | list(), Spec :: type_spec()) -> t().
 
-
-
 from_riak_map(RMap, #{'_':= Spec}) ->
     from_riak_map(RMap, expand_spec(orddict:fetch_keys(RMap), Spec));
 
@@ -224,7 +223,8 @@ from_riak_map(RMap, Spec) when is_list(RMap) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Extracts a Riak Operation from the map to be used with a Riak Client
+%% update request.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec to_riak_op(T :: t(), Spec :: type_spec()) ->
@@ -256,7 +256,7 @@ type() -> map.
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns the size of the values of the container
+%% @doc Returns the size of the values of the map `T'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec size(T :: t()) -> non_neg_integer().
@@ -276,7 +276,7 @@ is_type(Term) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns the Riak KV context
+%% @doc Returns the Riak KV context associated with map `T'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec context(T :: t()) -> riakc_datatype:context().
@@ -285,9 +285,9 @@ context(#babel_map{context = Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns an external representation of the babel map `Map' as an erlang
-%% map. This is build recursively by calling the value/1 function on any
-%% embedded babel datatype.
+%% @doc Returns an external representation of the map `Map' as an Erlang
+%% map(). This is build recursively by calling the value/1 function on any
+%% embedded datatype.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec value(Map :: t()) -> map().
@@ -302,7 +302,8 @@ value(#babel_map{values = V}) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns the tuple `{ok, Value :: any()}' if the key 'Key' is associated
+%% with value `Value' in map `T'. Otherwise returns the atom `error'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec find(Key :: key(), T :: t()) -> {ok, any()} | error.
@@ -315,8 +316,9 @@ find(Key, T) ->
             {ok, Value}
     end.
 
+
 %% -----------------------------------------------------------------------------
-%% @doc An util function equivalent to calling `value(get(Key, T))`.
+%% @doc An util function equivalent to calling `DatatypeMod:value(get(Key, T))`.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec get_value(Key :: key(), T :: t()) -> any().
@@ -326,7 +328,8 @@ get_value(Key, T) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc An util function equivalent to calling `value(get(Key, T, Default))`.
+%% @doc An util function equivalent to calling
+%% `DatatypeMod:value(get(Key, T, Default))`.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec get_value(Key :: key(), T :: t(), Default :: any()) -> any().
@@ -392,10 +395,10 @@ get(_, Term, _) ->
     badtype(map, Term).
 
 
-
-
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns a list of values associated with the keys `Keys'.
+%% Fails with a `{badkey, K}` exeception if any key `K' in `Keys' is not
+%% present in the map.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec collect([key()], Map :: t()) -> [any()].
@@ -405,10 +408,11 @@ collect(Keys, Map) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns a list of values associated with the keys `Keys'. If any key
+%% `K' in `Keys' is not present in the map the value `Default' is returned.
 %% @end
 %% -----------------------------------------------------------------------------
--spec collect([key()], Map :: t(), Default :: any()) -> [any()].
+-spec collect(Keys :: [key()], Map :: t(), Default :: any()) -> [any()].
 
 collect([Key], Map, Default) ->
     try
