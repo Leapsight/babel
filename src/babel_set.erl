@@ -93,20 +93,21 @@ new() ->
 -spec new(Data :: ordsets:ordset(any())) -> t().
 
 new(Data) when is_list(Data) ->
-    Adds = ordsets:from_list(Data),
-    #babel_set{adds = Adds, size = ordsets:size(Adds)}.
+    new(Data, undefined).
 
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec new(Data :: ordsets:ordset(any()), Type :: type_spec())  -> t().
+-spec new(
+    Data :: ordsets:ordset(any()),
+    Ctxt :: riakc_datatype:context())  -> t().
 
-new(Data, _Type) when is_list(Data) ->
+new(Data, Ctxt) when is_list(Data) ->
     %% TODO validate all elements are of type Type
     Adds = ordsets:from_list(Data),
-    #babel_set{adds = Adds, size = ordsets:size(Adds)}.
+    #babel_set{adds = Adds, size = ordsets:size(Adds), context = Ctxt}.
 
 
 

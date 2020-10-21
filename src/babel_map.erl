@@ -483,7 +483,7 @@ add_elements(Key, Values, Map) ->
                     badtype(set, Term)
             end;
         (error) ->
-            babel_set:new(Values)
+            babel_set:new(Values, Map#babel_map.context)
     end,
     mutate(Key, Fun, Map).
 
@@ -518,7 +518,7 @@ del_element(Key, Value, Map) ->
                     badtype(set, Term)
             end;
         (error) ->
-            babel_set:new(Value)
+            babel_set:new(Value, Map#babel_map.context)
     end,
     mutate(Key, Fun, Map).
 
@@ -553,7 +553,7 @@ set_elements(Key, Values, Map) ->
                     badtype(set, Term)
             end;
         (error) ->
-            babel_set:new(Values)
+            babel_set:new(Values, Map#babel_map.context)
     end,
     mutate(Key, Fun, Map).
 
@@ -622,7 +622,7 @@ do_update(Key, Value, Acc, {set, _}) when is_list(Value) ->
     catch
         throw:context_required ->
             %% We have a brand new set (not in Riak yet) so we just replace it
-            set(Key, babel_set:new(Value), Acc)
+            set(Key, babel_set:new(Value, Acc#babel_map.context), Acc)
     end;
 
 do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}) ->
@@ -643,6 +643,8 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}) ->
     end;
 
 do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
+    Ctxt = Acc#babel_map.context,
+
     case maps:find(Key, V) of
         {ok, Term} ->
             case babel_flag:is_type(Term) of
@@ -653,17 +655,17 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
                         throw:context_required ->
                             %% We have a brand new flag (not in Riak yet) so we
                             %% just replace it
-                            babel_flag:new(Value)
+                            babel_flag:new(Value, Ctxt)
                     end,
                     set(Key, Flag, Acc);
                 false ->
                     %% The existing value is not a counter, but it should be
                     %% according to spec, so we replace by a new one
-                    set(Key, babel_flag:new(Value), Acc)
+                    set(Key, babel_flag:new(Value, Ctxt), Acc)
             end;
         _ ->
             %% The existing value was not found so create a new one
-            set(Key, babel_flag:new(Value), Acc)
+            set(Key, babel_flag:new(Value, Ctxt), Acc)
     end.
 
 
@@ -699,7 +701,7 @@ enable(Key, Map) ->
                     badtype(flag, Term)
             end;
         (error) ->
-            babel_flag:enable(babel_flag:new())
+            babel_flag:new(true, Map#babel_map.context)
     end,
     mutate(Key, Fun, Map).
 
@@ -720,7 +722,7 @@ disable(Key, Map) ->
                     badtype(flag, Term)
             end;
         (error) ->
-            babel_flag:disable(babel_flag:new())
+            babel_flag:new(false, Map#babel_map.context)
     end,
     mutate(Key, Fun, Map).
 
@@ -865,8 +867,8 @@ from_map(Map, Spec) when is_map(Spec) ->
 from_term(Term, map, Spec) when is_map(Term) ->
     new(Term, Spec);
 
-from_term(Term, set, Spec) when is_list(Term) ->
-    babel_set:new(Term, Spec);
+from_term(Term, set, _) when is_list(Term) ->
+    babel_set:new(Term);
 
 from_term(Term, counter, integer) when is_integer(Term) ->
     babel_counter:new(Term);
