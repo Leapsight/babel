@@ -19,7 +19,10 @@ all() ->
         merge_4_test,
         merge_5_test,
         merge_6_test,
-        merge_7_test
+        merge_7_test,
+        update_1_test,
+        update_2_test,
+        update_3_test
     ].
 
 
@@ -161,6 +164,39 @@ merge_7_test(_) ->
     ok.
 
 
+
+
+update_1_test(_) ->
+    T1 = babel_map:from_map(data1(), spec()),
+    T2 = babel_map:update(data2(), T1, spec()),
+    ?assertEqual(
+        <<"11111111">>, babel_map:get_value(<<"identification_number">>, T2)
+    ),
+    ?assertEqual(
+        <<"11111111">>, babel_map:get_value(<<"identification_number">>, T2)
+    ),
+    ?assertEqual(
+        [a, b, c],
+        babel_map:get_value(<<"set_prop">>, T2)
+    ),
+    ?assertEqual(
+        100,
+        babel_map:get_value(<<"counter_prop">>, T2)
+    ),
+    ?assertEqual(
+        true,
+        babel_map:get_value(<<"flag_prop">>, T2)
+    ).
+
+update_2_test(_) ->
+    ok.
+
+
+update_3_test(_) ->
+    ok.
+
+
+
 %% =============================================================================
 %% RESOURCES
 %% =============================================================================
@@ -245,6 +281,32 @@ data1() ->
     }.
 
 
+data2() ->
+    #{
+        <<"version">> => <<"2.0">>,
+        <<"id">> => <<"mrn:business_account:1">>,
+        <<"account_type">> => <<"business">>,
+        <<"name">> => <<"Leapsight">>,
+        <<"active">> => false,
+        <<"operation_mode">> => <<"normal">>,
+        <<"country_id">> => <<"UK">>,
+        <<"number">> => <<"AC897698769">>,
+        <<"identification_type">> => <<"PASSPORT">>,
+        <<"identification_number">> => <<"11111111">>,
+        <<"address">> => #{
+            <<"address_line1">> => <<"Clement Street">>,
+            <<"address_line2">> => <<"Floor 8 Room B">>,
+            <<"city">> => <<"London">>,
+            <<"state">> => <<"London">>,
+            <<"country">> => <<"United Kingdom">>,
+            <<"postal_code">> => <<"SW12 2RT">>
+        },
+        <<"set_prop">> => [a, b, c],
+        <<"counter_prop">> => 100,
+        <<"flag_prop">> => true
+    }.
+
+
 spec() ->
     #{
         <<"version">> => {register, binary},
@@ -285,5 +347,8 @@ spec() ->
         <<"created_by">> => {register, binary},
         <<"last_modified_by">> => {register, binary},
         <<"created_timestamp">> => {register, integer},
-        <<"last_modified_timestamp">> => {register, integer}
+        <<"last_modified_timestamp">> => {register, integer},
+        <<"set_prop">> => {set, atom},
+        <<"counter_prop">> => {counter, integer},
+        <<"flag_prop">> => {flag, boolean}
     }.

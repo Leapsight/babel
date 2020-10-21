@@ -100,9 +100,9 @@
                                 | fun((decode, value()) -> any()).
 -type key_path()            ::  binary() | [binary()].
 -type value()               ::  any().
--type update_fun()          ::  fun((babel:datatype() | term()) ->
-                                    babel:datatype() | term()
-                                ).
+%% -type update_fun()          ::  fun((babel:datatype() | term()) ->
+%%                                     babel:datatype() | term()
+%%                                 ).
 
 -export_type([t/0]).
 -export_type([type_spec/0]).
@@ -111,6 +111,7 @@
 %% API
 -export([add_element/3]).
 -export([add_elements/3]).
+-export([set_elements/3]).
 -export([collect/2]).
 -export([context/1]).
 -export([del_element/3]).
@@ -118,6 +119,8 @@
 -export([find/2]).
 -export([get/2]).
 -export([get/3]).
+-export([get_value/2]).
+-export([get_value/3]).
 -export([get_type/1]).
 -export([is_type/1]).
 -export([merge/2]).
@@ -132,6 +135,10 @@
 -export([value/1]).
 -export([enable/2]).
 -export([disable/2]).
+-export([increment/2]).
+-export([increment/3]).
+-export([decrement/2]).
+-export([decrement/3]).
 -export([size/1]).
 
 
@@ -279,22 +286,11 @@ context(#babel_map{context = Value}) -> Value.
 
 value(#babel_map{values = V}) ->
     Fun = fun
-        (_, #babel_map{} = Term) ->
-            value(Term);
         (_, Term) ->
-            case get_type(Term) of
-                register ->
-                    %% Registers are implicit in babel
-                    Term;
-                set ->
-                    babel_set:value(Term);
-                flag ->
-                    babel_flag:value(Term);
-                counter ->
-                    error(not_implemented)
-            end
+            type_value(Term)
     end,
     maps:map(Fun, V).
+
 
 
 %% -----------------------------------------------------------------------------
@@ -310,6 +306,26 @@ find(Key, T) ->
         Value ->
             {ok, Value}
     end.
+
+%% -----------------------------------------------------------------------------
+%% @doc An util function equivalent to calling `value(get(Key, T))`.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec get_value(Key :: key(), T :: t()) -> any().
+
+get_value(Key, T) ->
+    type_value(get(Key, T, ?BADKEY)).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc An util function equivalent to calling `value(get(Key, T, Default))`.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec get_value(Key :: key(), T :: t(), Default :: any()) -> any().
+
+get_value(Key, T, Default) ->
+    type_value(get(Key, T, Default)).
+
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns value `Value' associated with `Key' if `T' contains `Key'.
@@ -337,7 +353,7 @@ get(Key, T) ->
 %% with `Key'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec get(Key :: key_path(), Map :: t(), Default :: any()) -> value().
+-spec get(Key :: key_path(), Map :: t(), Default :: any()) -> Value :: value().
 
 get(_, #babel_map{values = V}, Default) when map_size(V) == 0 ->
     maybe_badkey(Default);
@@ -355,15 +371,8 @@ get([H|T], #babel_map{values = V}, Default) when is_binary(H) ->
 
 get(K, #babel_map{values = V}, Default) when is_binary(K) ->
     case maps:find(K, V) of
-        {ok, #babel_map{} = Value} ->
-            Value;
         {ok, Value} ->
-            case babel_set:is_type(Value) of
-                true ->
-                    babel_set:value(Value);
-                false ->
-                    Value
-            end;
+            Value;
         error ->
             maybe_badkey(Default)
     end;
@@ -371,8 +380,9 @@ get(K, #babel_map{values = V}, Default) when is_binary(K) ->
 get(Key, #babel_map{}, _) when not is_binary(Key) ->
     error({badkey, Key});
 
-get(_, Map, _) ->
-    error({badmap, Map}).
+get(_, Term, _) ->
+    badtype(map, Term).
+
 
 
 
@@ -417,36 +427,8 @@ collect(Keys, Map, Default) when is_list(Keys) ->
 -spec set(Key :: key(), Value :: value(), Map :: t()) ->
     NewMap :: maybe_no_return(t()).
 
-set([H|[]], Value, Map) ->
-    set(H, Value, Map);
-
-set([H|T], Value, #babel_map{values = V} = Map) ->
-    case maps:find(H, V) of
-        {ok, #babel_map{} = HMap} ->
-            Map#babel_map{
-                values = maps:put(H, set(T, Value, HMap), V),
-                updates = ordsets:add_element(H, Map#babel_map.updates)
-            };
-        {ok, Term} ->
-            error({badmap, Term});
-        error ->
-            Map#babel_map{
-                values = maps:put(H, set(T, Value, new()), V),
-                updates = ordsets:add_element(H, Map#babel_map.updates)
-            }
-    end;
-
-set(Key, Value, #babel_map{} = Map) when is_binary(Key) ->
-    Map#babel_map{
-        values = maps:put(Key, Value, Map#babel_map.values),
-        updates = ordsets:add_element(Key, Map#babel_map.updates)
-    };
-
-set(Key, _, #babel_map{}) when not is_binary(Key) ->
-    error({badkey, Key});
-
-set(_, _, Map) ->
-    error({badmap, Map}).
+set(Key, Value, Map) ->
+    mutate(Key, Value, Map).
 
 
 %% -----------------------------------------------------------------------------
@@ -491,48 +473,19 @@ add_element(Key, Value, Map) ->
 -spec add_elements(Key :: key(), Values :: [value()], Map :: t()) ->
     NewMap :: maybe_no_return(t()).
 
-add_elements([H|[]], Values, Map) ->
-    add_elements(H, Values, Map);
-
-add_elements([H|T], Values, #babel_map{values = V} = Map) ->
-    case maps:find(H, V) of
-        {ok, #babel_map{} = HMap} ->
-            Map#babel_map{
-                values = maps:put(H, add_elements(T, Values, HMap), V),
-                updates = ordsets:add_element(H, Map#babel_map.updates)
-            };
-        {ok, Term} ->
-            error({badmap, Term});
-        error ->
-            Map#babel_map{
-                values = maps:put(H, add_elements(T, Values, new()), V),
-                updates = ordsets:add_element(H, Map#babel_map.updates)
-            }
-    end;
-
-add_elements(Key, Values, #babel_map{values = V} = Map)
-when is_binary(Key) andalso is_list(Values) ->
-    NewValue = case maps:find(Key, V) of
-        {ok, Term} ->
+add_elements(Key, Values, Map) ->
+    Fun = fun
+        ({ok, Term}) ->
             case babel_set:is_type(Term) of
                 true ->
                     babel_set:add_elements(Values, Term);
                 false ->
-                    error({badset, Term})
+                    badtype(set, Term)
             end;
-        error ->
+        (error) ->
             babel_set:new(Values)
     end,
-    Map#babel_map{
-        values = maps:put(Key, NewValue, Map#babel_map.values),
-        updates = ordsets:add_element(Key, Map#babel_map.updates)
-    };
-
-add_elements(Key, _, #babel_map{}) when not is_binary(Key) ->
-    error({badkey, Key});
-
-add_elements(_, _, Map) ->
-    error({badmap, Map}).
+    mutate(Key, Fun, Map).
 
 
 %% -----------------------------------------------------------------------------
@@ -555,62 +508,164 @@ add_elements(_, _, Map) ->
 -spec del_element(Key :: key(), Value :: value(), Map :: t()) ->
     NewMap :: maybe_no_return(t()).
 
-del_element([H|[]], Value, Map) ->
-    del_element(H, Value, Map);
-
-del_element([H|T], Value, #babel_map{values = V} = Map) ->
-    case maps:find(H, V) of
-        {ok, #babel_map{} = HMap} ->
-            Map#babel_map{
-                values = maps:put(H, del_element(T, Value, HMap), V),
-                updates = ordsets:add_element(H, Map#babel_map.updates)
-            };
-        {ok, Term} ->
-            error({badmap, Term});
-        error ->
-            %% We create the map as we need to record the removal even if it
-            %% did not exist
-            Map#babel_map{
-                values = maps:put(H, del_element(T, Value, new()), V),
-                updates = ordsets:add_element(H, Map#babel_map.updates)
-            }
-    end;
-
-del_element(Key, Value, #babel_map{values = V} = Map) when is_binary(Key) ->
-    NewValue = case maps:find(Key, V) of
-        {ok, Term} ->
+del_element(Key, Value, Map) ->
+    Fun = fun
+        ({ok, Term}) ->
             case babel_set:is_type(Term) of
                 true ->
                     babel_set:del_element(Value, Term);
                 false ->
-                    error({badset, Term})
+                    badtype(set, Term)
             end;
-        error ->
-            babel_set:new([Value])
+        (error) ->
+            babel_set:new(Value)
     end,
-    Map#babel_map{
-        values = maps:put(Key, NewValue, Map#babel_map.values),
-        updates = ordsets:add_element(Key, Map#babel_map.updates)
-    };
+    mutate(Key, Fun, Map).
 
-del_element(Key, _, _) when not is_binary(Key) ->
-    error({badkey, Key});
 
-del_element(_, _, Map) when not is_record(Map, babel_map) ->
-    error({badmap, Map}).
+%% -----------------------------------------------------------------------------
+%% @doc Sets a list of values `Values' to a babel set associated with key or
+%% path `Key' in map `Map' and inserts the association into map `NewMap'.
+%% See {@link babel_set:set_elements/2}.
+%%
+%% If the key `Key' does not exist in map `Map', this function creates a new
+%% babel set containining `Values'.
+%%
+%% The call might fail with the following exception reasons:
+%%
+%% * `{badset, Set}' - if the initial value associated with `Key' in map `Map0'
+%% is not a babel set;
+%% * `{badmap, Map}' exception if `Map' is not a babel map.
+%% * `{badkey, Key}' - exception if no value is associated with `Key' or `Key'
+%% is not of type binary.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec set_elements(Key :: key(), Values :: [value()], Map :: t()) ->
+    NewMap :: maybe_no_return(t()).
+
+set_elements(Key, Values, Map) ->
+    Fun = fun
+        ({ok, Term}) ->
+            case babel_set:is_type(Term) of
+                true ->
+                    babel_set:set_elements(Values, Term);
+                false ->
+                    badtype(set, Term)
+            end;
+        (error) ->
+            babel_set:new(Values)
+    end,
+    mutate(Key, Fun, Map).
+
+
+
+%% -spec update(Key :: key(), Fun :: update_fun(), T :: t()) -> NewT :: t().
+
+%% update(Key, Fun, #babel_map{values = V, updates = U} = Map)
+%% when is_function(Fun, 1) ->
+%%     Map#babel_map{
+%%         values = maps:put(Key, Fun(maps:get(Key, V)), V),
+%%         updates = ordsets:add_element(Key, U)
+%%     }.
+
 
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec update(Key :: key(), Fun :: update_fun(), T :: t()) -> NewT :: t().
+-spec update(Values :: babel_key_value:t(), T :: t(), Spec :: type_spec()) ->
+    NewT :: t().
 
-update(Key, Fun, #babel_map{values = V, updates = U} = Map) ->
-    Map#babel_map{
-        values = maps:put(Key, Fun(maps:get(Key, V)), V),
-        updates = ordsets:add_element(Key, U)
-    }.
+update(Values, T, Spec) when is_map(Values)->
+    Fun = fun
+        Fold({Key, _}, Value, Acc) ->
+            %% A Riak Map key
+            Fold(Key, Value, Acc);
+        Fold(Key, Value, Acc) ->
+            case maps:find(Key, Spec) of
+                {ok, TypeSpec} ->
+                    do_update(Key, Value, Acc, TypeSpec);
+                error ->
+                    error({missing_spec, Key})
+            end
+
+    end,
+    maps:fold(Fun, T, Values);
+
+update(Values, T, Spec) ->
+    Map = babel_key_value:fold(
+        fun(K, V, Acc) -> maps:put(K, V, Acc) end, Values
+    ),
+    update(Map, T, Spec).
+
+
+%% @private
+do_update(Key, Value, Acc, {register, _}) ->
+    %% We simply replace the existing register
+    set(Key, Value, Acc);
+
+do_update(Key, Value, #babel_map{values = V} = Acc, {map, Spec}) ->
+    case maps:find(Key, V) of
+        {ok, #babel_map{} = Inner} ->
+            %% We update the inner map recursively and replace
+            set(Key, update(Value, Inner, Spec), Acc);
+        _ ->
+            %% The existing value was not found or is not a map, but it should
+            %% be according to spec, so we replace by a new map
+            set(Key, babel_map:new(Value, Spec), Acc)
+    end;
+
+do_update(Key, Value, Acc, {set, _}) when is_list(Value) ->
+    try
+        set_elements(Key, Value, Acc)
+    catch
+        throw:context_required ->
+            %% We have a brand new set (not in Riak yet) so we just replace it
+            set(Key, babel_set:new(Value), Acc)
+    end;
+
+do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}) ->
+    case maps:find(Key, V) of
+        {ok, Term} ->
+            case babel_counter:is_type(Term) of
+                true ->
+                    %% We update the counter
+                    set(Key, babel_counter:set(Value, Term), Acc);
+                false ->
+                    %% The existing value is not a counter, but it should be
+                    %% according to spec, so we replace by a new one
+                    set(Key, babel_counter:new(Value), Acc)
+            end;
+        _ ->
+            %% The existing value was not found so create a new one
+            set(Key, babel_counter:new(Value), Acc)
+    end;
+
+do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
+    case maps:find(Key, V) of
+        {ok, Term} ->
+            case babel_flag:is_type(Term) of
+                true ->
+                    Flag = try
+                        babel_flag:set(Value, Term)
+                    catch
+                        throw:context_required ->
+                            %% We have a brand new flag (not in Riak yet) so we
+                            %% just replace it
+                            babel_flag:new(Value)
+                    end,
+                    set(Key, Flag, Acc);
+                false ->
+                    %% The existing value is not a counter, but it should be
+                    %% according to spec, so we replace by a new one
+                    set(Key, babel_flag:new(Value), Acc)
+            end;
+        _ ->
+            %% The existing value was not found so create a new one
+            set(Key, babel_flag:new(Value), Acc)
+    end.
+
 
 
 %% -----------------------------------------------------------------------------
@@ -634,8 +689,19 @@ remove(Key, T) ->
 %% -----------------------------------------------------------------------------
 -spec enable(Key :: key(), T :: t()) -> NewT :: t().
 
-enable(_Key, _T) ->
-    error(not_implemented).
+enable(Key, Map) ->
+    Fun = fun
+        ({ok, Term}) ->
+            case babel_flag:is_type(Term) of
+                true ->
+                    babel_flag:enable(Term);
+                false ->
+                    badtype(flag, Term)
+            end;
+        (error) ->
+            babel_flag:enable(babel_flag:new())
+    end,
+    mutate(Key, Fun, Map).
 
 
 %% -----------------------------------------------------------------------------
@@ -644,8 +710,82 @@ enable(_Key, _T) ->
 %% -----------------------------------------------------------------------------
 -spec disable(Key :: key(), T :: t()) -> NewT :: t().
 
-disable(_Key, _T) ->
-    error(not_implemented).
+disable(Key, Map) ->
+    Fun = fun
+        ({ok, Term}) ->
+            case babel_flag:is_type(Term) of
+                true ->
+                    babel_flag:disable(Term);
+                false ->
+                    badtype(flag, Term)
+            end;
+        (error) ->
+            babel_flag:disable(babel_flag:new())
+    end,
+    mutate(Key, Fun, Map).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec increment(Key :: key(), T :: t()) -> NewT :: t().
+
+increment(Key, Map) ->
+    increment(Key, 1, Map).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec increment(Key :: key(), Value :: integer(), T :: t()) -> NewT :: t().
+
+increment(Key, Value, Map) ->
+    Fun = fun
+        ({ok, Term}) ->
+            case babel_counter:is_type(Term) of
+                true ->
+                    babel_counter:increment(Value, Term);
+                false ->
+                    badtype(counter, Term)
+            end;
+        (error) ->
+            babel_counter:increment(Value, babel_counter:new())
+    end,
+    mutate(Key, Fun, Map).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec decrement(Key :: key(), T :: t()) -> NewT :: t().
+
+decrement(Key, Map) ->
+    decrement(Key, 1, Map).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec decrement(Key :: key(), Value :: integer(), T :: t()) -> NewT :: t().
+
+decrement(Key, Value, Map) ->
+    Fun = fun
+        ({ok, Term}) ->
+            case babel_counter:is_type(Term) of
+                true ->
+                    babel_counter:decrement(Value, Term);
+                false ->
+                    badtype(counter, Term)
+            end;
+        (error) ->
+            babel_counter:decrement(Value, babel_counter:new())
+    end,
+    mutate(Key, Fun, Map).
+
 
 
 %% -----------------------------------------------------------------------------
@@ -661,7 +801,6 @@ disable(_Key, _T) ->
 -spec merge(T1 :: t(), T2 :: t() | map()) -> Map3 :: t().
 
 merge(#babel_map{} = T1, #babel_map{values = V2}) ->
-
     Fun = fun
         (Key, #babel_map{} = T2i, #babel_map{values = AccValues} = Acc) ->
             case maps:find(Key, AccValues) of
@@ -674,7 +813,7 @@ merge(#babel_map{} = T1, #babel_map{values = V2}) ->
                     };
                 {ok, Term} ->
                     %% Not a babel map
-                    error({badmap, Term});
+                    badtype(map, Term);
                 error ->
                     Acc#babel_map{
                         values = maps:put(Key, set(Key, T2i, Acc), AccValues),
@@ -694,6 +833,7 @@ merge(#babel_map{} = T1, #babel_map{values = V2}) ->
 %% =============================================================================
 %% PRIVATE
 %% =============================================================================
+
 
 
 %% @private
@@ -728,11 +868,11 @@ from_term(Term, map, Spec) when is_map(Term) ->
 from_term(Term, set, Spec) when is_list(Term) ->
     babel_set:new(Term, Spec);
 
-from_term(Term, counter, _) when is_integer(Term) ->
-    error(not_implemented);
+from_term(Term, counter, integer) when is_integer(Term) ->
+    babel_counter:new(Term);
 
 from_term(Term, flag, boolean) when is_boolean(Term) ->
-    babel_flag:new(Term, boolean);
+    babel_flag:new(Term);
 
 from_term(Term, register, atom) when is_atom(Term) ->
     Term;
@@ -828,6 +968,12 @@ from_datatype({_, set}, Value, Type) ->
 from_datatype({_, map}, Value, Spec) ->
     from_riak_map(Value, Spec);
 
+from_datatype({_, counter}, Value, Type) ->
+    babel_counter:from_riak_counter(Value, Type);
+
+from_datatype({_, flag}, Value, Type) ->
+    babel_flag:from_riak_flag(Value, Type);
+
 from_datatype(_Key, _RiakMap, _Type) ->
     error(not_implemented).
 
@@ -867,7 +1013,7 @@ do_remove([H|T], #babel_map{values = V} = Map) ->
         undefined ->
             error({badkey, H});
         Term ->
-            error({badmap, Term})
+            badtype(map, Term)
     end;
 
 do_remove(Key, #babel_map{} = Map) when is_binary(Key) ->
@@ -879,8 +1025,8 @@ do_remove(Key, #babel_map{} = Map) when is_binary(Key) ->
 do_remove(Key, #babel_map{}) when not is_binary(Key) ->
     error({badkey, Key});
 
-do_remove(_, Map) ->
-    error({badmap, Map}).
+do_remove(_, Term) ->
+    badtype(map, Term).
 
 
 %% @private
@@ -889,6 +1035,26 @@ maybe_badkey(?BADKEY) ->
 
 maybe_badkey(Term) ->
     Term.
+
+
+%% @private
+type_value(#babel_map{} = Map) ->
+    value(Map);
+
+type_value(Term) ->
+    case get_type(Term) of
+        register ->
+            %% Registers are implicit in babel
+            Term;
+        set ->
+            babel_set:value(Term);
+        flag ->
+            babel_flag:value(Term);
+        counter ->
+            babel_counter:value(Term);
+        Datatype ->
+            error({not_implemented, Datatype})
+    end.
 
 
 %% -----------------------------------------------------------------------------
@@ -922,7 +1088,7 @@ get_type(_) ->
     register.
 
 
-
+%% @private
 maybe_merge(Key, Term2, Acc) ->
     Type = get_type(Term2),
 
@@ -935,6 +1101,7 @@ maybe_merge(Key, Term2, Acc) ->
     end.
 
 
+%% @private
 merge(Key, Value, Acc, register) ->
     set(Key, Value, Acc);
 
@@ -949,9 +1116,12 @@ merge(Key, Set, Acc, flag) ->
             disable(Key, Acc)
     end;
 
-merge(_Key, _Counter, _Acc, counter) ->
-    error(not_implemented).
+merge(Key, Counter, Acc, counter) ->
+    Value = babel_counter:value(Counter),
+    increment(Key, Value, Acc).
 
+
+%% @private
 badtype(register, Key) ->
     error({badregister, Key});
 
@@ -964,7 +1134,7 @@ badtype(set, Key) ->
 badtype(flag, Key) ->
     error({badflag, Key});
 
-badtype(coutner, Key) ->
+badtype(counter, Key) ->
     error({badcounter, Key}).
 
 
@@ -1021,20 +1191,15 @@ prepare_update_ops(T, Spec) ->
                 {_, Op, _} -> [{update, RKey, Op} | Acc]
             end;
 
-        ToOp({{_, counter}, _KeySpec}, _V, _Acc) ->
-            error(not_implemented);
+        ToOp({{_, counter} = RKey, Type}, Counter, Acc) ->
+            case babel_counter:to_riak_op(Counter, Type) of
+                undefined -> Acc;
+                {_, Op, _} -> [{update, RKey, Op} | Acc]
+            end;
 
         ToOp(Key, Value, Acc) ->
             {Datatype, SpecOrType} = maps:get(Key, Spec),
             ToOp({{Key, Datatype}, SpecOrType}, Value, Acc)
-            %% case Spec of
-            %%     {register, KeySpec} ->
-            %%         ToOp({{Key, register}, KeySpec}, Value, Acc);
-            %%     {map, KeySpec} ->
-            %%         ToOp({{Key, map}, KeySpec}, Value, Acc);
-            %%     Spec when is_map(Spec) ->
-            %%         ToOp(maps:get(Key, Spec), Value, Acc)
-            %% end
 
     end,
 
@@ -1043,15 +1208,66 @@ prepare_update_ops(T, Spec) ->
 
 
 %% @private
-%% prepare_remove_ops(T, {register, _}) ->
-%%     [{Key, register} || Key <- T#babel_map.removes];
-
-%% prepare_remove_ops(T, {map, _}) ->
-%%     [{Key, map} || Key <- T#babel_map.removes];
-
 prepare_remove_ops(T, Spec) ->
     [
         {remove, {Key, element(1, maps:get(Key, Spec))}}
         || Key <- T#babel_map.removes
     ].
 
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc Util function used by the following type specific functions
+%% (map) set/3,
+%% (set) add_elements/3,
+%% (set) del_elements/3,
+%% (flag) enable/2
+%% (flag) disable/2
+%% @end
+%% -----------------------------------------------------------------------------
+-spec mutate(Key :: key(), Value :: value() | function(), Map :: t()) ->
+    NewMap :: maybe_no_return(t()).
+
+mutate([H|[]], Value, Map) ->
+    mutate(H, Value, Map);
+
+mutate([H|T], Value, #babel_map{values = V} = Map) ->
+    case maps:find(H, V) of
+        {ok, #babel_map{} = HMap} ->
+            Map#babel_map{
+                values = maps:put(H, mutate(T, Value, HMap), V),
+                updates = ordsets:add_element(H, Map#babel_map.updates)
+            };
+        {ok, Term} ->
+            badtype(map, Term);
+        error ->
+            Map#babel_map{
+                values = maps:put(H, mutate(T, Value, new()), V),
+                updates = ordsets:add_element(H, Map#babel_map.updates)
+            }
+    end;
+
+mutate(Key, Term, #babel_map{} = Map) when is_binary(Key) ->
+    Value = mutate_eval(Key, Term, Map),
+    Map#babel_map{
+        values = maps:put(Key, Value, Map#babel_map.values),
+        updates = ordsets:add_element(Key, Map#babel_map.updates)
+    };
+
+mutate(Key, _, #babel_map{}) when not is_binary(Key) ->
+    error({badkey, Key});
+
+mutate(_, _, Map) ->
+    badtype(map, Map).
+
+
+%% @private
+mutate_eval(_, Fun, _) when is_function(Fun, 0) ->
+    Fun();
+
+mutate_eval(Key, Fun, #babel_map{values = V}) when is_function(Fun, 1) ->
+    Fun(maps:find(Key, V));
+
+mutate_eval(_, Value, _) when not is_function(Value) ->
+    Value.
