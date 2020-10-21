@@ -38,8 +38,10 @@
 -export([from_riak_flag/2]).
 -export([is_type/1]).
 -export([new/0]).
+-export([new/1]).
 -export([to_riak_op/2]).
 -export([type/0]).
+-export([original_value/1]).
 -export([value/1]).
 
 
@@ -60,13 +62,25 @@ new() ->
     #babel_flag{value = false}.
 
 
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec new(Value :: boolean()) -> t().
+
+new(true) ->
+    enable(new());
+
+new(false) ->
+    new().
+
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
 -spec from_riak_flag(
-    RiakSet :: riakc_flag:riakc_t() | boolean, Type :: type_spec()) ->
+    RiakFlag :: riakc_flag:riakc_t() | boolean, Type :: type_spec()) ->
     maybe_no_return(t()).
 
 from_riak_flag(Value, boolean) when is_boolean(Value) ->
@@ -121,13 +135,29 @@ context(#babel_flag{context = Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns the current value of the set.
+%% @doc Returns the original value of the flag.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec original_value(T :: t()) -> integer().
+
+original_value(#babel_flag{value = Value}) ->
+    Value.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the current value of the flag.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec value(T :: t()) -> boolean().
 
-value(#babel_flag{value = Value}) ->
-    Value.
+value(#babel_flag{op = undefined, value = Value}) ->
+    Value;
+
+value(#babel_flag{op = enable}) ->
+    true;
+
+value(#babel_flag{op = disable}) ->
+    false.
 
 
 %% -----------------------------------------------------------------------------
@@ -137,7 +167,7 @@ value(#babel_flag{value = Value}) ->
 -spec enable(t()) -> t().
 
 enable(#babel_flag{} = T) ->
-    T#babel_flag{value = true, op = enable}.
+    T#babel_flag{op = enable}.
 
 
 %% -----------------------------------------------------------------------------
@@ -151,7 +181,7 @@ disable(#babel_flag{context = undefined}) ->
     throw(context_required);
 
 disable(#babel_flag{} = T) ->
-    T#babel_flag{value = false, op = disable}.
+    T#babel_flag{op = disable}.
 
 
 %% -----------------------------------------------------------------------------
