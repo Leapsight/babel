@@ -111,17 +111,22 @@
 %% API
 -export([add_element/3]).
 -export([add_elements/3]).
--export([set_elements/3]).
 -export([collect/2]).
 -export([context/1]).
+-export([decrement/2]).
+-export([decrement/3]).
 -export([del_element/3]).
--export([from_riak_map/2]).
+-export([disable/2]).
+-export([enable/2]).
 -export([find/2]).
+-export([from_riak_map/2]).
 -export([get/2]).
 -export([get/3]).
+-export([get_type/1]).
 -export([get_value/2]).
 -export([get_value/3]).
--export([get_type/1]).
+-export([increment/2]).
+-export([increment/3]).
 -export([is_type/1]).
 -export([merge/2]).
 -export([new/0]).
@@ -129,17 +134,12 @@
 -export([new/2]).
 -export([remove/2]).
 -export([set/3]).
+-export([set_elements/3]).
+-export([size/1]).
 -export([to_riak_op/2]).
 -export([type/0]).
 -export([update/3]).
 -export([value/1]).
--export([enable/2]).
--export([disable/2]).
--export([increment/2]).
--export([increment/3]).
--export([decrement/2]).
--export([decrement/3]).
--export([size/1]).
 
 
 
