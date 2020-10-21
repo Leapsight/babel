@@ -167,7 +167,7 @@ merge_7_test(_) ->
 
 
 update_1_test(_) ->
-    T1 = babel_map:from_map(data1(), spec()),
+    T1 = babel_map:new(data1(), spec()),
     T2 = babel_map:update(data2(), T1, spec()),
     ?assertEqual(
         <<"11111111">>, babel_map:get_value(<<"identification_number">>, T2)
