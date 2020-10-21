@@ -93,6 +93,6 @@ set(_) ->
     ?assertEqual({babel_counter, 100, 100}, C2),
     ?assertEqual(200, babel_counter:value(C2)),
 
-    C3 = babel_counter:decrement(-50, C2),
+    C3 = babel_counter:set(-50, C2),
     ?assertEqual({babel_counter, 100, -150}, C3),
     ?assertEqual(-50, babel_counter:value(C3)).
