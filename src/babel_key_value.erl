@@ -37,7 +37,10 @@
 
 -type path()        ::  [atom() | binary() | tuple() | riakc_map:key()].
 
-
+-type fold_fun()    ::  fun(
+                            (Key :: key(), Value :: any(), AccIn :: any()) ->
+                                AccOut :: any()
+                        ).
 
 -export_type([t/0]).
 -export_type([key/0]).
@@ -49,6 +52,7 @@
 -export([get/2]).
 -export([get/3]).
 -export([set/3]).
+-export([fold/3]).
 
 -compile({no_auto_import, [get/1]}).
 
@@ -233,6 +237,32 @@ set(Key, Value, KVTerm) ->
     babel_map:is_type(KVTerm) orelse error(badarg),
     babel_map:set(Key, Value, KVTerm).
 
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec fold(Fun :: fold_fun(), Acc :: any(), KVTerm :: t()) -> NewAcc :: any().
+
+fold(Fun, Acc, KVTerm) when is_list(KVTerm) ->
+    lists:foldl(fun({K, V}, In) -> Fun(K, V, In) end, Acc, KVTerm);
+
+fold(Fun, Acc, KVTerm) when is_map(KVTerm) ->
+    maps:fold(Fun, Acc, KVTerm);
+
+fold(Fun, Acc, KVTerm) ->
+    case babel_map:is_type(KVTerm) of
+        true ->
+            maps:fold(Fun, Acc, babel_map:value(KVTerm));
+
+        false ->
+            case riakc_map:is_type(KVTerm) of
+                true ->
+                    riakc_map:fold(Fun, Acc, KVTerm);
+                false ->
+                    error(badarg)
+            end
+    end.
 
 
 %% =============================================================================
