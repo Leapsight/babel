@@ -179,7 +179,20 @@ new(Data) when is_map(Data) ->
 -spec new(Data :: map(), Spec :: type_spec()) -> t().
 
 new(Data, Spec) ->
-    from_map(Data, Spec).
+    new(Data, Spec, undefined).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec new(
+    Data :: map(),
+    Spec :: type_spec(),
+    Ctxt :: riakc_datatype:context()) -> t().
+
+new(Data, Spec, Ctxt) ->
+    from_map(Data, Spec, Ctxt).
 
 %% new(Data, Spec) when is_map(Data) andalso is_map(Spec) ->
 %%     MissingKeys = lists:subtract(maps:keys(Spec), maps:keys(Data)),
@@ -839,10 +852,10 @@ merge(#babel_map{} = T1, #babel_map{values = V2}) ->
 
 
 %% @private
-from_map(Map, #{'_' := TypeOrSpec}) ->
-    from_map(Map, expand_spec(maps:keys(Map), TypeOrSpec));
+from_map(Map, #{'_' := TypeOrSpec}, Ctxt) ->
+    from_map(Map, expand_spec(maps:keys(Map), TypeOrSpec), Ctxt);
 
-from_map(Map, Spec) when is_map(Spec) ->
+from_map(Map, Spec, Ctxt) when is_map(Spec) ->
     ConvertType = fun(Key, Value) ->
         case maps:find(Key, Spec) of
             {ok, {Datatype, SpecOrType}} ->
@@ -859,7 +872,8 @@ from_map(Map, Spec) when is_map(Spec) ->
     %% Values = init_values(maps:with(MissingKeys, Spec), Values0),
     #babel_map{
         values = Values0,
-        updates = ordsets:from_list(maps:keys(Values0))
+        updates = ordsets:from_list(maps:keys(Values0)),
+        context = Ctxt
     }.
 
 
@@ -1234,7 +1248,7 @@ prepare_remove_ops(T, Spec) ->
 mutate([H|[]], Value, Map) ->
     mutate(H, Value, Map);
 
-mutate([H|T], Value, #babel_map{values = V} = Map) ->
+mutate([H|T], Value, #babel_map{values = V, context = C} = Map) ->
     case maps:find(H, V) of
         {ok, #babel_map{} = HMap} ->
             Map#babel_map{
@@ -1245,7 +1259,7 @@ mutate([H|T], Value, #babel_map{values = V} = Map) ->
             badtype(map, Term);
         error ->
             Map#babel_map{
-                values = maps:put(H, mutate(T, Value, new()), V),
+                values = maps:put(H, mutate(T, Value, new(#{}, #{}, C)), V),
                 updates = ordsets:add_element(H, Map#babel_map.updates)
             }
     end;
