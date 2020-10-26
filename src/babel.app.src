@@ -31,7 +31,6 @@
         kernel,
         stdlib,
         cache,
-        sbroker,
         gproc,
         utils,
         jsone,
