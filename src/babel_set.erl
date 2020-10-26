@@ -110,7 +110,6 @@ new(Data, Ctxt) when is_list(Data) ->
     #babel_set{adds = Adds, size = ordsets:size(Adds), context = Ctxt}.
 
 
-
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @throws {badindex, term()}
