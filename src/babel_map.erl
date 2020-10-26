@@ -869,7 +869,7 @@ from_map(Map, Spec, Ctxt) when is_map(Spec) ->
     ConvertType = fun(Key, Value) ->
         case maps:find(Key, Spec) of
             {ok, {Datatype, SpecOrType}} ->
-                from_term(Value, Datatype, SpecOrType);
+                from_term(Value, Ctxt, Datatype, SpecOrType);
             error ->
                 error({missing_spec, Key})
         end
@@ -888,43 +888,43 @@ from_map(Map, Spec, Ctxt) when is_map(Spec) ->
 
 
 %% @private
-from_term(Term, map, Spec) when is_map(Term) ->
-    new(Term, Spec);
+from_term(Term, Ctxt, map, Spec) when is_map(Term) ->
+    new(Term, Spec, Ctxt);
 
-from_term(Term, set, _) when is_list(Term) ->
-    babel_set:new(Term);
+from_term(Term, Ctxt, set, _) when is_list(Term) ->
+    babel_set:new(Term, Ctxt);
 
-from_term(Term, counter, integer) when is_integer(Term) ->
+from_term(Term, _, counter, integer) when is_integer(Term) ->
     babel_counter:new(Term);
 
-from_term(Term, flag, boolean) when is_boolean(Term) ->
-    babel_flag:new(Term);
+from_term(Term, Ctxt, flag, boolean) when is_boolean(Term) ->
+    babel_flag:new(Term, Ctxt);
 
-from_term(Term, register, atom) when is_atom(Term) ->
+from_term(Term, _, register, atom) when is_atom(Term) ->
     Term;
 
-from_term(Term, register, existing_atom) when is_atom(Term) ->
+from_term(Term, _, register, existing_atom) when is_atom(Term) ->
     Term;
 
-from_term(Term, register, boolean) when is_boolean(Term) ->
+from_term(Term, _, register, boolean) when is_boolean(Term) ->
     Term;
 
-from_term(Term, register, integer) when is_integer(Term) ->
+from_term(Term, _, register, integer) when is_integer(Term) ->
     Term;
 
-from_term(Term, register, float) when is_float(Term) ->
+from_term(Term, _, register, float) when is_float(Term) ->
     Term;
 
-from_term(Term, register, binary) when is_binary(Term) ->
+from_term(Term, _, register, binary) when is_binary(Term) ->
     Term;
 
-from_term(Term, register, integer) when is_integer(Term) ->
+from_term(Term, _, register, integer) when is_integer(Term) ->
     Term;
 
-from_term(Term, register, Fun) when is_function(Fun, 2) ->
+from_term(Term, _, register, Fun) when is_function(Fun, 2) ->
     Term;
 
-from_term(Term, register, Type) ->
+from_term(Term, _, register, Type) ->
     error({badkeytype, Term, Type}).
 
 
