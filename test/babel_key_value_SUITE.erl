@@ -123,8 +123,6 @@ crdt_get_1_test(_) ->
     CRDT = riakc_map:new(L, undefined),
     ?assertEqual(true, riakc_map:is_type(CRDT)),
 
-    % dbg:tracer(), dbg:p(all,c), dbg:tpl(babel_key_value, '_', x),
-
     ?assertEqual(
         riakc_map:fetch({<<"index_by">>, register}, CRDT),
         babel_key_value:get({<<"index_by">>, register}, CRDT)

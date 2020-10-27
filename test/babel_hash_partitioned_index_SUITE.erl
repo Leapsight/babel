@@ -284,18 +284,13 @@ accounts_by_identification_type_and_number_test(_) ->
 
         Collection = babel_index_collection:fetch(
             BucketPrefix, Accounts, RiakOpts),
-        dbg:tracer(), dbg:p(all,c),
-        dbg:tpl(babel_index_collection, '_', []),
         _Index = babel_index_collection:index(IndexName, Collection),
         ok = babel:update_indices(Actions, Collection, RiakOpts),
         ok
     end,
 
     Ts0 = erlang:system_time(millisecond),
-    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(gen_server, 'reply', []),
-    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_partition_worker, 'enqueue', x),
-    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_partition_worker, 'handle_call', x),
-    %% dbg:tracer(), dbg:p(all,c), dbg:tpl(reliable_riak_store_backend, 'enqueue', x),
+
     {scheduled, _, ok} = babel:workflow(Update, #{timeout => 5000}),
     Ts1 = erlang:system_time(millisecond),
     ct:pal("elapsed_time_secs = ~p", [(Ts1 - Ts0) / 1000]),
