@@ -39,6 +39,7 @@
 -export([is_type/1]).
 -export([new/0]).
 -export([new/1]).
+-export([new/2]).
 -export([to_riak_op/2]).
 -export([type/0]).
 -export([original_value/1]).
