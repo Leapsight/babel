@@ -35,7 +35,7 @@
 -export([disable/1]).
 -export([enable/1]).
 -export([set/2]).
--export([from_riak_flag/2]).
+-export([from_riak_flag/3]).
 -export([is_type/1]).
 -export([new/0]).
 -export([new/1]).
@@ -69,8 +69,11 @@ new() ->
 %% -----------------------------------------------------------------------------
 -spec new(Value :: boolean()) -> t().
 
-new(Value) ->
-    new(Value, undefined).
+new(true) ->
+    enable(new());
+
+new(false) ->
+    new().
 
 
 %% -----------------------------------------------------------------------------
@@ -79,11 +82,8 @@ new(Value) ->
 %% -----------------------------------------------------------------------------
 -spec new(Value :: boolean(), Ctxt :: riakc_datatype:context()) -> t().
 
-new(true, Ctxt) ->
-    enable(#babel_flag{context = Ctxt});
-
-new(false, Ctxt) ->
-    #babel_flag{context = Ctxt}.
+new(Value, Ctxt) when is_boolean(Value) ->
+    #babel_flag{value = Value, context = Ctxt}.
 
 
 %% -----------------------------------------------------------------------------
@@ -91,15 +91,16 @@ new(false, Ctxt) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec from_riak_flag(
-    RiakFlag :: riakc_flag:riakc_t() | boolean, Type :: type_spec()) ->
+    RiakFlag :: riakc_flag:riakc_t() | boolean,
+    Ctxt :: riakc_datatype:context(),
+    Type :: type_spec()) ->
     maybe_no_return(t()).
 
-from_riak_flag(Value, boolean) when is_boolean(Value) ->
-    #babel_flag{value = Value};
+from_riak_flag(Value, Ctxt, boolean) when is_boolean(Value) ->
+    #babel_flag{value = Value, context = Ctxt};
 
-from_riak_flag(RiakFlag, boolean) ->
-    Flag = from_riak_flag(riakc_flag:value(RiakFlag), boolean),
-    Flag#babel_flag{context = element(4, RiakFlag)}.
+from_riak_flag(RiakFlag, Ctxt, boolean) ->
+    from_riak_flag(riakc_flag:value(RiakFlag), Ctxt, boolean).
 
 
 %% -----------------------------------------------------------------------------

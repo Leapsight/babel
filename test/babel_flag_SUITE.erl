@@ -33,18 +33,22 @@ new(_) ->
 
 
 from_riak_flag(_) ->
+    Ctxt = <<>>,
     ?assertEqual(
         {babel_flag, true, undefined, <<>>},
         babel_flag:from_riak_flag(
-            riakc_flag:new(true, <<>>),
+            riakc_flag:new(true, Ctxt),
+            Ctxt,
             boolean
         )
     ).
 
 
 enable(_) ->
+    Ctxt = <<>>,
     C0 = babel_flag:from_riak_flag(
-        riakc_flag:new(true, <<>>),
+        riakc_flag:new(true, Ctxt),
+        Ctxt,
         boolean
     ),
     ?assertEqual(true, babel_flag:value(C0)),
@@ -56,8 +60,10 @@ enable(_) ->
 
 
 disable(_) ->
+    Ctxt = <<>>,
     C0 = babel_flag:from_riak_flag(
-        riakc_flag:new(true, <<>>),
+        riakc_flag:new(true, Ctxt),
+        Ctxt,
         boolean
     ),
     ?assertEqual(true, babel_flag:value(C0)),
@@ -69,8 +75,10 @@ disable(_) ->
 
 
 set(_) ->
+    Ctxt = <<>>,
     C0 = babel_flag:from_riak_flag(
-        riakc_flag:new(true, <<>>),
+        riakc_flag:new(true, Ctxt),
+        Ctxt,
         boolean
     ),
     ?assertEqual(true, babel_flag:value(C0)),

@@ -54,7 +54,7 @@
 -export([del_elements/2]).
 -export([set_elements/2]).
 -export([fold/3]).
--export([from_riak_set/2]).
+-export([from_riak_set/3]).
 -export([is_element/2]).
 -export([is_original_element/2]).
 -export([is_type/1]).
@@ -116,16 +116,17 @@ new(Data, Ctxt) when is_list(Data) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec from_riak_set(
-    RiakSet :: riakc_set:riakc_set() | ordsets:ordset(), Type :: type_spec()) ->
+    RiakSet :: riakc_set:riakc_set() | ordsets:ordset(),
+    Ctxt :: riakc_datatype:context(),
+    Type :: type_spec()) ->
     maybe_no_return(t()).
 
-from_riak_set(Ordset, Type) when is_list(Ordset) ->
+from_riak_set(Ordset, Ctxt, Type) when is_list(Ordset) ->
     Values = [from_binary(E, Type) || E <- Ordset],
-    new(Values);
+    new(Values, Ctxt);
 
-from_riak_set(RiakSet, Type) ->
-    Set = from_riak_set(riakc_set:value(RiakSet), Type),
-    Set#babel_set{context = element(5, RiakSet)}.
+from_riak_set(RiakSet, Ctxt, Type) ->
+    from_riak_set(riakc_set:value(RiakSet), Ctxt, Type).
 
 
 %% -----------------------------------------------------------------------------

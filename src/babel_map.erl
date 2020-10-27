@@ -128,6 +128,7 @@
 -export([get_value/3]).
 -export([increment/2]).
 -export([increment/3]).
+-export([keys/1]).
 -export([is_type/1]).
 -export([merge/2]).
 -export([new/0]).
@@ -225,15 +226,16 @@ from_riak_map(RMap, Spec) when is_list(RMap) ->
 %% -----------------------------------------------------------------------------
 %% @doc Extracts a Riak Operation from the map to be used with a Riak Client
 %% update request.
+%% The call fails with a `{badmap, T}' exception if `T' is not a map.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec to_riak_op(T :: t(), Spec :: type_spec()) ->
-    riakc_datatype:update(riakc_map:map_op()).
+    riakc_datatype:update(riakc_map:map_op()) | no_return().
 
 to_riak_op(T, #{'_' := TypeOrSpec}) ->
     to_riak_op(T, expand_spec(modified_keys(T), TypeOrSpec));
 
-to_riak_op(T, Spec) when is_map(Spec) ->
+to_riak_op(#babel_map{} = T, Spec) when is_map(Spec) ->
     Updates = prepare_update_ops(T, Spec),
     Removes = prepare_remove_ops(T, Spec),
 
@@ -242,7 +244,10 @@ to_riak_op(T, Spec) when is_map(Spec) ->
             undefined;
         Ops ->
             {riakc_map:type(), {update, Ops}, T#babel_map.context}
-    end.
+    end;
+
+to_riak_op(Term, _) ->
+    badtype(map, Term).
 
 
 
@@ -257,16 +262,36 @@ type() -> map.
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns the size of the values of the map `T'.
+%% The call fails with a `{badmap, T}' exception if `T' is not a map.
 %% @end
 %% -----------------------------------------------------------------------------
--spec size(T :: t()) -> non_neg_integer().
+-spec size(T :: t()) -> non_neg_integer() | no_return().
 
 size(#babel_map{values = Values}) ->
-    maps:size(Values).
+    maps:size(Values);
+
+size(Term) ->
+    badtype(map, Term).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns a complete list of keys, in any order, which resides within map
+%% `T'.
+%% The call fails with a `{badmap, T}' exception if `T' is not a map.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec keys(T :: t()) -> [binary()] | no_return().
+
+keys(#babel_map{values = Values}) ->
+    maps:keys(Values);
+
+keys(Term) ->
+    badtype(map, Term).
 
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns true if term `Term' is a babel map.
+%% The call fails with a `{badmap, Term}' exception if `Term' is not a map.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec is_type(Term :: any()) -> boolean().
@@ -277,44 +302,61 @@ is_type(Term) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns the Riak KV context associated with map `T'.
+%% The call fails with a `{badmap, T}' exception if `T' is not a map.
 %% @end
 %% -----------------------------------------------------------------------------
--spec context(T :: t()) -> riakc_datatype:context().
+-spec context(T :: t()) -> riakc_datatype:context() | no_return().
 
-context(#babel_map{context = Value}) -> Value.
+context(#babel_map{context = Value}) ->
+    Value;
+
+context(Term) ->
+    badtype(map, Term).
 
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns an external representation of the map `Map' as an Erlang
 %% map(). This is build recursively by calling the value/1 function on any
 %% embedded datatype.
+%% The call fails with a `{badmap, T}' exception if `T' is not a map.
 %% @end
 %% -----------------------------------------------------------------------------
--spec value(Map :: t()) -> map().
+-spec value(Map :: t()) -> map() | no_return().
 
 value(#babel_map{values = V}) ->
     Fun = fun
         (_, Term) ->
             type_value(Term)
     end,
-    maps:map(Fun, V).
+    maps:map(Fun, V);
+
+value(Term) ->
+    badtype(map, Term).
 
 
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns the tuple `{ok, Value :: any()}' if the key 'Key' is associated
 %% with value `Value' in map `T'. Otherwise returns the atom `error'.
+%% The call fails with a `{badmap, T}' exception if `T' is not a map and
+%% `{badkey, Key}' exception if `Key' is not a binary term.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec find(Key :: key(), T :: t()) -> {ok, any()} | error.
 
-find(Key, T) ->
+find(Key, #babel_map{} = T) when is_binary(Key) ->
     case get(Key, T, error) of
         error ->
             error;
         Value ->
             {ok, Value}
-    end.
+    end;
+
+find(Key, _) when not is_binary(Key) ->
+    error({badkey, Key});
+
+find(_, Term) ->
+    badtype(map, Term).
 
 
 %% -----------------------------------------------------------------------------
@@ -332,7 +374,8 @@ get_value(Key, T) ->
 %% `DatatypeMod:value(get(Key, T, Default))`.
 %% @end
 %% -----------------------------------------------------------------------------
--spec get_value(Key :: key(), T :: t(), Default :: any()) -> any().
+-spec get_value(Key :: key(), T :: t(), Default :: any()) ->
+    any() | no_return().
 
 get_value(Key, T, Default) ->
     type_value(get(Key, T, Default)).
@@ -344,10 +387,10 @@ get_value(Key, T, Default) ->
 %%
 %% The call fails with a {badarg, `T'} exception if `T' is not a Babel Map.
 %% It also fails with a {badkey, `Key'} exception if no value is associated
-%% with `Key'.
+%% with `Key' or if `Key' is not a binary term.
 %% @end
 %% -----------------------------------------------------------------------------
--spec get(Key :: key(), T :: t()) -> any().
+-spec get(Key :: key(), T :: t()) -> any() | no_return().
 
 get(Key, T) ->
     get(Key, T, ?BADKEY).
@@ -361,7 +404,7 @@ get(Key, T) ->
 %%
 %% The call fails with a `{badarg, T}` exception if `T' is not a Babel Map.
 %% It also fails with a `{badkey, Key}` exception if no value is associated
-%% with `Key'.
+%% with `Key' or if `Key' is not a binary term.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec get(Key :: key_path(), Map :: t(), Default :: any()) -> Value :: value().
@@ -431,6 +474,10 @@ collect(Keys, Map, Default) when is_list(Keys) ->
 %% map `NewMap'. If key `Key' already exists in map `Map', the old associated
 %% value is replaced by value `Value'. The function returns a new map `NewMap'
 %% containing the new association and the old associations in `Map'.
+%%
+%% Passing a `Value' of `undefined` is equivalent to calling `remove(Key, Map)'
+%% with the difference that an exception will not be raised in case the map had
+%% no context assigned.
 %%
 %% The call fails with a `{badmap, Term}' exception if `Map' or any value of a
 %% partial key path is not a babel map.
@@ -594,7 +641,10 @@ set_elements(Key, Values, Map) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Updated a map with the provide key-value pairs.
+%% If the value associated with a key `Key' in `Values' is equal to `undefined`
+%% this equivalent to calling `remove(Key, Map)' with the difference that an
+%% exception will not be raised in case the map had no context assigned.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update(Values :: babel_key_value:t(), T :: t(), Spec :: type_spec()) ->
@@ -624,6 +674,12 @@ update(Values, T, Spec) ->
 
 
 %% @private
+do_update(_, undefined, #babel_map{context = undefined} = Acc, _) ->
+    Acc;
+
+do_update(Key, undefined, Acc, _) ->
+    remove(Key, Acc);
+
 do_update(Key, Value, Acc, {register, _}) ->
     %% We simply replace the existing register
     set(Key, Value, Acc);
@@ -937,7 +993,7 @@ from_riak_map(RMap, Context, Spec) when is_map(Spec) ->
     Convert = fun({Key, Datatype} = RKey, RValue, Acc) ->
         case maps:find(Key, Spec) of
             {ok, {X, SpecOrType}} when X == Datatype ->
-                Value = from_datatype(RKey, RValue, SpecOrType),
+                Value = from_datatype(RKey, RValue, Context, SpecOrType),
                 maps:put(Key, Value, Acc);
             {ok, {X, _SpecOrType}} ->
                 error({datatype_mismatch, X, Datatype});
@@ -982,25 +1038,25 @@ modified_keys(#babel_map{updates = U, removes = R}) ->
 
 
 %% @private
-from_datatype({_, register}, Value, Fun) when is_function(Fun, 2) ->
+from_datatype({_, register}, Value, Ctxt, Fun) when is_function(Fun, 2) ->
     Fun(decode, Value);
 
-from_datatype({_, register}, Value, Type) ->
+from_datatype({_, register}, Value, _, Type) ->
     babel_utils:from_binary(Value, Type);
 
-from_datatype({_, set}, Value, Type) ->
-    babel_set:from_riak_set(Value, Type);
+from_datatype({_, set}, Value, Ctxt, Type) ->
+    babel_set:from_riak_set(Value, Ctxt, Type);
 
-from_datatype({_, map}, Value, Spec) ->
+from_datatype({_, map}, Value, Ctxt, Spec) ->
     from_riak_map(Value, Spec);
 
-from_datatype({_, counter}, Value, Type) ->
+from_datatype({_, counter}, Value, _, Type) ->
     babel_counter:from_riak_counter(Value, Type);
 
-from_datatype({_, flag}, Value, Type) ->
-    babel_flag:from_riak_flag(Value, Type);
+from_datatype({_, flag}, Value, Ctxt, Type) ->
+    babel_flag:from_riak_flag(Value, Ctxt, Type);
 
-from_datatype(_Key, _RiakMap, _Type) ->
+from_datatype(_, _, _, _) ->
     error(not_implemented).
 
 
@@ -1250,10 +1306,21 @@ prepare_remove_ops(T, Spec) ->
 %% (set) del_elements/3,
 %% (flag) enable/2
 %% (flag) disable/2
+%%
+%% Passing a `Value' of `undefined` is equivalent to calling `remove(Key, Map)'
+%% with the difference that an exception will not be raised in case the map had
+%% no context assigned.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec mutate(Key :: key(), Value :: value() | function(), Map :: t()) ->
     NewMap :: maybe_no_return(t()).
+
+mutate(_, undefined, #babel_map{context = undefined} = Map) ->
+    %% We do nothing
+    Map;
+
+mutate(Key, undefined, Map) ->
+    remove(Key, Map);
 
 mutate([H|[]], Value, Map) ->
     mutate(H, Value, Map);

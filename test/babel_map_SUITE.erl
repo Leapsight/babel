@@ -22,7 +22,9 @@ all() ->
         merge_7_test,
         update_1_test,
         update_2_test,
-        update_3_test
+        update_3_test,
+        set_undefined_test_1,
+        set_undefined_test_2
     ].
 
 
@@ -189,11 +191,43 @@ update_1_test(_) ->
     ).
 
 update_2_test(_) ->
-    ok.
+    T1 = babel_map:new(data1(), spec()),
 
+    T2 = babel_map:update(
+        #{<<"identification_number">> => undefined}, T1,  spec()
+    ),
+    ?assertEqual(
+        <<"874920948">>, babel_map:get_value(<<"identification_number">>, T2)
+    ).
 
 update_3_test(_) ->
-    ok.
+    Ctxt = <<>>,
+    T1 = babel_map:new(data1(), spec(), Ctxt),
+
+    T2 = babel_map:update(
+        #{<<"identification_number">> => undefined}, T1,  spec()
+    ),
+    ?assertEqual(
+        undefined,
+        babel_map:get_value(<<"identification_number">>, T2, undefined)
+    ).
+
+
+
+
+set_undefined_test_1(_) ->
+    T1 = babel_map:new(#{<<"a">> => 1}, #{<<"a">> => {register, integer}}),
+    %% No context, so nop
+    T2 = babel_map:set(<<"a">>, undefined, T1),
+    ?assertEqual([<<"a">>], babel_map:keys(T2)).
+
+set_undefined_test_2(_) ->
+    Ctxt = <<>>,
+    T1 = babel_map:new(
+        #{<<"a">> => 1}, #{<<"a">> => {register, integer}}, Ctxt
+    ),
+    T2 = babel_map:set(<<"a">>, undefined, T1),
+    ?assertEqual([], babel_map:keys(T2)).
 
 
 
