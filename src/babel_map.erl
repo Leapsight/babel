@@ -100,10 +100,12 @@
                                 | fun((decode, value()) -> any()).
 -type key_path()            ::  binary() | [binary()].
 -type value()               ::  any().
+-type action()              ::  map().
 
 -export_type([t/0]).
 -export_type([type_spec/0]).
 -export_type([key_path/0]).
+-export_type([action/0]).
 
 %% API
 -export([add_element/3]).
@@ -142,6 +144,7 @@
 -export([update/3]).
 -export([updated_key_paths/1]).
 -export([value/1]).
+
 
 
 
@@ -655,7 +658,7 @@ set_elements(Key, Values, Map) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Updated a map with the provide key-value pairs.
+%% @doc Updates a map `T' with the provide key-value pairs `Values'.
 %% If the value associated with a key `Key' in `Values' is equal to `undefined`
 %% this equivalent to calling `remove(Key, Map)' with the difference that an
 %% exception will not be raised in case the map had no context assigned.
@@ -685,6 +688,28 @@ update(Values, T, Spec) ->
         fun(K, V, Acc) -> maps:put(K, V, Acc) end, Values
     ),
     update(Map, T, Spec).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Updates a map `T' with the provide key-value action list `ActionList'.
+%% If the value associated with a key `Key' in `Values' is equal to `undefined`
+%% this equivalent to calling `remove(Key, Map)' with the difference that an
+%% exception will not be raised in case the map had no context assigned.
+%%
+%% Example:
+%% @end
+%% -----------------------------------------------------------------------------
+-spec patch(ActionList :: [action()], T :: t(), Spec :: type_spec()) ->
+    NewT :: t().
+
+patch(ActionList, #babel_map{} = T, Spec) ->
+    Fun = fun(Action, Acc) ->
+        patch_eval(Action, Acc, Spec)
+    end,
+    lists:foldl(Fun, T, ActionList);
+
+patch(_, T, _) ->
+    badtype(map, T).
 
 
 %% -----------------------------------------------------------------------------
@@ -976,7 +1001,7 @@ modified_keys(#babel_map{updates = U, removes = R}) ->
 
 
 %% @private
-from_datatype({_, register}, Value, Ctxt, Fun) when is_function(Fun, 2) ->
+from_datatype({_, register}, Value, _Ctxt, Fun) when is_function(Fun, 2) ->
     Fun(decode, Value);
 
 from_datatype({_, register}, Value, _, Type) ->
@@ -985,7 +1010,7 @@ from_datatype({_, register}, Value, _, Type) ->
 from_datatype({_, set}, Value, Ctxt, Type) ->
     babel_set:from_riak_set(Value, Ctxt, Type);
 
-from_datatype({_, map}, Value, Ctxt, Spec) ->
+from_datatype({_, map}, Value, _Ctxt, Spec) ->
     from_riak_map(Value, Spec);
 
 from_datatype({_, counter}, Value, _, Type) ->
@@ -1104,6 +1129,44 @@ expand_spec(Keys, {Datatype, _} = TypeMapping) ->
             maps:put(Key, TypeMapping, Acc)
     end,
     lists:foldl(Fun, maps:new(), Keys).
+
+
+%% @private
+path_type([_], {Type, _}) ->
+    Type;
+
+path_type([_], #{'_' := {Type, _}}) ->
+    Type;
+
+path_type([Key], Spec) ->
+    case maps:find(Key, Spec) of
+        {ok, {Type, _}} ->
+            Type;
+        error ->
+            error({missing_spec, Key})
+    end;
+
+path_type([_|T], {_, _}) ->
+    %% We should have received {map, Spec}
+    error({badkey, T});
+
+path_type([_|T], #{'_' := {map, InnerSpec}}) ->
+    path_type(T, InnerSpec);
+
+path_type([_|T], #{'_' := InnerSpec}) ->
+    path_type(T, InnerSpec);
+
+path_type([H|T], Spec) ->
+    case maps:find(H, Spec) of
+        {ok, {map, InnerSpec}} ->
+            path_type(T, InnerSpec);
+        {ok, {_, _}} ->
+            error({badkey, T});
+        error ->
+            error({missing_spec, H})
+    end.
+
+
 
 
 %% @private
@@ -1394,3 +1457,61 @@ updated_key_paths(#babel_map{updates = U}, Acc, Path0) ->
         Acc,
         U
     ).
+
+
+
+%% @private
+patch_eval(A, Map, Spec) when is_map(Spec) ->
+    Path = patch_path(A),
+    patch_eval(A, Map, path_type(Path, Spec), Path).
+
+
+%% @private
+patch_eval(
+    #{<<"value">> := V, <<"action">> := <<"update">>}, Map, _, Path) ->
+    set(Path, V, Map);
+
+patch_eval(#{<<"value">> := V, <<"action">> := <<"set">>}, Map, _, Path) ->
+    set(Path, V, Map);
+
+patch_eval(
+    #{<<"value">> := V, <<"action">> := <<"remove">>}, Map, set, Path) ->
+    del_element(Path, V, Map);
+
+patch_eval(
+    #{<<"value">> := V, <<"action">> := <<"append">>}, Map, set, Path) ->
+    add_element(Path, V, Map);
+
+patch_eval(
+    #{<<"value">> := V, <<"action">> := <<"add_element">>}, Map, set, Path) ->
+    add_element(Path, V, Map);
+
+patch_eval(
+    #{<<"value">> := V, <<"action">> := <<"del_element">>}, Map, set, Path) ->
+    del_element(Path, V, Map);
+
+patch_eval(#{<<"action">> := <<"remove">>}, Map, _, Path) ->
+    remove(Path, Map);
+
+patch_eval(#{<<"action">> := <<"enable">>}, Map, flag, Path) ->
+    enable(Path, Map);
+
+patch_eval(#{<<"action">> := <<"disable">>}, Map, flag, Path) ->
+    disable(Path, Map);
+
+patch_eval(#{<<"action">> := <<"increment">>}, Map, counter, Path) ->
+    increment(Path, Map);
+
+patch_eval(#{<<"action">> := <<"decrement">>}, Map, counter, Path) ->
+    decrement(Path, Map);
+
+patch_eval(Action, _, _, _) ->
+    error({badaction, Action}).
+
+
+%% @private
+patch_path(#{<<"path">> := BinPath}) ->
+    [<<>> | Path] = binary:split(BinPath, [<<"/">>], [global, trim]),
+    Path.
+
+

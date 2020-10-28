@@ -23,6 +23,9 @@ all() ->
         update_1_test,
         update_2_test,
         update_3_test,
+        patch_1_test,
+        patch_2_test,
+        patch_3_test,
         set_undefined_test_1,
         set_undefined_test_2
     ].
@@ -213,7 +216,72 @@ update_3_test(_) ->
     ).
 
 
+patch_1_test(_) ->
+    Ctxt = <<>>,
+    T1 = babel_map:new(data2(), spec(), Ctxt),
 
+    T2 = babel_map:patch(
+        [
+            #{
+                <<"path">> => <<"/identification_number">>,
+                <<"action">> => <<"update">>,
+                <<"value">> => <<"111111111">>
+            },
+            #{
+                <<"path">> => <<"/address/postal_code">>,
+                <<"action">> => <<"update">>,
+                <<"value">> => <<"SW12 2XX">>
+            },
+            #{
+                <<"path">> => <<"/set_prop">>,
+                <<"action">> => <<"add_element">>,
+                <<"value">> => d
+            },
+            #{
+                <<"path">> => <<"/set_prop">>,
+                <<"action">> => <<"del_element">>,
+                <<"value">> => a
+            },
+            #{
+                <<"path">> => <<"/counter_prop">>,
+                <<"action">> => <<"increment">>
+            },
+            #{
+                <<"path">> => <<"/flag_prop">>,
+                <<"action">> => <<"disable">>
+            }
+        ],
+        T1,
+        spec()
+    ),
+    ?assertEqual(
+        <<"111111111">>,
+        babel_map:get_value(<<"identification_number">>, T2)
+    ),
+    ?assertEqual(
+        <<"SW12 2XX">>,
+        babel_map:get_value([<<"address">>, <<"postal_code">>], T2)
+    ),
+    ?assertEqual(
+        [b, c, d],
+        babel_map:get_value(<<"set_prop">>, T2)
+    ),
+    ?assertEqual(
+        101,
+        babel_map:get_value(<<"counter_prop">>, T2)
+    ),
+    ?assertEqual(
+        false,
+        babel_map:get_value(<<"flag_prop">>, T2)
+    ).
+
+
+patch_2_test(_) ->
+    ok.
+
+
+patch_3_test(_) ->
+    ok.
 
 set_undefined_test_1(_) ->
     T1 = babel_map:new(#{<<"a">> => 1}, #{<<"a">> => {register, integer}}),
