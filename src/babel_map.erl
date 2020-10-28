@@ -100,9 +100,6 @@
                                 | fun((decode, value()) -> any()).
 -type key_path()            ::  binary() | [binary()].
 -type value()               ::  any().
-%% -type update_fun()          ::  fun((babel:datatype() | term()) ->
-%%                                     babel:datatype() | term()
-%%                                 ).
 
 -export_type([t/0]).
 -export_type([type_spec/0]).
@@ -134,6 +131,7 @@
 -export([new/0]).
 -export([new/1]).
 -export([new/2]).
+-export([patch/3]).
 -export([put/3]).
 -export([remove/2]).
 -export([set/3]).
@@ -142,7 +140,7 @@
 -export([to_riak_op/2]).
 -export([type/0]).
 -export([update/3]).
--export([updated_keys/1]).
+-export([updated_key_paths/1]).
 -export([value/1]).
 
 
@@ -208,7 +206,8 @@ new(Data, Spec, Ctxt) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns a new map by applying the type specification `Spec' to the Riak
+%% Map `RMap'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec from_riak_map(
@@ -289,16 +288,18 @@ keys(#babel_map{values = Values}) ->
 keys(Term) ->
     badtype(map, Term).
 
+
 %% -----------------------------------------------------------------------------
-%% @doc Returns a list of the keypaths that has been modified
+%% @doc Returns a list of the key paths that have been modified in map `T'.
+%% The call fails with a `{badmap, T}' exception if `T' is not a map.
 %% @end
 %% -----------------------------------------------------------------------------
--spec updated_keys(T :: t()) -> [binary()] | no_return().
+-spec updated_key_paths(T :: t()) -> [key_path()] | no_return().
 
-updated_keys(#babel_map{} = T) ->
-    updated_keys(T, [], []);
+updated_key_paths(#babel_map{} = T) ->
+    updated_key_paths(T, [], []);
 
-updated_keys(Term) ->
+updated_key_paths(Term) ->
     badtype(map, Term).
 
 
@@ -355,7 +356,7 @@ value(Term) ->
 %% `{badkey, Key}' exception if `Key' is not a binary term.
 %% @end
 %% -----------------------------------------------------------------------------
--spec find(Key :: key(), T :: t()) -> {ok, any()} | error.
+-spec find(Key :: key_path(), T :: t()) -> {ok, any()} | error.
 
 find(Key, #babel_map{} = T) when is_binary(Key) ->
     case get(Key, T, error) of
@@ -376,7 +377,7 @@ find(_, Term) ->
 %% @doc An util function equivalent to calling `DatatypeMod:value(get(Key, T))`.
 %% @end
 %% -----------------------------------------------------------------------------
--spec get_value(Key :: key(), T :: t()) -> any().
+-spec get_value(Key :: key_path(), T :: t()) -> any().
 
 get_value(Key, T) ->
     type_value(get(Key, T, ?BADKEY)).
@@ -387,7 +388,7 @@ get_value(Key, T) ->
 %% `DatatypeMod:value(get(Key, T, Default))`.
 %% @end
 %% -----------------------------------------------------------------------------
--spec get_value(Key :: key(), T :: t(), Default :: any()) ->
+-spec get_value(Key :: key_path(), T :: t(), Default :: any()) ->
     any() | no_return().
 
 get_value(Key, T, Default) ->
@@ -403,7 +404,7 @@ get_value(Key, T, Default) ->
 %% with `Key' or if `Key' is not a binary term.
 %% @end
 %% -----------------------------------------------------------------------------
--spec get(Key :: key(), T :: t()) -> any() | no_return().
+-spec get(Key :: key_path(), T :: t()) -> any() | no_return().
 
 get(Key, T) ->
     get(Key, T, ?BADKEY).
@@ -457,7 +458,7 @@ get(_, Term, _) ->
 %% present in the map.
 %% @end
 %% -----------------------------------------------------------------------------
--spec collect([key()], Map :: t()) -> [any()].
+-spec collect([key_path()], Map :: t()) -> [any()].
 
 collect(Keys, Map) ->
     collect(Keys, Map, ?BADKEY).
@@ -468,7 +469,7 @@ collect(Keys, Map) ->
 %% `K' in `Keys' is not present in the map the value `Default' is returned.
 %% @end
 %% -----------------------------------------------------------------------------
--spec collect(Keys :: [key()], Map :: t(), Default :: any()) -> [any()].
+-spec collect(Keys :: [key_path()], Map :: t(), Default :: any()) -> [any()].
 
 collect([Key], Map, Default) ->
     try
@@ -496,7 +497,7 @@ collect(Keys, Map, Default) when is_list(Keys) ->
 %% partial key path is not a babel map.
 %% @end
 %% -----------------------------------------------------------------------------
--spec set(Key :: key(), Value :: value(), Map :: t()) ->
+-spec set(Key :: key_path(), Value :: value(), Map :: t()) ->
     NewMap :: maybe_no_return(t()).
 
 set(Key, Value, Map) ->
@@ -507,7 +508,7 @@ set(Key, Value, Map) ->
 %% @doc Same as {@set/3}.
 %% @end
 %% -----------------------------------------------------------------------------
--spec put(Key :: key(), Value :: value(), Map :: t()) ->
+-spec put(Key :: key_path(), Value :: value(), Map :: t()) ->
     NewMap :: maybe_no_return(t()).
 
 put(Key, Value, Map) ->
@@ -530,7 +531,7 @@ put(Key, Value, Map) ->
 %% is not of type binary.
 %% @end
 %% -----------------------------------------------------------------------------
--spec add_element(Key :: key(), Value :: value(), Map :: t()) ->
+-spec add_element(Key :: key_path(), Value :: value(), Map :: t()) ->
     NewMap :: maybe_no_return(t()).
 
 add_element(Key, Value, Map) ->
@@ -553,7 +554,7 @@ add_element(Key, Value, Map) ->
 %% is not of type binary.
 %% @end
 %% -----------------------------------------------------------------------------
--spec add_elements(Key :: key(), Values :: [value()], Map :: t()) ->
+-spec add_elements(Key :: key_path(), Values :: [value()], Map :: t()) ->
     NewMap :: maybe_no_return(t()).
 
 add_elements(Key, Values, Map) ->
@@ -588,7 +589,7 @@ add_elements(Key, Values, Map) ->
 %% is not of type binary.
 %% @end
 %% -----------------------------------------------------------------------------
--spec del_element(Key :: key(), Value :: value(), Map :: t()) ->
+-spec del_element(Key :: key_path(), Value :: value(), Map :: t()) ->
     NewMap :: maybe_no_return(t()).
 
 del_element(Key, Value, Map) ->
@@ -623,7 +624,7 @@ del_element(Key, Value, Map) ->
 %% is not of type binary.
 %% @end
 %% -----------------------------------------------------------------------------
--spec set_elements(Key :: key(), Values :: [value()], Map :: t()) ->
+-spec set_elements(Key :: key_path(), Values :: [value()], Map :: t()) ->
     NewMap :: maybe_no_return(t()).
 
 set_elements(Key, Values, Map) ->
@@ -642,7 +643,7 @@ set_elements(Key, Values, Map) ->
 
 
 
-%% -spec update(Key :: key(), Fun :: update_fun(), T :: t()) -> NewT :: t().
+%% -spec update(Key :: key_path(), Fun :: update_fun(), T :: t()) -> NewT :: t().
 
 %% update(Key, Fun, #babel_map{values = V, updates = U} = Map)
 %% when is_function(Fun, 1) ->
@@ -692,7 +693,7 @@ update(Values, T, Spec) ->
 %% @throws context_required
 %% @end
 %% -----------------------------------------------------------------------------
--spec remove(Key :: key(), T :: t()) -> NewT :: maybe_no_return(t()).
+-spec remove(Key :: key_path(), T :: t()) -> NewT :: maybe_no_return(t()).
 
 remove(_, #babel_map{context = undefined}) ->
     error(context_required);
@@ -705,7 +706,7 @@ remove(Key, T) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec enable(Key :: key(), T :: t()) -> NewT :: t().
+-spec enable(Key :: key_path(), T :: t()) -> NewT :: t().
 
 enable(Key, Map) ->
     Fun = fun
@@ -726,7 +727,7 @@ enable(Key, Map) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec disable(Key :: key(), T :: t()) -> NewT :: t().
+-spec disable(Key :: key_path(), T :: t()) -> NewT :: t().
 
 disable(Key, Map) ->
     Fun = fun
@@ -747,7 +748,7 @@ disable(Key, Map) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec increment(Key :: key(), T :: t()) -> NewT :: t().
+-spec increment(Key :: key_path(), T :: t()) -> NewT :: t().
 
 increment(Key, Map) ->
     increment(Key, 1, Map).
@@ -757,7 +758,7 @@ increment(Key, Map) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec increment(Key :: key(), Value :: integer(), T :: t()) -> NewT :: t().
+-spec increment(Key :: key_path(), Value :: integer(), T :: t()) -> NewT :: t().
 
 increment(Key, Value, Map) ->
     Fun = fun
@@ -778,7 +779,7 @@ increment(Key, Value, Map) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec decrement(Key :: key(), T :: t()) -> NewT :: t().
+-spec decrement(Key :: key_path(), T :: t()) -> NewT :: t().
 
 decrement(Key, Map) ->
     decrement(Key, 1, Map).
@@ -788,7 +789,7 @@ decrement(Key, Map) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec decrement(Key :: key(), Value :: integer(), T :: t()) -> NewT :: t().
+-spec decrement(Key :: key_path(), Value :: integer(), T :: t()) -> NewT :: t().
 
 decrement(Key, Value, Map) ->
     Fun = fun
@@ -1173,7 +1174,7 @@ prepare_remove_ops(T, Spec) ->
 %% no context assigned.
 %% @end
 %% -----------------------------------------------------------------------------
--spec mutate(Key :: key(), Value :: value() | function(), Map :: t()) ->
+-spec mutate(Key :: key_path(), Value :: value() | function(), Map :: t()) ->
     NewMap :: maybe_no_return(t()).
 
 mutate(_, undefined, #babel_map{context = undefined} = Map) ->
@@ -1379,13 +1380,13 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
 
 
 %% @private
-updated_keys(#babel_map{updates = U}, Acc, Path0) ->
+updated_key_paths(#babel_map{updates = U}, Acc, Path0) ->
     lists:foldl(
         fun(Key, InnerAcc0) ->
             Path1 = Path0 ++ [Key],
             case get(Key, InnerAcc0, undefined) of
                 #babel_map{} = Map ->
-                    updated_keys(Map, InnerAcc0, Path1);
+                    updated_key_paths(Map, InnerAcc0, Path1);
                 _ ->
                     [Path1 | InnerAcc0]
             end
