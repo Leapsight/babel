@@ -128,8 +128,8 @@
 -export([get_value/3]).
 -export([increment/2]).
 -export([increment/3]).
--export([keys/1]).
 -export([is_type/1]).
+-export([keys/1]).
 -export([merge/2]).
 -export([new/0]).
 -export([new/1]).
@@ -142,6 +142,7 @@
 -export([to_riak_op/2]).
 -export([type/0]).
 -export([update/3]).
+-export([updated_keys/1]).
 -export([value/1]).
 
 
@@ -286,6 +287,18 @@ keys(#babel_map{values = Values}) ->
     maps:keys(Values);
 
 keys(Term) ->
+    badtype(map, Term).
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns a list of the keypaths that has been modified
+%% @end
+%% -----------------------------------------------------------------------------
+-spec updated_keys(T :: t()) -> [binary()] | no_return().
+
+updated_keys(#babel_map{} = T) ->
+    updated_keys(T, [], []);
+
+updated_keys(Term) ->
     badtype(map, Term).
 
 
@@ -673,82 +686,6 @@ update(Values, T, Spec) ->
     update(Map, T, Spec).
 
 
-%% @private
-do_update(_, undefined, #babel_map{context = undefined} = Acc, _) ->
-    Acc;
-
-do_update(Key, undefined, Acc, _) ->
-    remove(Key, Acc);
-
-do_update(Key, Value, Acc, {register, _}) ->
-    %% We simply replace the existing register
-    set(Key, Value, Acc);
-
-do_update(Key, Value, #babel_map{values = V} = Acc, {map, Spec}) ->
-    case maps:find(Key, V) of
-        {ok, #babel_map{} = Inner} ->
-            %% We update the inner map recursively and replace
-            set(Key, update(Value, Inner, Spec), Acc);
-        _ ->
-            %% The existing value was not found or is not a map, but it should
-            %% be according to spec, so we replace by a new map
-            set(Key, babel_map:new(Value, Spec), Acc)
-    end;
-
-do_update(Key, Value, Acc, {set, _}) when is_list(Value) ->
-    try
-        set_elements(Key, Value, Acc)
-    catch
-        throw:context_required ->
-            %% We have a brand new set (not in Riak yet) so we just replace it
-            set(Key, babel_set:new(Value, Acc#babel_map.context), Acc)
-    end;
-
-do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}) ->
-    case maps:find(Key, V) of
-        {ok, Term} ->
-            case babel_counter:is_type(Term) of
-                true ->
-                    %% We update the counter
-                    set(Key, babel_counter:set(Value, Term), Acc);
-                false ->
-                    %% The existing value is not a counter, but it should be
-                    %% according to spec, so we replace by a new one
-                    set(Key, babel_counter:new(Value), Acc)
-            end;
-        _ ->
-            %% The existing value was not found so create a new one
-            set(Key, babel_counter:new(Value), Acc)
-    end;
-
-do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
-    Ctxt = Acc#babel_map.context,
-
-    case maps:find(Key, V) of
-        {ok, Term} ->
-            case babel_flag:is_type(Term) of
-                true ->
-                    Flag = try
-                        babel_flag:set(Value, Term)
-                    catch
-                        throw:context_required ->
-                            %% We have a brand new flag (not in Riak yet) so we
-                            %% just replace it
-                            babel_flag:new(Value, Ctxt)
-                    end,
-                    set(Key, Flag, Acc);
-                false ->
-                    %% The existing value is not a counter, but it should be
-                    %% according to spec, so we replace by a new one
-                    set(Key, babel_flag:new(Value, Ctxt), Acc)
-            end;
-        _ ->
-            %% The existing value was not found so create a new one
-            set(Key, babel_flag:new(Value, Ctxt), Acc)
-    end.
-
-
-
 %% -----------------------------------------------------------------------------
 %% @doc Removes a key and its value from the map. Removing a key that
 %% does not exist simply records a remove operation.
@@ -1069,49 +1006,6 @@ to_binary(Value, Type) ->
 
 
 %% @private
-collect([H|T], Map, Default, Acc) ->
-    try
-        collect(T, Map, Default, [get(H, Map, Default)|Acc])
-    catch
-        error:badkey ->
-            error({badkey, H})
-    end;
-
-collect([], _, _, Acc) ->
-    lists:reverse(Acc).
-
-
-%% @private
-do_remove([H|[]], Map) ->
-    do_remove(H, Map);
-
-do_remove([H|T], #babel_map{values = V} = Map) ->
-    case maps:get(H, V, undefined) of
-        #babel_map{} = HMap ->
-            Map#babel_map{
-                values = maps:put(H, do_remove(T, HMap), V),
-                updates = ordsets:add_element(H, Map#babel_map.updates)
-            };
-        undefined ->
-            error({badkey, H});
-        Term ->
-            badtype(map, Term)
-    end;
-
-do_remove(Key, #babel_map{} = Map) when is_binary(Key) ->
-    Map#babel_map{
-        values = maps:remove(Key, Map#babel_map.values),
-        removes = ordsets:add_element(Key, Map#babel_map.removes)
-    };
-
-do_remove(Key, #babel_map{}) when not is_binary(Key) ->
-    error({badkey, Key});
-
-do_remove(_, Term) ->
-    badtype(map, Term).
-
-
-%% @private
 maybe_badkey(?BADKEY) ->
     error(badkey);
 
@@ -1168,39 +1062,6 @@ get_type(Term) when is_tuple(Term) ->
 
 get_type(_) ->
     register.
-
-
-%% @private
-maybe_merge(Key, Term2, Acc) ->
-    Type = get_type(Term2),
-
-    case find(Key, Acc) of
-        {ok, Term1} ->
-            Type == get_type(Term1) orelse badtype(Type, Key),
-            merge(Key, Term2, Acc, Type);
-        error ->
-            merge(Key, Term2, Acc, Type)
-    end.
-
-
-%% @private
-merge(Key, Value, Acc, register) ->
-    set(Key, Value, Acc);
-
-merge(Key, Set, Acc, set) ->
-    add_elements(Key, babel_set:value(Set), Acc);
-
-merge(Key, Set, Acc, flag) ->
-    case babel_flag:value(Set) of
-        true ->
-            enable(Key, Acc);
-        false ->
-            disable(Key, Acc)
-    end;
-
-merge(Key, Counter, Acc, counter) ->
-    Value = babel_counter:value(Counter),
-    increment(Key, Value, Acc).
 
 
 %% @private
@@ -1364,3 +1225,171 @@ mutate_eval(Key, Fun, #babel_map{values = V}) when is_function(Fun, 1) ->
 
 mutate_eval(_, Value, _) when not is_function(Value) ->
     Value.
+
+
+%% @private
+collect([H|T], Map, Default, Acc) ->
+    try
+        collect(T, Map, Default, [get(H, Map, Default)|Acc])
+    catch
+        error:badkey ->
+            error({badkey, H})
+    end;
+
+collect([], _, _, Acc) ->
+    lists:reverse(Acc).
+
+
+
+%% @private
+do_remove([H|[]], Map) ->
+    do_remove(H, Map);
+
+do_remove([H|T], #babel_map{values = V} = Map) ->
+    case maps:get(H, V, undefined) of
+        #babel_map{} = HMap ->
+            Map#babel_map{
+                values = maps:put(H, do_remove(T, HMap), V),
+                updates = ordsets:add_element(H, Map#babel_map.updates)
+            };
+        undefined ->
+            error({badkey, H});
+        Term ->
+            badtype(map, Term)
+    end;
+
+do_remove(Key, #babel_map{} = Map) when is_binary(Key) ->
+    Map#babel_map{
+        values = maps:remove(Key, Map#babel_map.values),
+        removes = ordsets:add_element(Key, Map#babel_map.removes)
+    };
+
+do_remove(Key, #babel_map{}) when not is_binary(Key) ->
+    error({badkey, Key});
+
+do_remove(_, Term) ->
+    badtype(map, Term).
+
+%% @private
+maybe_merge(Key, Term2, Acc) ->
+    Type = get_type(Term2),
+
+    case find(Key, Acc) of
+        {ok, Term1} ->
+            Type == get_type(Term1) orelse badtype(Type, Key),
+            merge(Key, Term2, Acc, Type);
+        error ->
+            merge(Key, Term2, Acc, Type)
+    end.
+
+
+%% @private
+merge(Key, Value, Acc, register) ->
+    set(Key, Value, Acc);
+
+merge(Key, Set, Acc, set) ->
+    add_elements(Key, babel_set:value(Set), Acc);
+
+merge(Key, Set, Acc, flag) ->
+    case babel_flag:value(Set) of
+        true ->
+            enable(Key, Acc);
+        false ->
+            disable(Key, Acc)
+    end;
+
+merge(Key, Counter, Acc, counter) ->
+    Value = babel_counter:value(Counter),
+    increment(Key, Value, Acc).
+
+
+%% @private
+do_update(_, undefined, #babel_map{context = undefined} = Acc, _) ->
+    Acc;
+
+do_update(Key, undefined, Acc, _) ->
+    remove(Key, Acc);
+
+do_update(Key, Value, Acc, {register, _}) ->
+    %% We simply replace the existing register
+    set(Key, Value, Acc);
+
+do_update(Key, Value, #babel_map{values = V} = Acc, {map, Spec}) ->
+    case maps:find(Key, V) of
+        {ok, #babel_map{} = Inner} ->
+            %% We update the inner map recursively and replace
+            set(Key, update(Value, Inner, Spec), Acc);
+        _ ->
+            %% The existing value was not found or is not a map, but it should
+            %% be according to spec, so we replace by a new map
+            set(Key, babel_map:new(Value, Spec), Acc)
+    end;
+
+do_update(Key, Value, Acc, {set, _}) when is_list(Value) ->
+    try
+        set_elements(Key, Value, Acc)
+    catch
+        throw:context_required ->
+            %% We have a brand new set (not in Riak yet) so we just replace it
+            set(Key, babel_set:new(Value, Acc#babel_map.context), Acc)
+    end;
+
+do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}) ->
+    case maps:find(Key, V) of
+        {ok, Term} ->
+            case babel_counter:is_type(Term) of
+                true ->
+                    %% We update the counter
+                    set(Key, babel_counter:set(Value, Term), Acc);
+                false ->
+                    %% The existing value is not a counter, but it should be
+                    %% according to spec, so we replace by a new one
+                    set(Key, babel_counter:new(Value), Acc)
+            end;
+        _ ->
+            %% The existing value was not found so create a new one
+            set(Key, babel_counter:new(Value), Acc)
+    end;
+
+do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
+    Ctxt = Acc#babel_map.context,
+
+    case maps:find(Key, V) of
+        {ok, Term} ->
+            case babel_flag:is_type(Term) of
+                true ->
+                    Flag = try
+                        babel_flag:set(Value, Term)
+                    catch
+                        throw:context_required ->
+                            %% We have a brand new flag (not in Riak yet) so we
+                            %% just replace it
+                            babel_flag:new(Value, Ctxt)
+                    end,
+                    set(Key, Flag, Acc);
+                false ->
+                    %% The existing value is not a counter, but it should be
+                    %% according to spec, so we replace by a new one
+                    set(Key, babel_flag:new(Value, Ctxt), Acc)
+            end;
+        _ ->
+            %% The existing value was not found so create a new one
+            set(Key, babel_flag:new(Value, Ctxt), Acc)
+    end.
+
+
+%% @private
+updated_keys(#babel_map{updates = U}, Acc, Path0) ->
+    lists:foldl(
+        fun(Key, InnerAcc0) ->
+            Path1 = Path0 ++ [Key],
+            case get(Key, InnerAcc0, undefined) of
+                #babel_map{} = Map ->
+                    updated_keys(Map, InnerAcc0, Path1);
+                _ ->
+                    [Path1 | InnerAcc0]
+            end
+        end,
+        Acc,
+        U
+    ).
