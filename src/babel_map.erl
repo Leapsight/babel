@@ -133,6 +133,7 @@
 -export([new/0]).
 -export([new/1]).
 -export([new/2]).
+-export([new/3]).
 -export([patch/3]).
 -export([put/3]).
 -export([remove/2]).
@@ -1281,13 +1282,16 @@ mutate(_, _, Map) ->
 
 
 %% @private
+mutate_eval(_, #babel_map{} = Value, #babel_map{context = Ctxt}) ->
+    Value#babel_map{context = Ctxt};
+
 mutate_eval(_, Fun, _) when is_function(Fun, 0) ->
     Fun();
 
 mutate_eval(Key, Fun, #babel_map{values = V}) when is_function(Fun, 1) ->
     Fun(maps:find(Key, V));
 
-mutate_eval(_, Value, _) when not is_function(Value) ->
+mutate_eval(_, Value, #babel_map{context = Ctxt}) when not is_function(Value) ->
     Value.
 
 

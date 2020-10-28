@@ -83,6 +83,15 @@ get_test(_) ->
     ),
     ?assertEqual(true, babel_map:is_type(M)).
 
+modify_test(_) ->
+    Spec = #{<<"foo">> => {map, #{'_' => {register, integer}}}},
+    M0 = babel_map:new(#{<<"foo">> => #{<<"bar">> => 1}}, Spec, <<>>),
+    M1 = babel_map:set(<<"foo">>, babel_map:new(#{}), M0),
+    ?assertNotEqual(
+        undefined,
+        babel_map:to_riak_op(M1, Spec)
+    ).
+
 
 merge_1_test(_) ->
     T1 = babel_map:set(<<"a">>, 1, babel_map:new()),
