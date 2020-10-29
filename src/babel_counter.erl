@@ -31,18 +31,19 @@
 -export_type([type_spec/0]).
 
 -export([context/1]).
--export([increment/1]).
--export([increment/2]).
 -export([decrement/1]).
 -export([decrement/2]).
--export([set/2]).
 -export([from_riak_counter/2]).
+-export([increment/1]).
+-export([increment/2]).
 -export([is_type/1]).
 -export([new/0]).
 -export([new/1]).
+-export([original_value/1]).
+-export([set/2]).
+-export([set_context/2]).
 -export([to_riak_op/2]).
 -export([type/0]).
--export([original_value/1]).
 -export([value/1]).
 
 
@@ -129,6 +130,20 @@ is_type(Term) ->
 
 context(#babel_counter{}) -> undefined.
 
+%% -----------------------------------------------------------------------------
+%% @doc
+%% This has call has no effect and it is provided for compliance withe the
+%% datatype interface.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec set_context(Ctxt :: riakc_datatype:set_context(), T :: t()) ->
+    NewT :: t().
+
+set_context(_, #babel_counter{} = T) ->
+    T;
+
+set_context(_, Term) ->
+    error({badcounter, Term}).
 
 
 %% -----------------------------------------------------------------------------

@@ -138,6 +138,7 @@
 -export([put/3]).
 -export([remove/2]).
 -export([set/3]).
+-export([set_context/2]).
 -export([set_elements/3]).
 -export([size/1]).
 -export([to_riak_op/2]).
@@ -329,6 +330,24 @@ context(#babel_map{context = Value}) ->
     Value;
 
 context(Term) ->
+    badtype(map, Term).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Sets the context `Ctxt'.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec set_context(Ctxt :: riakc_datatype:set_context(), T :: t()) ->
+    NewT :: t().
+
+set_context(Ctxt, #babel_map{} = T)
+when is_binary(Ctxt) orelse Ctxt == undefined ->
+    T#babel_map{context = Ctxt};
+
+set_context(Ctxt, #babel_map{}) ->
+    error({badarg, Ctxt});
+
+set_context(_, Term) ->
     badtype(map, Term).
 
 
@@ -1070,25 +1089,38 @@ type_value(Term) ->
 get_type(#babel_map{}) ->
     map;
 
-get_type(Term) when is_tuple(Term) ->
-    Mods = [babel_set, babel_map, babel_counter, babel_flag],
+get_type(Term) ->
+    case get_mod(Term) of
+        undefined -> register;
+        Mod -> Mod:type()
+    end.
+
+
+%% @private
+-spec get_mod(Term :: any()) -> datatype().
+
+get_mod(#babel_map{}) ->
+    ?MODULE;
+
+get_mod(Term) when is_tuple(Term) ->
+    Mods = [babel_set, babel_counter, babel_flag],
     Fun = fun(Mod, Acc) ->
         case (catch Mod:is_type(Term)) of
             true ->
-                throw({type, Mod:type()});
+                throw({mod, Mod});
             _ ->
                 Acc
         end
     end,
 
     try
-        lists:foldl(Fun, register, Mods)
+        lists:foldl(Fun, undefined, Mods)
     catch
-        throw:{type, Mod} -> Mod
+        throw:{mod, Mod} -> Mod
     end;
 
-get_type(_) ->
-    register.
+get_mod(_) ->
+    undefined.
 
 
 %% @private
@@ -1292,7 +1324,17 @@ mutate_eval(Key, Fun, #babel_map{values = V}) when is_function(Fun, 1) ->
     Fun(maps:find(Key, V));
 
 mutate_eval(_, Value, #babel_map{context = Ctxt}) when not is_function(Value) ->
-    Value.
+    maybe_set_context(Ctxt, Value).
+
+
+%% @private
+maybe_set_context(Ctxt, Term) ->
+    case get_mod(Term) of
+        undefined ->
+            Term;
+        Mod ->
+            Mod:set_context(Ctxt, Term)
+    end.
 
 
 %% @private

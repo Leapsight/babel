@@ -34,15 +34,16 @@
 -export([context/1]).
 -export([disable/1]).
 -export([enable/1]).
--export([set/2]).
 -export([from_riak_flag/3]).
 -export([is_type/1]).
 -export([new/0]).
 -export([new/1]).
 -export([new/2]).
+-export([original_value/1]).
+-export([set/2]).
+-export([set_context/2]).
 -export([to_riak_op/2]).
 -export([type/0]).
--export([original_value/1]).
 -export([value/1]).
 
 
@@ -144,6 +145,24 @@ is_type(Term) ->
 -spec context(T :: t()) -> riakc_datatype:context().
 
 context(#babel_flag{context = Value}) -> Value.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Sets the context `Ctxt'.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec set_context(Ctxt :: riakc_datatype:set_context(), T :: t()) ->
+    NewT :: t().
+
+set_context(Ctxt, #babel_flag{} = T)
+when is_binary(Ctxt) orelse Ctxt == undefined ->
+    T#babel_flag{context = Ctxt};
+
+set_context(Ctxt, #babel_flag{}) ->
+    error({badarg, Ctxt});
+
+set_context(_, Term) ->
+    error({badflag, Term}).
 
 
 %% -----------------------------------------------------------------------------

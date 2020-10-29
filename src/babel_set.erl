@@ -52,7 +52,6 @@
 -export([context/1]).
 -export([del_element/2]).
 -export([del_elements/2]).
--export([set_elements/2]).
 -export([fold/3]).
 -export([from_riak_set/3]).
 -export([is_element/2]).
@@ -62,6 +61,8 @@
 -export([new/1]).
 -export([new/2]).
 -export([original_value/1]).
+-export([set_context/2]).
+-export([set_elements/2]).
 -export([size/1]).
 -export([to_riak_op/2]).
 -export([type/0]).
@@ -183,6 +184,24 @@ is_type(Term) ->
 -spec context(T :: t()) -> riakc_datatype:context().
 
 context(#babel_set{context = Value}) -> Value.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Sets the context `Ctxt'.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec set_context(Ctxt :: riakc_datatype:set_context(), T :: t()) ->
+    NewT :: t().
+
+set_context(Ctxt, #babel_set{} = T)
+when is_binary(Ctxt) orelse Ctxt == undefined ->
+    T#babel_set{context = Ctxt};
+
+set_context(Ctxt, #babel_set{}) ->
+    error({badarg, Ctxt});
+
+set_context(_, Term) ->
+    error({badset, Term}).
 
 
 %% -----------------------------------------------------------------------------
