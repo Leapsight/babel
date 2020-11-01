@@ -97,9 +97,8 @@ end).
     name := binary(),
     type := atom()
 }.
+
 -type riak_object()             ::  riakc_map:crdt_map().
--type config()                  ::  map().
--type config_object()           ::  riakc_map:crdt_map().
 -type partition_id()            ::  binary().
 -type partition_key()           ::  binary().
 -type local_key()               ::  binary().
@@ -131,8 +130,6 @@ end).
 
 -export_type([t/0]).
 -export_type([riak_object/0]).
--export_type([config/0]).
--export_type([config_object/0]).
 -export_type([partition_id/0]).
 -export_type([partition_key/0]).
 -export_type([local_key/0]).
@@ -170,6 +167,11 @@ end).
 -export([update/3]).
 
 
+%% Till we fix maps_utils:validate
+-dialyzer({nowarn_function, new/1}).
+-dialyzer({nowarn_function, from_riak_object/1}).
+
+
 
 %% =============================================================================
 %% CALLBACKS
@@ -178,35 +180,35 @@ end).
 
 
 -callback init(Name :: binary(), ConfigData :: map()) ->
-    {ok, Config :: config()}
+    {ok, Config :: map()}
     | {error, any()}.
 
--callback init_partitions(config()) ->
+-callback init_partitions(map()) ->
     {ok, [babel_index_partition:t()]}
     | {error, any()}.
 
--callback from_riak_object(Object :: config_object()) -> Config :: config().
+-callback from_riak_dict(Dict :: orddict:orddict()) -> Config :: map().
 
--callback to_riak_object(Config :: config()) -> Object :: config_object().
+-callback to_riak_object(Config :: map()) -> Object :: riak_object().
 
--callback number_of_partitions(config()) -> pos_integer().
+-callback number_of_partitions(map()) -> pos_integer().
 
--callback partition_identifier(key_value(), config()) -> partition_id().
+-callback partition_identifier(key_value(), map()) -> partition_id().
 
--callback partition_identifiers(asc | desc, config()) -> [partition_id()].
+-callback partition_identifiers(asc | desc, map()) -> [partition_id()].
 
 -callback update_partition(
-    [{action(), key_value()}], babel_index_partition:t(), config()) ->
+    [{action(), key_value()}], babel_index_partition:t(), map()) ->
     babel_index_partition:t().
 
--callback match(Pattern :: key_value(), babel_index_partition:t(), config()) ->
+-callback match(Pattern :: key_value(), babel_index_partition:t(), map()) ->
     [{index_key(), index_values()}] | no_return().
 
--callback iterator(Index :: t(), Config :: config(), Opts :: map()) ->
+-callback iterator(Index :: t(), Config :: map(), Opts :: riak_opts()) ->
     Iterator :: any().
 
 -callback iterator_move(
-    Action :: iterator_action(), Iterator :: any(), config()) ->
+    Action :: iterator_action(), Iterator :: any(), map()) ->
     any().
 
 -callback iterator_done(Iterator :: any()) -> boolean().
@@ -270,7 +272,7 @@ new(IndexData) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec from_riak_object(ConfigCRDT :: riak_object()) -> Index :: t().
+-spec from_riak_object(Object :: riak_object()) -> Index :: t().
 
 from_riak_object(Object) ->
     Name = babel_crdt:register_to_binary(
@@ -286,7 +288,7 @@ from_riak_object(Object) ->
         orddict:fetch({<<"type">>, register}, Object),
         utf8
     ),
-    Config = Type:from_riak_object(
+    Config = Type:from_riak_dict(
         orddict:fetch({<<"config">>, map}, Object)
     ),
 
@@ -324,6 +326,9 @@ to_riak_object(Index) ->
         {{<<"config">>, map}, ConfigCRDT}
     ],
 
+    %% We just create a new value since index metadata (babel_index) are
+    %% immutable.
+
     lists:foldl(
         fun({K, V}, Acc) -> babel_key_value:set(K, V, Acc) end,
         riakc_map:new(),
@@ -349,8 +354,9 @@ create_partitions(#{type := Type, config := Config}) ->
 %% item.
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_update_task(Index :: babel_index:t(), Partition :: t()) ->
-    reliable:action().
+-spec to_update_task(
+    Index :: babel_index:t(),
+    Partition :: babel_index_partition:t()) -> reliable:action().
 
 to_update_task(Index, Partition) ->
     PartitionId = babel_index_partition:id(Partition),

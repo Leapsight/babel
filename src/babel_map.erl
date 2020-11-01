@@ -215,14 +215,16 @@ new(Data, Spec, Ctxt) ->
 -spec from_riak_map(
     RMap :: riakc_map:crdt_map() | list(), Spec :: type_spec()) -> t().
 
-from_riak_map(RMap, #{'_':= Spec}) ->
+from_riak_map(RMap, #{'_' := Spec}) ->
     from_riak_map(RMap, expand_spec(orddict:fetch_keys(RMap), Spec));
 
-from_riak_map({map, Values, _, _, Context}, Spec) when is_map(Spec) ->
-    from_riak_map(Values, Context, Spec);
+from_riak_map(RMap, Spec) when is_tuple(RMap) ->
+    Context = element(5, RMap),
+    Values = riakc_map:value(RMap),
+    from_orddict(Values, Context, Spec);
 
-from_riak_map(RMap, Spec) when is_list(RMap) ->
-    from_riak_map(RMap, undefined, Spec).
+from_riak_map(Values, Spec) when is_list(Values) ->
+    from_orddict(Values, undefined, Spec).
 
 
 %% -----------------------------------------------------------------------------
@@ -959,10 +961,10 @@ from_term(Term, _, register, Type) ->
 
 
 %% @private
--spec from_riak_map(orddict:orddict(), riakc_datatype:context(), type_spec()) ->
+-spec from_orddict(orddict:orddict(), riakc_datatype:context(), type_spec()) ->
     maybe_no_return(t()).
 
-from_riak_map(RMap, Context, Spec) when is_map(Spec) ->
+from_orddict(RMap, Context, Spec) when is_map(Spec) ->
     %% Convert values in RMap
     Convert = fun({Key, Datatype} = RKey, RValue, Acc) ->
         case maps:find(Key, Spec) of

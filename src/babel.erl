@@ -44,8 +44,6 @@
 -export([workflow/2]).
 -export([validate_riak_opts/1]).
 -export([get_connection/1]).
--export([execute/2]).
--export([execute/1]).
 -export([put/5]).
 -export([delete/3]).
 -export([get/4]).
@@ -173,53 +171,6 @@ delete(TypedBucket, Key, Opts) ->
         true ->
             schedule_delete(TypedBucket, Key, Opts)
     end.
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec execute(Fun :: fun((RiakConn :: pid()) -> Result :: any())) ->
-    {ok, Result :: any()} | {error, Reason :: any()}.
-
-execute(Fun) ->
-    execute(Fun, #{}).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc Executes a number of operations using the same Riak cclient connection.
-%% @end
-%% -----------------------------------------------------------------------------
--spec execute(
-    Fun :: fun((RiakConn :: pid()) -> Result :: any()),
-    RiakOpts :: map()) ->
-    {ok, Result :: any()} | {error, Reason :: any()}.
-
-execute(Fun, #{connection := Pid} = Opts) when is_pid(Pid) ->
-    try
-        Res = Fun(Pid),
-        ok = on_execute(normal, Opts),
-        Res
-    catch
-        _:Reason:Stacktrace ->
-            ok = on_execute(Reason, Opts),
-            error(Reason, Stacktrace)
-    after
-        ok
-    end;
-
-execute(Fun, #{connection := GetConn} = Opts) when is_function(GetConn) ->
-    execute(Fun, Opts#{connection => GetConn()});
-
-execute(_, #{connection := _}) ->
-    error(badarg);
-
-execute(Fun, Opts) ->
-    %% TODO get connection from pool
-    %% TODO use a timeout and fail elegantly
-    Pid = undefined,
-    Checkin = fun(_) -> ok end, %% TODO fun to return conn to pool
-    execute(Fun, Opts#{connection => Pid, on_execute => Checkin}).
 
 
 %% -----------------------------------------------------------------------------
@@ -417,6 +368,8 @@ create_index(Index, Collection) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec validate_riak_opts(map()) -> maybe_no_return(map()).
+
+-dialyzer({nowarn_function, validate_riak_opts/1}).
 
 validate_riak_opts(#{'$validated' := true} = Opts) ->
     Opts;
@@ -767,19 +720,6 @@ to_delete_task(TypedBucket, Key) ->
     reliable_task:new(
         node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]
     ).
-
-
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
-on_execute(Reason, #{on_execute := Fun}) when is_function(Fun, 1) ->
-    _ = Fun(Reason),
-    ok;
-
-on_execute(_, _) ->
-    ok.
 
 
 %% @private

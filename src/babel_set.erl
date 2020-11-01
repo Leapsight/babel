@@ -70,6 +70,9 @@
 -export([value/1]).
 
 
+-dialyzer({nowarn_function, from_riak_set/2}).
+
+
 
 %% =============================================================================
 %% API
@@ -136,7 +139,6 @@ new(Data, Ctxt, Type) when is_list(Data) ->
     Type :: type_spec()) ->
     maybe_no_return(t()).
 
--dialyzer({nowarn_function, from_riak_set/2}).
 
 from_riak_set(Ordset, Type) when is_list(Ordset) ->
     from_riak_set(Ordset, undefined, Type);

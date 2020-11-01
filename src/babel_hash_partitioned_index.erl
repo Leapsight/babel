@@ -101,7 +101,7 @@
 
 
 -record(babel_hash_partitioned_index_iter, {
-    partition                   ::  babel_index_partition:t(),
+    partition                   ::  babel_index_partition:t() | undefined,
     sort_ordering               ::  asc | desc,
     key                         ::  binary() | undefined,
     values                      ::  map() | undefined,
@@ -132,7 +132,7 @@
 
 
 %% BEHAVIOUR CALLBACKS
--export([from_riak_object/1]).
+-export([from_riak_dict/1]).
 -export([init/2]).
 -export([init_partitions/1]).
 -export([iterator/3]).
@@ -144,7 +144,6 @@
 -export([number_of_partitions/1]).
 -export([partition_identifier/2]).
 -export([partition_identifiers/2]).
--export([partition_size/2]).
 -export([to_riak_object/1]).
 -export([update_partition/3]).
 
@@ -256,54 +255,53 @@ init(IndexId, ConfigData0) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec from_riak_object(Object :: babel_index:config_crdt()) ->
-    Config :: t().
+-spec from_riak_dict(Dict :: orddict:orddict()) -> Config :: t().
 
-from_riak_object(Object) ->
+from_riak_dict(Dict) ->
     Sort = babel_crdt:register_to_existing_atom(
-        orddict:fetch({<<"sort_ordering">>, register}, Object),
+        orddict:fetch({<<"sort_ordering">>, register}, Dict),
         utf8
     ),
     N = babel_crdt:register_to_integer(
-        orddict:fetch({<<"number_of_partitions">>, register}, Object)
+        orddict:fetch({<<"number_of_partitions">>, register}, Dict)
     ),
 
     Algo = babel_crdt:register_to_existing_atom(
-        orddict:fetch({<<"partition_algorithm">>, register}, Object),
+        orddict:fetch({<<"partition_algorithm">>, register}, Dict),
         utf8
     ),
 
     Prefix = babel_crdt:register_to_binary(
-        orddict:fetch({<<"partition_identifier_prefix">>, register}, Object)
+        orddict:fetch({<<"partition_identifier_prefix">>, register}, Dict)
     ),
 
     PartitionBy = decode_fields(
         babel_crdt:register_to_binary(
-            orddict:fetch({<<"partition_by">>, register}, Object)
+            orddict:fetch({<<"partition_by">>, register}, Dict)
         )
     ),
 
     Identifiers = decode_list(
         babel_crdt:register_to_binary(
-            orddict:fetch({<<"partition_identifiers">>, register}, Object)
+            orddict:fetch({<<"partition_identifiers">>, register}, Dict)
         )
     ),
 
     IndexBy = decode_fields(
         babel_crdt:register_to_binary(
-            orddict:fetch({<<"index_by">>, register}, Object)
+            orddict:fetch({<<"index_by">>, register}, Dict)
         )
     ),
 
     AggregateBy = decode_fields(
         babel_crdt:register_to_binary(
-            orddict:fetch({<<"aggregate_by">>, register}, Object)
+            orddict:fetch({<<"aggregate_by">>, register}, Dict)
         )
     ),
 
     CoveredFields = decode_fields(
         babel_crdt:register_to_binary(
-            orddict:fetch({<<"covered_fields">>, register}, Object)
+            orddict:fetch({<<"covered_fields">>, register}, Dict)
         )
     ),
 
@@ -328,7 +326,7 @@ from_riak_object(Object) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec to_riak_object(Config :: t()) ->
-    ConfigCRDT :: babel_index:config_crdt().
+    ConfigCRDT :: babel_index:riak_object().
 
 to_riak_object(Config) ->
     #{
@@ -369,7 +367,9 @@ to_riak_object(Config) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec init_partitions(t()) -> [babel_index_partition:t()].
+-spec init_partitions(t()) ->
+    {ok, [babel_index_partition:t()]}
+    | {error, any()}.
 
 init_partitions(#{partition_identifiers := Identifiers}) ->
     Partitions = [babel_index_partition:new(Id) || Id <- Identifiers],
@@ -419,17 +419,6 @@ partition_identifiers(Order, Config) ->
     Default = sort_ordering(Config),
     maybe_reverse(Default, Order, partition_identifiers(Config)).
 
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec partition_size(Partition :: babel_index_partition:t(), Config :: t()) ->
-    non_neg_integer().
-
-partition_size(_, Partition) ->
-    Data = riakc_map:fetch({<<"data">>, map}, Partition),
-    riakc_map:size(Data).
 
 
 %% -----------------------------------------------------------------------------
@@ -521,7 +510,8 @@ match(Pattern, Partition, Config) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec iterator(babel_index:t(), babel_index:config(), Opts :: map()) -> Iterator :: iterator().
+-spec iterator(babel_index:t(), babel_index:config(), Opts :: riak_opts()) ->
+    Iterator :: iterator().
 
 iterator(Index, Config, Opts) ->
     First = maps:get(first, Opts, undefined),
@@ -531,7 +521,8 @@ iterator(Index, Config, Opts) ->
         sort_ordering = Sort,
         partition_identifiers = partition_identifiers(Sort, Config),
         first = First,
-        typed_bucket = babel_index:typed_bucket(Index)
+        typed_bucket = babel_index:typed_bucket(Index),
+        riak_opts = Opts
     }.
 
 
@@ -585,6 +576,8 @@ iterator_values(#babel_hash_partitioned_index_iter{values = Values}) ->
 
 
 %% @private
+-dialyzer({nowarn_function, validate/1}).
+
 validate(Config0) ->
     Config = maps_utils:validate(Config0, ?SPEC),
     AggregateBy = aggregate_by(Config),
