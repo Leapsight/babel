@@ -53,6 +53,7 @@
 -export([del_element/2]).
 -export([del_elements/2]).
 -export([fold/3]).
+-export([from_riak_set/2]).
 -export([from_riak_set/3]).
 -export([is_element/2]).
 -export([is_original_element/2]).
@@ -113,6 +114,40 @@ new(Data, Ctxt) when is_list(Data) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec new(
+    Data :: ordsets:ordset(any()),
+    Ctxt :: riakc_datatype:context(),
+    Type :: type_spec())  -> t().
+
+new(Data, Ctxt, Type) when is_list(Data) ->
+    Values = [from_binary(E, Type) || E <- Data],
+    new(Values, Ctxt).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @throws {badindex, term()}
+%% @end
+%% -----------------------------------------------------------------------------
+-spec from_riak_set(
+    RiakSet :: riakc_set:riakc_set() | ordsets:ordset(),
+    Type :: type_spec()) ->
+    maybe_no_return(t()).
+
+-dialyzer({nowarn_function, from_riak_set/2}).
+
+from_riak_set(Ordset, Type) when is_list(Ordset) ->
+    from_riak_set(Ordset, undefined, Type);
+
+from_riak_set(RiakSet, Type) ->
+    Ctxt = element(5, RiakSet),
+    new(riakc_set:value(RiakSet), Ctxt, Type).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Overrides context
 %% @throws {badindex, term()}
 %% @end
 %% -----------------------------------------------------------------------------
@@ -122,9 +157,8 @@ new(Data, Ctxt) when is_list(Data) ->
     Type :: type_spec()) ->
     maybe_no_return(t()).
 
-from_riak_set(Ordset, Ctxt, Type) when is_list(Ordset) ->
-    Values = [from_binary(E, Type) || E <- Ordset],
-    new(Values, Ctxt);
+from_riak_set(Values, Ctxt, Type) when is_list(Values) ->
+    new(Values, Ctxt, Type);
 
 from_riak_set(RiakSet, Ctxt, Type) ->
     from_riak_set(riakc_set:value(RiakSet), Ctxt, Type).

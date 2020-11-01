@@ -62,7 +62,7 @@
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec type(datatype()) -> set | map | counter | flag.
+-spec type(term()) -> set | map | counter | flag | register.
 
 type(Term) ->
     case module(Term) of
@@ -75,7 +75,7 @@ type(Term) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec module(Term :: any()) -> datatype() | undefined.
+-spec module(Term :: any()) -> module() | undefined.
 
 module(Term) when is_tuple(Term) ->
     Mods = [babel_map, babel_set, babel_counter, babel_flag],
@@ -783,7 +783,7 @@ on_execute(_, _) ->
 
 
 %% @private
--spec riak_type(datatype()) -> set | map | counter | flag.
+-spec riak_type(term()) -> set | map | counter | flag.
 
 riak_type(Term) when is_tuple(Term) ->
     Mods = [riakc_set, riakc_map, riakc_counter, riakc_flag],
