@@ -70,9 +70,9 @@
 %% This is to be able to operate with them before they are store in RIAK as we
 %% are delyaing storage via Reliable
 -record(babel_index_collection, {
-    id      ::  binary(),
-    bucket  ::  binary(),
-    object  ::  riak_object()
+    id              ::  binary(),
+    bucket          ::  binary(),
+    object          ::  riak_object()
 }).
 
 -type t()           ::  #babel_index_collection{}.
@@ -119,14 +119,28 @@
 -spec new(BucketPrefix :: binary(), Name :: binary()) -> t().
 
 new(BucketPrefix, Name) ->
-    Object = riakc_map:update(
-        {<<"data">>, map}, fun(Data) -> Data end, riakc_map:new()
+    Bucket = <<BucketPrefix/binary, ?PATH_SEPARATOR, ?BUCKET_SUFFIX>>,
+
+    Object0 = riakc_map:update(
+        {<<"id">>, register},
+        fun(R) -> riakc_register:set(Name, R) end,
+        riakc_map:new()
+    ),
+    Object1 = riakc_map:update(
+        {<<"bucket">>, register},
+        fun(R) -> riakc_register:set(Bucket, R) end,
+        Object0
+    ),
+    Object2 = riakc_map:update(
+        {<<"data">>, map},
+        fun(Data) -> Data end,
+        Object1
     ),
 
     #babel_index_collection{
         id = Name,
         bucket = <<BucketPrefix/binary, ?PATH_SEPARATOR, ?BUCKET_SUFFIX>>,
-        object = Object
+        object = Object2
     }.
 
 
@@ -137,6 +151,7 @@ new(BucketPrefix, Name) ->
 -spec from_riak_object(Object :: riak_object()) -> Collection :: t().
 
 from_riak_object(Object) ->
+    %% We extract id and bucket values from Object for convenience
     Id = babel_crdt:register_to_binary(
         riakc_map:fetch({<<"id">>, register}, Object)
     ),
@@ -157,23 +172,10 @@ from_riak_object(Object) ->
 %% -----------------------------------------------------------------------------
 -spec to_riak_object(Collection :: t()) -> Object :: riak_object().
 
-to_riak_object(#babel_index_collection{} = Collection) ->
-    #babel_index_collection{
-        id = Id,
-        bucket = Bucket,
-        object = Object
-    } = Collection,
-
-    Values = [
-        {{<<"id">>, register}, Id},
-        {{<<"bucket">>, register}, Bucket}
-    ],
-
-    lists:foldl(
-        fun({K, V}, Acc) -> babel_key_value:set(K, V, Acc) end,
-        Object,
-        Values
-    ).
+to_riak_object(#babel_index_collection{object = Object}) ->
+    %% id and bucket record fields are readonly and alredy present in the
+    %% Riak object.
+    Object.
 
 
 %% -----------------------------------------------------------------------------
