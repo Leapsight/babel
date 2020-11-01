@@ -169,7 +169,7 @@ set_context(_, Term) ->
 %% @doc Returns the original value of the flag.
 %% @end
 %% -----------------------------------------------------------------------------
--spec original_value(T :: t()) -> integer().
+-spec original_value(T :: t()) -> boolean().
 
 original_value(#babel_flag{value = Value}) ->
     Value.

@@ -86,7 +86,7 @@ from_riak_counter(Value, integer) when is_integer(Value) ->
     #babel_counter{value = Value};
 
 from_riak_counter(RiakCounter, integer) ->
-    from_riak_counter(riakc_counter:value(RiakCounter), integer).
+    #babel_counter{value = riakc_counter:value(RiakCounter)}.
 
 
 %% -----------------------------------------------------------------------------

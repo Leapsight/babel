@@ -335,7 +335,7 @@ fold(Fun, Acc0, T) ->
 %% @doc Test whether an element is a member of the set.
 %% @end
 %% -----------------------------------------------------------------------------
--spec is_element(binary(), riakc_set:riakc_set()) -> boolean().
+-spec is_element(binary(), t()) -> boolean().
 
 is_element(Element, #babel_set{values = V, adds = A, removes = R}) ->
     not ordsets:is_element(Element, R) andalso
@@ -347,7 +347,7 @@ is_element(Element, #babel_set{values = V, adds = A, removes = R}) ->
 %% retrieved from Riak.
 %% @end
 %% -----------------------------------------------------------------------------
--spec is_original_element(binary(), riakc_set:riakc_set()) -> boolean().
+-spec is_original_element(binary(), t()) -> boolean().
 
 is_original_element(Element, #babel_set{values = V}) ->
     ordsets:is_element(Element, V).
