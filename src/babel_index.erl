@@ -162,9 +162,9 @@ end).
 -export([partition_identifier/2]).
 -export([partition_identifiers/1]).
 -export([partition_identifiers/2]).
--export([to_delete_item/2]).
+-export([to_delete_task/2]).
 -export([to_riak_object/1]).
--export([to_update_item/2]).
+-export([to_update_task/2]).
 -export([type/1]).
 -export([typed_bucket/1]).
 -export([update/3]).
@@ -349,15 +349,17 @@ create_partitions(#{type := Type, config := Config}) ->
 %% item.
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_update_item(Index :: babel_index:t(), Partition :: t()) ->
-    babel:work_item().
+-spec to_update_task(Index :: babel_index:t(), Partition :: t()) ->
+    reliable:action().
 
-to_update_item(Index, Partition) ->
+to_update_task(Index, Partition) ->
     PartitionId = babel_index_partition:id(Partition),
     TypedBucket = typed_bucket(Index),
     RiakOps = riakc_map:to_op(babel_index_partition:to_riak_object(Partition)),
     Args = [TypedBucket, PartitionId, RiakOps],
-    {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
+    reliable_task:new(
+        node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]
+    ).
 
 
 %% -----------------------------------------------------------------------------
@@ -365,13 +367,15 @@ to_update_item(Index, Partition) ->
 %% item.
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_delete_item(Index :: babel_index:t(), PartitionId :: binary()) ->
-    babel:work_item().
+-spec to_delete_task(Index :: babel_index:t(), PartitionId :: binary()) ->
+    reliable:action().
 
-to_delete_item(Index, PartitionId) ->
+to_delete_task(Index, PartitionId) ->
     TypedBucket = typed_bucket(Index),
     Args = [TypedBucket, PartitionId],
-    {node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]}.
+    reliable_task:new(
+        node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]
+    ).
 
 
 

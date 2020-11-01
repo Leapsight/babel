@@ -101,9 +101,9 @@
 -export([new/2]).
 -export([size/1]).
 -export([store/2]).
--export([to_delete_item/1]).
+-export([to_delete_task/1]).
 -export([to_riak_object/1]).
--export([to_update_item/1]).
+-export([to_update_task/1]).
 
 
 %% =============================================================================
@@ -324,32 +324,31 @@ delete_index(Index, Collection) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_update_item(Collection :: t()) ->
-    babel:work_item().
+-spec to_update_task(Collection :: t()) -> reliable:action().
 
-to_update_item(#babel_index_collection{} = Collection) ->
+to_update_task(#babel_index_collection{} = Collection) ->
     Key = Collection#babel_index_collection.id,
     Object = to_riak_object(Collection),
     TypedBucket = typed_bucket(Collection),
     Args = [TypedBucket, Key, riakc_map:to_op(Object)],
-    {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
+    reliable_task:new(
+        node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]
+    ).
 
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec to_delete_item(Collection :: t()) ->
-    babel:work_item().
+-spec to_delete_task(Collection :: t()) -> reliable:action().
 
-to_delete_item(#babel_index_collection{} = Collection) ->
+to_delete_task(#babel_index_collection{} = Collection) ->
     Key = Collection#babel_index_collection.id,
     TypedBucket = typed_bucket(Collection),
     Args = [TypedBucket, Key],
-    {node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]}.
-
-
-
+    reliable_task:new(
+        node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]
+    ).
 
 
 %% -----------------------------------------------------------------------------
