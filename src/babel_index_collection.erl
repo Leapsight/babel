@@ -77,11 +77,9 @@
 
 -type t()           ::  #babel_index_collection{}.
 -type riak_object() ::  riakc_map:crdt_map().
--type data()        ::  riakc_map:crdt_map().
 
 -export_type([t/0]).
 -export_type([riak_object/0]).
--export_type([data/0]).
 -export_type([riak_opts/0]).
 
 
@@ -210,7 +208,7 @@ bucket(#babel_index_collection{bucket = Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec data(Collection :: t()) -> data().
+-spec data(Collection :: t()) -> orddict:orddict().
 
 data(#babel_index_collection{object = Object}) ->
     riakc_map:fetch({<<"data">>, map}, Object).
@@ -236,7 +234,6 @@ when is_binary(IndexName) ->
         _:_ ->
             error(badindex)
     end.
-
 
 
 %% -----------------------------------------------------------------------------
@@ -267,9 +264,9 @@ indices(#babel_index_collection{} = Collection) ->
 
 index_names(Collection) ->
     try data(Collection) of
-        Data ->
+        RMap ->
             Fun = fun({K, map}, _, Acc) -> [K | Acc] end,
-            lists:reverse(orddict:fold(Fun, [], Data))
+            lists:reverse(orddict:fold(Fun, [], RMap))
     catch
         error:function_clause ->
             []
@@ -289,8 +286,8 @@ add_index(Index, #babel_index_collection{} = Collection) ->
     IndexObject = babel_index:to_riak_object(Index),
     Object = riakc_map:update(
         {<<"data">>, map},
-        fun(Data) ->
-            riakc_map:update({IndexId, map}, fun(_) -> IndexObject end, Data)
+        fun(RMap) ->
+            riakc_map:update({IndexId, map}, fun(_) -> IndexObject end, RMap)
         end,
         Collection#babel_index_collection.object
     ),
@@ -309,7 +306,7 @@ delete_index(IndexId, #babel_index_collection{} = Collection)
 when is_binary(IndexId) ->
     Object = riakc_map:update(
         {<<"data">>, map},
-        fun(Data) -> riakc_map:erase({IndexId, map}, Data) end,
+        fun(RMap) -> riakc_map:erase({IndexId, map}, RMap) end,
         Collection#babel_index_collection.object
     ),
 
@@ -481,17 +478,17 @@ typed_bucket(Prefix) ->
     {Type, Bucket}.
 
 
-%% @private
-on_delete(TypedBucket, Key) ->
-    %% TODO WAMP Publication
-    _URI = <<"org.babel.index_collection.deleted">>,
-    _Args = [TypedBucket, Key],
-    ok.
+%% %% @private
+%% on_delete(TypedBucket, Key) ->
+%%     %% TODO WAMP Publication
+%%     _URI = <<"org.babel.index_collection.deleted">>,
+%%     _Args = [TypedBucket, Key],
+%%     ok.
 
 
-%% @private
-on_update(TypedBucket, Key) ->
-    %% TODO WAMP Publication
-    _URI = <<"org.babel.index_collection.updated">>,
-    _Args = [TypedBucket, Key],
-    ok.
+%% %% @private
+%% on_update(TypedBucket, Key) ->
+%%     %% TODO WAMP Publication
+%%     _URI = <<"org.babel.index_collection.updated">>,
+%%     _Args = [TypedBucket, Key],
+%%     ok.
