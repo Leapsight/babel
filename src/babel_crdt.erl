@@ -56,10 +56,8 @@ to_integer(Unwrapped) when is_binary(Unwrapped) ->
 
 to_integer(Object) ->
     try riakc_datatype:module_for_type(Object) of
-        riakc_register ->
-            binary_to_integer(riakc_register:value(Object));
-        riakc_counter ->
-            riakc_counter:value(Object)
+        Mod ->
+            binary_to_integer(Mod:value(Object))
     catch
         error:function_clause ->
             error(badarg)
