@@ -282,6 +282,30 @@ patch_1_test(_) ->
     ?assertEqual(
         false,
         babel_map:get_value(<<"flag_prop">>, T2)
+    ),
+    ?assertEqual(
+        lists:usort([
+            [<<"account_type">>],
+            [<<"active">>],
+            [<<"address">>, <<"address_line1">>],
+            [<<"address">>, <<"address_line2">>],
+            [<<"address">>, <<"city">>],
+            [<<"address">>, <<"country">>],
+            [<<"address">>, <<"postal_code">>],
+            [<<"address">>, <<"state">>],
+            [<<"counter_prop">>],
+            [<<"country_id">>],
+            [<<"flag_prop">>],
+            [<<"id">>],
+            [<<"identification_number">>],
+            [<<"identification_type">>],
+            [<<"name">>],
+            [<<"number">>],
+            [<<"operation_mode">>],
+            [<<"set_prop">>],
+            [<<"version">>]
+        ]),
+        lists:usort(babel_map:updated_key_paths(T2))
     ).
 
 

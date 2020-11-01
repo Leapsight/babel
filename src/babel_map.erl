@@ -24,14 +24,10 @@
 %% Babel maps (maps) differ from Riak's and Erlang's maps in several ways:
 %%
 %% * Maps are special key-value structures where the key is a binary name and
-%% the value is either an Erlang term or another Babel data structure (each one
-%% an alternative of the Riak's counterparts). In case the value is an Erlang
-%% term, it is denoted as a Riak register but without the restriction of them
-%% being binaries as in Riak. To be able to do this certain map operations
-%% require a Specification object, a sort of schema that tells Babel map the
-%% type of each value. This enables the map to use Erlang terms and only
-%% convert them to the required Riak datatypes when storing the object in the
-%% database.
+%% the value is a Babel datatype, each one an alternative of the Riak's
+%% counterparts,  with the exception of the Riak Register type which can be
+%% represented by any Erlang Term in Babel (and not just a binary) provide
+%% there exist a valid type conversion specification.
 %% * Maps maintain the same semantics as Riak Maps but with some key differences
 %%     * As with Riak Map, removals, and modifications are captured for later
 %% application by Riak but they are also applied to the local state. That is,
@@ -51,16 +47,18 @@
 %%     * Certain function e.g. `set/3' allows you to set a value in a key or a
 %% path (list of nested keys).
 %%
-%% # Map Specification
+%% # Type Specifications
 %%
-%% A map specification is an Erlang map where the keys are Riak keys i.e. a
-%% pair of a binary name and data type and value is another specification or a
-%% `type()'. This can be seen as an encoding specification. For example the
-%% specification `#{ {<<"friends">>, set} => list}', says the map contains a
-%% single key name "friends" containing a set which individual elements we want
-%% to convert to lists i.e. a set of lists. This will result in a map
-%% containing the key `<<"friends">>' and a babel set contining the elements
-%% converted from binaries to lists.
+%% A type specification is an Erlang map where the keys are the Babel map keys
+%% and their value is another specification or a
+%% `type_mapping()'.
+%%
+%% For example the specification `#{<<"friends">> => {set, list}}', says the
+%% map contains a single key name "friends" containing a Babel Set (compatible
+%% with Riak Set) where the individual
+%% elements are represented in Erlang as lists i.e. a set of lists. This will
+%% result in a map containing the key `<<"friends">>' and a babel set contining
+%% the elements converted from binaries to lists.
 %%
 %% The special '_' key name provides the capability to convert a Riak Map where
 %% the keys are not known in advance, and their values are all of the same
@@ -687,7 +685,7 @@ set_elements(Key, Values, Map) ->
 -spec update(Values :: babel_key_value:t(), T :: t(), Spec :: type_spec()) ->
     NewT :: t().
 
-update(Values, T, Spec) when is_map(Values)->
+update(Values, T, Spec) ->
     Fun = fun
         Fold({Key, _}, Value, Acc) ->
             %% A Riak Map key
@@ -701,13 +699,7 @@ update(Values, T, Spec) when is_map(Values)->
             end
 
     end,
-    maps:fold(Fun, T, Values);
-
-update(Values, T, Spec) ->
-    Map = babel_key_value:fold(
-        fun(K, V, Acc) -> maps:put(K, V, Acc) end, Values
-    ),
-    update(Map, T, Spec).
+    babel_key_value:fold(Fun, T, Values).
 
 
 %% -----------------------------------------------------------------------------
@@ -1097,7 +1089,7 @@ get_type(Term) ->
 
 
 %% @private
--spec get_mod(Term :: any()) -> datatype().
+-spec get_mod(Term :: any()) -> datatype() | undefined.
 
 get_mod(#babel_map{}) ->
     ?MODULE;
@@ -1120,10 +1112,13 @@ get_mod(Term) when is_tuple(Term) ->
     end;
 
 get_mod(_) ->
+    %% We do not have a wrapper module for registers
     undefined.
 
 
 %% @private
+-spec badtype(datatype(), binary()) -> no_return().
+
 badtype(register, Key) ->
     error({badregister, Key});
 
@@ -1489,13 +1484,16 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
 
 
 %% @private
-updated_key_paths(#babel_map{updates = U}, Acc, Path0) ->
+-spec updated_key_paths(t(), AccIn :: list(), Path :: list()) ->
+    AccOut :: list().
+
+updated_key_paths(#babel_map{updates = U} = Parent, Acc, Path0) ->
     lists:foldl(
         fun(Key, InnerAcc0) ->
             Path1 = Path0 ++ [Key],
-            case get(Key, InnerAcc0, undefined) of
-                #babel_map{} = Map ->
-                    updated_key_paths(Map, InnerAcc0, Path1);
+            case get(Key, Parent, undefined) of
+                #babel_map{} = Child ->
+                    updated_key_paths(Child, InnerAcc0, Path1);
                 _ ->
                     [Path1 | InnerAcc0]
             end
