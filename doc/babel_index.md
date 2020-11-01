@@ -186,7 +186,7 @@ t() = #{bucket =&gt; binary(), bucket_type =&gt; binary(), config =&gt; term(), 
 <table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#bucket-1">bucket/1</a></td><td>Returns the Riak KV bucket were this index partitions are stored.</td></tr><tr><td valign="top"><a href="#bucket_type-1">bucket_type/1</a></td><td>Returns the Riak KV bucket type associated with this index.</td></tr><tr><td valign="top"><a href="#config-1">config/1</a></td><td>Returns the configuration associated with this index.</td></tr><tr><td valign="top"><a href="#create_partitions-1">create_partitions/1</a></td><td></td></tr><tr><td valign="top"><a href="#foreach-2">foreach/2</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_object-1">from_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#match-3">match/3</a></td><td>Returns a list of matching index entries.</td></tr><tr><td valign="top"><a href="#name-1">name/1</a></td><td>Returns name of this index.</td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td>Returns a new index based on the specification map.</td></tr><tr><td valign="top"><a href="#partition_identifier-2">partition_identifier/2</a></td><td></td></tr><tr><td valign="top"><a href="#partition_identifiers-1">partition_identifiers/1</a></td><td>Returns the list of Riak KV keys under which the partitions are stored,
 in ascending order.</td></tr><tr><td valign="top"><a href="#partition_identifiers-2">partition_identifiers/2</a></td><td>Returns the list of Riak KV keys under which the partitions are stored
 in a defined order i.e.</td></tr><tr><td valign="top"><a href="#to_delete_item-2">to_delete_item/2</a></td><td>Returns the representation of this object as a Reliable Delete work
-item.</td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_update_item-2">to_update_item/2</a></td><td>Returns the representation of this object as a Reliable Update work
+item.</td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_update_action-2">to_update_action/2</a></td><td>Returns the representation of this object as a Reliable Update work
 item.</td></tr><tr><td valign="top"><a href="#type-1">type/1</a></td><td>Returns the type of this index.</td></tr><tr><td valign="top"><a href="#typed_bucket-1">typed_bucket/1</a></td><td>Returns the Riak KV <code>typed_bucket()</code> associated with this index.</td></tr><tr><td valign="top"><a href="#update-3">update/3</a></td><td></td></tr></table>
 
 
@@ -358,12 +358,12 @@ to_riak_object(Index::<a href="#type-t">t()</a>) -&gt; IndexCRDT::<a href="#type
 </code></pre>
 <br />
 
-<a name="to_update_item-2"></a>
+<a name="to_update_action-2"></a>
 
-### to_update_item/2 ###
+### to_update_action/2 ###
 
 <pre><code>
-to_update_item(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Partition::<a href="#type-t">t()</a>) -&gt; <a href="babel.md#type-work_item">babel:work_item()</a>
+to_update_action(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Partition::<a href="#type-t">t()</a>) -&gt; <a href="babel.md#type-work_item">babel:work_item()</a>
 </code></pre>
 <br />
 
