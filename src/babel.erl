@@ -50,6 +50,7 @@
 -export([delete/3]).
 -export([get/4]).
 -export([type/1]).
+-export([module/1]).
 
 
 %% =============================================================================
@@ -63,23 +64,40 @@
 %% -----------------------------------------------------------------------------
 -spec type(datatype()) -> set | map | counter | flag.
 
-type(Term) when is_tuple(Term) ->
-    Mods = [babel_set, babel_map, babel_counter, babel_flag],
+type(Term) ->
+    case module(Term) of
+        undefined -> register;
+        Mod -> Mod:type()
+    end.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec module(Term :: any()) -> datatype() | undefined.
+
+module(Term) when is_tuple(Term) ->
+    Mods = [babel_map, babel_set, babel_counter, babel_flag],
     Fun = fun(Mod, Acc) ->
         case (catch Mod:is_type(Term)) of
             true ->
-                throw({type, Mod:type()});
+                throw({module, Mod});
             _ ->
                 Acc
         end
     end,
 
     try
-        error = lists:foldl(Fun, error, Mods),
-        error(badarg)
+        lists:foldl(Fun, undefined, Mods)
     catch
-        throw:{type, Mod} -> Mod
-    end.
+        throw:{module, Mod} -> Mod
+    end;
+
+module(_) ->
+    %% We do not have a wrapper module for registers
+    undefined.
+
 
 
 %% -----------------------------------------------------------------------------
@@ -211,7 +229,7 @@ execute(Fun, Opts) ->
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun :: fun(() -> any())) ->
     {ok, ResultOfFun :: any()}
-    | {scheduled, WorkRef :: reliable_partition_worker:work_ref(), ResultOfFun :: any()}
+    | {scheduled, WorkRef :: reliable_work_ref:t(), ResultOfFun :: any()}
     | {error, Reason :: any()}
     | no_return().
 
@@ -286,7 +304,7 @@ workflow(Fun) ->
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun ::fun(() -> any()), Opts :: babel_workflow:opts()) ->
     {ok, ResultOfFun :: any()}
-    | {scheduled, WorkRef :: reliable_partition_worker:work_ref(), ResultOfFun :: any()}
+    | {scheduled, WorkRef :: reliable_work_ref:t(), ResultOfFun :: any()}
     | {error, Reason :: any()}
     | no_return().
 
@@ -321,8 +339,8 @@ create_collection(BucketPrefix, Name) ->
     %% have previously initialised in the workflow graph
     ok = maybe_already_exists(CollectionId),
 
-    WorkItem = fun() -> babel_index_collection:to_update_item(Collection) end,
-    WorkflowItem = {CollectionId, {update, WorkItem}},
+    Task = fun() -> babel_index_collection:to_update_task(Collection) end,
+    WorkflowItem = {CollectionId, {update, Task}},
     ok = reliable:add_workflow_items([WorkflowItem]),
 
     Collection.
@@ -341,8 +359,8 @@ delete_collection(Collection) ->
     ok = reliable:ensure_in_workflow(),
 
     CollectionId = babel_index_collection:id(Collection),
-    WorkItem = fun() -> babel_index_collection:to_delete_item(Collection) end,
-    WorkflowItem = {CollectionId, {delete, WorkItem}},
+    Task = fun() -> babel_index_collection:to_delete_task(Collection) end,
+    WorkflowItem = {CollectionId, {delete, Task}},
 
     reliable:add_workflow_items([WorkflowItem]).
 
@@ -502,7 +520,7 @@ delete_index(Index, Collection0) ->
             CollectionId,
             {
                 update,
-                fun() -> babel_index_collection:to_update_item(Collection) end
+                fun() -> babel_index_collection:to_update_task(Collection) end
             }
         },
         PartitionItems = [
@@ -510,7 +528,7 @@ delete_index(Index, Collection0) ->
                 {CollectionId, IndexName, X},
                 {
                     delete,
-                    fun() -> babel_index:to_delete_item(Index, X) end
+                    fun() -> babel_index:to_delete_task(Index, X) end
                 }
             }
             || X <- babel_index:partition_identifiers(Index)
@@ -569,8 +587,8 @@ schedule_put(TypedBucket, Key, Datatype, Spec, _Opts0) ->
     ok = reliable:ensure_in_workflow(),
     Id = {TypedBucket, Key},
     Type = type(Datatype),
-    Item = to_update_item(Type, TypedBucket, Key, Datatype, Spec),
-    WorkflowItem = {Id, {update, Item}},
+    Task = to_update_task(Type, TypedBucket, Key, Datatype, Spec),
+    WorkflowItem = {Id, {update, Task}},
     ok = reliable:add_workflow_items([WorkflowItem]),
     {scheduled, Id}.
 
@@ -594,8 +612,8 @@ do_delete(TypedBucket, Key, Opts0) ->
 schedule_delete(TypedBucket, Key, _Opts0) ->
     ok = reliable:ensure_in_workflow(),
     Id = {TypedBucket, Key},
-    Item = to_delete_item(TypedBucket, Key),
-    WorkflowItem = {Id, {delete, Item}},
+    Task = to_delete_task(TypedBucket, Key),
+    WorkflowItem = {Id, {delete, Task}},
     ok = reliable:add_workflow_items([WorkflowItem]),
     {scheduled, Id}.
 
@@ -613,10 +631,10 @@ do_create_index(Index, Collection) ->
     ),
 
     NewCollection = babel_index_collection:add_index(Index, Collection),
-    CollWorkItem = fun() ->
-        babel_index_collection:to_update_item(NewCollection)
+    CollTask = fun() ->
+        babel_index_collection:to_update_task(NewCollection)
     end,
-    CollWorkflowItem = {CollectionId, {update, CollWorkItem}},
+    CollWorkflowItem = {CollectionId, {update, CollTask}},
     ok = reliable:add_workflow_items(
         [CollWorkflowItem | PartitionItems]
     ),
@@ -678,14 +696,14 @@ partition_update_items(Collection, Index, Partitions, Mode) ->
             %% workflow graph
             Id = {CollectionId, IndexName, babel_index_partition:id(P)},
 
-            WorkItem = case Mode of
+            Task = case Mode of
                 eager ->
-                    babel_index:to_update_item(Index, P);
+                    babel_index:to_update_task(Index, P);
                 lazy ->
-                    fun() -> babel_index:to_update_item(Index, P) end
+                    fun() -> babel_index:to_update_task(Index, P) end
             end,
 
-            {Id, {update, WorkItem}}
+            {Id, {update, Task}}
 
         end || P <- Partitions
     ].
@@ -720,31 +738,35 @@ to_babel_datatype(flag, _Datatype, _Spec) ->
 
 
 %% @private
-to_update_item(map, TypedBucket, Key, Datatype, Spec) ->
+to_update_task(map, TypedBucket, Key, Datatype, Spec) ->
     Op = babel_map:to_riak_op(Datatype, Spec),
-    to_update_item(TypedBucket, Key, Op);
+    to_update_task(TypedBucket, Key, Op);
 
-to_update_item(set, TypedBucket, Key, Datatype, Spec) ->
+to_update_task(set, TypedBucket, Key, Datatype, Spec) ->
     Op = babel_set:to_riak_op(Datatype, Spec),
-    to_update_item(TypedBucket, Key, Op);
+    to_update_task(TypedBucket, Key, Op);
 
-to_update_item(counter, _TypedBucket, _Key, _Datatype, _Spec) ->
+to_update_task(counter, _TypedBucket, _Key, _Datatype, _Spec) ->
     error(not_implemented);
 
-to_update_item(flag, _TypedBucket, _Key, _Datatype, _Spec) ->
+to_update_task(flag, _TypedBucket, _Key, _Datatype, _Spec) ->
     error(not_implemented).
 
 
 %% @private
-to_update_item(TypedBucket, Key, Op) ->
+to_update_task(TypedBucket, Key, Op) ->
     Args = [TypedBucket, Key, Op],
-    {node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]}.
+    reliable_task:new(
+        node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]
+    ).
 
 
 %% @private
-to_delete_item(TypedBucket, Key) ->
+to_delete_task(TypedBucket, Key) ->
     Args = [TypedBucket, Key],
-    {node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]}.
+    reliable_task:new(
+        node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]
+    ).
 
 
 %% -----------------------------------------------------------------------------

@@ -120,7 +120,6 @@
 -export([from_riak_map/2]).
 -export([get/2]).
 -export([get/3]).
--export([get_type/1]).
 -export([get_value/2]).
 -export([get_value/3]).
 -export([increment/2]).
@@ -1056,7 +1055,7 @@ type_value(#babel_map{} = Map) ->
     value(Map);
 
 type_value(Term) ->
-    case get_type(Term) of
+    case babel:type(Term) of
         register ->
             %% Registers are implicit in babel
             Term;
@@ -1069,51 +1068,6 @@ type_value(Term) ->
         Datatype ->
             error({not_implemented, Datatype})
     end.
-
-
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec get_type(Term :: any()) -> datatype().
-
-get_type(#babel_map{}) ->
-    map;
-
-get_type(Term) ->
-    case get_mod(Term) of
-        undefined -> register;
-        Mod -> Mod:type()
-    end.
-
-
-%% @private
--spec get_mod(Term :: any()) -> datatype() | undefined.
-
-get_mod(#babel_map{}) ->
-    ?MODULE;
-
-get_mod(Term) when is_tuple(Term) ->
-    Mods = [babel_set, babel_counter, babel_flag],
-    Fun = fun(Mod, Acc) ->
-        case (catch Mod:is_type(Term)) of
-            true ->
-                throw({mod, Mod});
-            _ ->
-                Acc
-        end
-    end,
-
-    try
-        lists:foldl(Fun, undefined, Mods)
-    catch
-        throw:{mod, Mod} -> Mod
-    end;
-
-get_mod(_) ->
-    %% We do not have a wrapper module for registers
-    undefined.
 
 
 %% @private
@@ -1324,7 +1278,7 @@ mutate_eval(_, Value, #babel_map{context = Ctxt}) when not is_function(Value) ->
 
 %% @private
 maybe_set_context(Ctxt, Term) ->
-    case get_mod(Term) of
+    case babel:module(Term) of
         undefined ->
             Term;
         Mod ->
@@ -1377,11 +1331,11 @@ do_remove(_, Term) ->
 
 %% @private
 maybe_merge(Key, Term2, Acc) ->
-    Type = get_type(Term2),
+    Type = babel:type(Term2),
 
     case find(Key, Acc) of
         {ok, Term1} ->
-            Type == get_type(Term1) orelse badtype(Type, Key),
+            Type == babel:type(Term1) orelse badtype(Type, Key),
             merge(Key, Term2, Acc, Type);
         error ->
             merge(Key, Term2, Acc, Type)
