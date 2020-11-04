@@ -34,6 +34,7 @@
 -behaviour(babel_index).
 -include("babel.hrl").
 
+-define(KEYPATH_LIST_SPEC, {list, [binary, tuple, {list, [binary, tuple]}]}).
 
 -define(SPEC, #{
     sort_ordering => #{
@@ -59,13 +60,13 @@
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, [binary, tuple]}
+        datatype => ?KEYPATH_LIST_SPEC
     },
     index_by => #{
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, [binary, tuple]},
+        datatype => ?KEYPATH_LIST_SPEC,
         validator => fun
             ([]) -> false;
             (_) -> true
@@ -77,13 +78,13 @@
         default => [],
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, [binary, tuple]}
+        datatype => ?KEYPATH_LIST_SPEC
     },
     covered_fields => #{
         required => true,
         allow_null => false,
         allow_undefined => false,
-        datatype => {list, [binary, tuple]}
+        datatype => ?KEYPATH_LIST_SPEC
     }
 }).
 
