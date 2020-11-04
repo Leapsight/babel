@@ -19,4 +19,5 @@ do_setup() ->
     {ok, Apps} = application:ensure_all_started(babel),
     application:ensure_all_started(cache),
     ct:pal("Started ~p", [Apps]),
+    _ = logger:set_application_level(reliable, info),
     ok.

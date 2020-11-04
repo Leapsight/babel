@@ -201,8 +201,12 @@ end).
     [{action(), key_value()}], babel_index_partition:t(), map()) ->
     babel_index_partition:t().
 
+%% -callback validate_pattern(Pattern :: key_value(), map()) -> ok | {error, any()}.
+
+%% -callback format_error(Reason :: any()) -> map().
+
 -callback match(Pattern :: key_value(), babel_index_partition:t(), map()) ->
-    [{index_key(), index_values()}] | no_return().
+    [map()] | no_return().
 
 -callback iterator(Index :: t(), Config :: map(), Opts :: riak_opts()) ->
     Iterator :: any().

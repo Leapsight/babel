@@ -302,7 +302,9 @@ fetch(BucketType, BucketPrefix, Key, RiakOpts) ->
     {ok, t()} | {error, not_found | term()}.
 
 lookup(TypedBucket, Key, RiakOpts) ->
-    Result = cache:get(?MODULE, {TypedBucket, Key}),
+    %% TODO enable caching when we have update events working
+    %% Result = cache:get(?MODULE, {TypedBucket, Key}),
+    Result = undefined,
     maybe_lookup(TypedBucket, Key, RiakOpts, Result).
 
 
@@ -386,6 +388,7 @@ maybe_lookup(TypedBucket, Key, RiakOpts, undefined) ->
     end;
 
 maybe_lookup(_, _, _, Partition) ->
+    error(from_cache),
     {ok, Partition}.
 
 

@@ -390,21 +390,26 @@ number_of_partitions(#{number_of_partitions := Value}) -> Value.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec partition_identifier(babel_index:key_value(), t()) ->
-    babel_index:partition_id().
+    babel_index:partition_id() | no_return().
 
 partition_identifier(KeyValue, Config) ->
     N = number_of_partitions(Config),
     Algo = partition_algorithm(Config),
+    Keys = partition_by(Config),
 
-    PKey = gen_index_key(partition_by(Config), KeyValue),
+    try gen_index_key(Keys, KeyValue) of
+        PKey ->
+            Bucket = babel_consistent_hashing:bucket(PKey, N, Algo),
+            %% Prefix = partition_identifier_prefix(Config),
+            %% gen_identifier(Prefix, Bucket).
+            %% Bucket is zero-based
+            lists:nth(Bucket + 1, partition_identifiers(Config))
+    catch
+        error:{badkey, Key} ->
+            error({missing_pattern_key, Key})
+    end.
 
-    Bucket = babel_consistent_hashing:bucket(PKey, N, Algo),
 
-    %% Prefix = partition_identifier_prefix(Config),
-    %% gen_identifier(Prefix, Bucket).
-
-    %% Bucket is zero-based
-    lists:nth(Bucket + 1, partition_identifiers(Config)).
 
 
 
@@ -483,7 +488,7 @@ match(Pattern, Partition, Config) ->
         {_, undefined} ->
             %% This should be imposible, we could not have created an index
             %% with IndexKey = []
-            error(badarg);
+            error(invalid_metadata);
         {undefined, error} ->
             %% At least an aggregate key is required to match
             error(badpattern);
@@ -585,8 +590,12 @@ validate(Config0) ->
 
     case lists:sublist(IndexBy, length(AggregateBy)) of
         AggregateBy ->
-            Rest = lists:subtract(IndexBy, AggregateBy),
-            Config#{index_by => Rest};
+            case lists:subtract(IndexBy, AggregateBy) of
+                [] ->
+                    error({validation_error, #{key => <<"index_by">>}});
+                Rest ->
+                    Config#{index_by => Rest}
+            end;
         _ ->
             error({validation_error, #{key => <<"aggregate_by">>}})
     end.

@@ -7,21 +7,43 @@
 
 all() ->
     [
+        bad_index_test,
         index_1_test,
         index_2_test,
         index_3_test,
         index_4_test,
-        %% huge_index_test,
+        index_5_test,
+        huge_index_test,
         accounts_by_identification_type_and_number_test
     ].
 
 
 init_per_suite(Config) ->
+
     ok = common:setup(),
     Config.
 
 end_per_suite(Config) ->
     {save_config, Config}.
+
+
+bad_index_test(_) ->
+    Empty = [],
+    Conf = #{
+        name => <<"users_by_email">>,
+        bucket_type => <<"index_data">>,
+        bucket_prefix => <<"babel_hash_partitioned_index_SUITE/johndoe">>,
+        type => babel_hash_partitioned_index,
+        config => #{
+            sort_ordering => asc,
+            number_of_partitions => 8,
+            partition_algorithm => jch,
+            partition_by => [<<"email">>],
+            index_by => Empty,
+            covered_fields => [<<"user_id">>]
+        }
+    },
+    ?assertError(#{code := invalid_value}, babel_index:new(Conf)).
 
 
 index_1_test(_) ->
@@ -121,11 +143,117 @@ index_4_test(_) ->
     ?assertEqual(8, length(Partitions)),
     ok.
 
+index_5_test(_) ->
+    Prefix = <<"babel-test">>,
+    IdxName = <<"persons">>,
+    Conf = #{
+        name => <<"persons_by_account">>,
+        bucket_type => <<"index_data">>,
+        bucket_prefix => <<"babel_hash_partitioned_index_SUITE/johndoe">>,
+        type => babel_hash_partitioned_index,
+        config => #{
+            sort_ordering => asc,
+            number_of_partitions => 8,
+            partition_algorithm => jch,
+            partition_by => [
+                <<"account_id">>
+            ],
+            index_by => [
+                <<"account_id">>
+            ],
+            %% aggregate_by => [
+            %%     <<"account_id">>
+            %% ],
+            covered_fields => [<<"id">>]
+        }
+    },
+
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    pong = riakc_pb_socket:ping(Conn),
+
+    RiakOpts = #{connection => Conn},
+
+    %% Cleanup previous runs
+    Cleanup = fun() ->
+        case babel_index_collection:lookup(Prefix, IdxName, RiakOpts) of
+            {ok, Collection} ->
+                case babel_index_collection:is_index(IdxName, Collection) of
+                    true ->
+                        Index = babel_index_collection:index(IdxName, Collection),
+                        _ = babel:delete_index(Index, Collection),
+                        ok;
+                    false ->
+                        ok
+                end;
+            _ ->
+                ok
+        end
+    end,
+    _ =  babel:workflow(Cleanup),
+    %% we wait 5 secs for reliable to perform the work
+    timer:sleep(5000),
+
+    %% We schedule the creation of a new collection and we add the index
+    Create = fun() ->
+        Index = babel_index:new(Conf),
+        Collection0 = babel_index_collection:new(
+            Prefix, IdxName
+        ),
+        _Collection1 = babel:create_index(Index, Collection0),
+        ok
+    end,
+    {scheduled, _, ok} =  babel:workflow(Create),
+    %% we wait 5 secs for reliable to perform the work
+    timer:sleep(5000),
+
+
+
+    %% We create 10 objects to be indexed
+    Actions = [
+        begin
+            UserId = integer_to_binary(X),
+            AccId = integer_to_binary(X),
+            Obj = #{
+                <<"id">> => <<"mrn:person:", UserId/binary>>,
+                <<"account_id">> => <<"mrn:account:", AccId/binary>>
+            },
+            {update, Obj}
+        end || X <- lists:seq(1, 2)
+    ],
+
+    Update = fun() ->
+        %% We fetch the collection from Riak KV
+        Collection = babel_index_collection:fetch(Prefix, IdxName, RiakOpts),
+        ok = babel:update_indices(Actions, Collection, RiakOpts),
+        ok
+    end,
+
+    {scheduled, _, ok} =  babel:workflow(Update),
+    timer:sleep(10000),
+
+    Collection = babel_index_collection:fetch(Prefix, IdxName, RiakOpts),
+    Index = babel_index_collection:index(
+        <<"persons_by_account">>, Collection),
+
+    Pattern = #{
+        <<"account_id">> =>  <<"mrn:account:2">>
+    },
+    ?assertEqual(
+        [#{<<"id">> => <<"mrn:person:2">>}],
+        babel_index:match(Pattern, Index, RiakOpts)
+    ),
+    ok.
+
 
 huge_index_test(_) ->
     %% We create the Index config
+
+    Prefix = <<"babel-test">>,
+    CName = <<"users">>,
+    IdxName = <<"users_by_post_code_and_email">>,
+
     Conf = #{
-        name => <<"users_by_post_code_and_email">>,
+        name => IdxName,
         bucket_type => <<"index_data">>,
         bucket_prefix => <<"babel_hash_partitioned_index_SUITE/johndoe">>,
         type => babel_hash_partitioned_index,
@@ -146,10 +274,35 @@ huge_index_test(_) ->
         }
     },
 
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    pong = riakc_pb_socket:ping(Conn),
+
+    RiakOpts = #{connection => Conn},
+
+    %% Cleanup previous runs
+    Cleanup = fun() ->
+        case babel_index_collection:lookup(Prefix, CName, RiakOpts) of
+            {ok, Collection} ->
+                case babel_index_collection:is_index(IdxName, Collection) of
+                    true ->
+                        Index = babel_index_collection:index(IdxName, Collection),
+                        _ = babel:delete_index(Index, Collection),
+                        ok;
+                    false ->
+                        ok
+                end;
+            _ ->
+                ok
+        end
+    end,
+    _ =  babel:workflow(Cleanup),
+    %% we wait 5 secs for reliable to perform the work
+    timer:sleep(10000),
+
     %% We schedule the creation of a new collection and we add the index
     Fun = fun() ->
         Index = babel_index:new(Conf),
-        Collection0 = babel_index_collection:new(<<"babel_test">>, <<"users">>),
+        Collection0 = babel_index_collection:new(Prefix, CName),
         _Collection1 = babel:create_index(Index, Collection0),
         ok
     end,
@@ -157,15 +310,8 @@ huge_index_test(_) ->
     {scheduled, _, ok} =  babel:workflow(Fun),
 
     %% we wait 5 secs for reliable to perform the work
-    timer:sleep(5000),
+    timer:sleep(10000),
 
-
-    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
-    pong = riakc_pb_socket:ping(Conn),
-
-    RiakOpts = #{
-        connection => Conn
-    },
 
     %% We create 10,000 objects to be indexed
     Actions = [
@@ -189,22 +335,17 @@ huge_index_test(_) ->
 
     Fun2 = fun() ->
         %% We fetch the collection from Riak KV
-        Collection = babel_index_collection:fetch(
-            <<"babel-test">>, <<"users">>, RiakOpts
-        ),
+        Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
         ok = babel:update_indices(Actions, Collection, RiakOpts),
         ok
     end,
 
     {scheduled, _, ok} =  babel:workflow(Fun2),
 
-    timer:sleep(5000),
+    timer:sleep(15000),
 
-    Collection = babel_index_collection:fetch(
-        <<"babel-test">>, <<"users">>, RiakOpts
-    ),
-    Index = babel_index_collection:index(
-        <<"users_by_post_code_and_email">>, Collection),
+    Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
+    Index = babel_index_collection:index(IdxName, Collection),
 
     Pattern1 = #{
         <<"post_code">> => <<"PC1">>
@@ -228,9 +369,9 @@ huge_index_test(_) ->
 
 
 accounts_by_identification_type_and_number_test(_) ->
-    BucketPrefix = <<"babel-test">>,
-    Accounts = <<"accounts">>,
-    IndexName = <<"accounts_by_identification_type_and_number">>,
+    Prefix = <<"babel-test">>,
+    CName = <<"accounts">>,
+    IdxName = <<"accounts_by_identification_type_and_number">>,
 
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
@@ -239,11 +380,31 @@ accounts_by_identification_type_and_number_test(_) ->
         connection => Conn
     },
 
+    %% Cleanup previous runs
+    Cleanup = fun() ->
+        case babel_index_collection:lookup(Prefix, CName, RiakOpts) of
+            {ok, Collection} ->
+                case babel_index_collection:is_index(IdxName, Collection) of
+                    true ->
+                        Index = babel_index_collection:index(IdxName, Collection),
+                        _ = babel:delete_index(Index, Collection),
+                        ok;
+                    false ->
+                        ok
+                end;
+            _ ->
+                ok
+        end
+    end,
+    _ =  babel:workflow(Cleanup),
+    %% we wait 5 secs for reliable to perform the work
+    timer:sleep(5000),
+
     Create = fun() ->
         Conf = #{
-            name => IndexName,
+            name => IdxName,
             bucket_type => <<"index_data">>,
-            bucket_prefix => BucketPrefix,
+            bucket_prefix => Prefix,
             type => babel_hash_partitioned_index,
             config => #{
                 sort_ordering => asc,
@@ -261,7 +422,7 @@ accounts_by_identification_type_and_number_test(_) ->
             }
         },
         Index = babel_index:new(Conf),
-        Collection = babel_index_collection:new(BucketPrefix, Accounts),
+        Collection = babel_index_collection:new(Prefix, CName),
         _ = babel:create_index(Index, Collection),
         ok
     end,
@@ -283,8 +444,8 @@ accounts_by_identification_type_and_number_test(_) ->
         ],
 
         Collection = babel_index_collection:fetch(
-            BucketPrefix, Accounts, RiakOpts),
-        _Index = babel_index_collection:index(IndexName, Collection),
+            Prefix, CName, RiakOpts),
+        _Index = babel_index_collection:index(IdxName, Collection),
         ok = babel:update_indices(Actions, Collection, RiakOpts),
         ok
     end,
@@ -296,8 +457,8 @@ accounts_by_identification_type_and_number_test(_) ->
     ct:pal("elapsed_time_secs = ~p", [(Ts1 - Ts0) / 1000]),
     timer:sleep(15000),
 
-    Collection = babel_index_collection:fetch(BucketPrefix, Accounts, RiakOpts),
-    Idx = babel_index_collection:index(IndexName, Collection),
+    Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
+    Idx = babel_index_collection:index(IdxName, Collection),
 
     Pattern = #{
         <<"identification_type">> => <<"DNI">>,
@@ -306,4 +467,8 @@ accounts_by_identification_type_and_number_test(_) ->
 
     Res = babel_index:match(Pattern, Idx, RiakOpts),
     ?assertEqual(1, length(Res)),
+    ?assertEqual(
+        [<<"account_id">>],
+        maps:keys(hd(Res))
+    ),
     ok.

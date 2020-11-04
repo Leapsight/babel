@@ -23,6 +23,7 @@ all() ->
         update_1_test,
         update_2_test,
         update_3_test,
+        update_4_test,
         patch_1_test,
         patch_2_test,
         patch_3_test,
@@ -222,6 +223,22 @@ update_3_test(_) ->
     ?assertEqual(
         undefined,
         babel_map:get_value(<<"identification_number">>, T2, undefined)
+    ).
+
+update_4_test(_) ->
+    Spec = #{
+        <<"mapping">> => {map, #{'_' => {register, binary}}}
+    },
+    Data = #{
+        <<"mapping">> => #{
+            <<"key1">> => <<"value1">>,
+            <<"key2">> => <<"value2">>
+        }
+    },
+    Map = babel_map:update(Data, babel_map:new(), Spec),
+    ?assertEqual(
+        Data,
+        babel_map:value(Map)
     ).
 
 

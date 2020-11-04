@@ -95,6 +95,7 @@
 -export([index/2]).
 -export([index_names/1]).
 -export([indices/1]).
+-export([is_index/2]).
 -export([lookup/3]).
 -export([new/2]).
 -export([size/1]).
@@ -214,6 +215,16 @@ bucket(#babel_index_collection{bucket = Value}) -> Value.
 
 data(#babel_index_collection{object = Object}) ->
     riakc_map:fetch({<<"data">>, map}, Object).
+
+
+-spec is_index(IndexName :: binary(), Collection :: t()) ->
+    babel_index:t() | no_return().
+
+is_index(IndexName, #babel_index_collection{} = Collection)
+when is_binary(IndexName) ->
+
+    Data = data(Collection),
+    orddict:is_key({IndexName, map}, Data).
 
 
 %% -----------------------------------------------------------------------------
