@@ -456,6 +456,8 @@ update_indices(Actions, Collection, RiakOpts) when is_list(Actions) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+%% @TODO Rename to drop_index to distinguish from
+%% babel_index_collection:delete_index
 -spec delete_index(
     Index :: babel_index:t(), Collection0 :: babel_index_collection:t()) ->
     babel_index_collection:t().

@@ -551,7 +551,7 @@ foreach(_Fun, _Index) ->
     Index :: t(),
     Pattern :: babel_index:key_value(),
     RiakOpts :: riak_opts()) -> [{index_key(), index_values()}] | no_return().
-
+%% @TODO take a function as options to turn Mod:match into a mapfold
 match(Pattern, Index, RiakOpts) ->
     Mod = type(Index),
     Config = config(Index),
