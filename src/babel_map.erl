@@ -686,13 +686,23 @@ set_elements(Key, Values, Map) ->
 -spec update(Values :: babel_key_value:t(), T :: t(), Spec :: type_spec()) ->
     NewT :: t().
 
-update(Values, T, Spec) ->
+update(Values, T, #{'_' := TypeSpec}) ->
     Fun = fun
         Fold({Key, _}, Value, Acc) ->
             %% A Riak Map key
             Fold(Key, Value, Acc);
         Fold(Key, Value, Acc) ->
-            case maps:find(Key, Spec) of
+            do_update(Key, Value, Acc, TypeSpec)
+    end,
+    babel_key_value:fold(Fun, T, Values);
+
+update(Values, T, MapSpec) ->
+    Fun = fun
+        Fold({Key, _}, Value, Acc) ->
+            %% A Riak Map key
+            Fold(Key, Value, Acc);
+        Fold(Key, Value, Acc) ->
+            case maps:find(Key, MapSpec) of
                 {ok, TypeSpec} ->
                     do_update(Key, Value, Acc, TypeSpec);
                 error ->

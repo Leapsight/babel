@@ -24,6 +24,8 @@ all() ->
         update_2_test,
         update_3_test,
         update_4_test,
+        update_5_test,
+        update_6_test,
         patch_1_test,
         patch_2_test,
         patch_3_test,
@@ -241,6 +243,47 @@ update_4_test(_) ->
         babel_map:value(Map)
     ).
 
+
+update_5_test(_) ->
+    Spec = #{
+        <<"mapping">> => {map, #{
+            <<"foo">> => {map, #{'_' => {register, binary}}}
+        }}
+    },
+    Data = #{
+        <<"mapping">> => #{
+            <<"foo">> => #{
+                <<"key1">> => <<"value1">>,
+                <<"key2">> => <<"value2">>,
+                <<"key3">> => 100
+            }
+        }
+    },
+    ?assertError(
+        {badkeytype, 100, binary},
+        babel_map:update(Data, babel_map:new(), Spec)
+    ).
+
+
+update_6_test(_) ->
+    Spec = #{
+        <<"mapping">> => {map, #{
+            <<"foo">> => {map, #{'_' => {register, binary}}}
+        }}
+    },
+    Data = #{
+        <<"mapping">> => #{
+            <<"foo">> => #{
+                <<"key1">> => <<"value1">>,
+                <<"key2">> => <<"value2">>
+            }
+        }
+    },
+    Map = babel_map:update(Data, babel_map:new(), Spec),
+    ?assertEqual(
+        Data,
+        babel_map:value(Map)
+    ).
 
 patch_1_test(_) ->
     Ctxt = <<>>,
