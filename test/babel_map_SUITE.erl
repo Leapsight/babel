@@ -26,6 +26,7 @@ all() ->
         update_4_test,
         update_5_test,
         update_6_test,
+        update_7_test,
         patch_1_test,
         patch_2_test,
         patch_3_test,
@@ -284,6 +285,33 @@ update_6_test(_) ->
         Data,
         babel_map:value(Map)
     ).
+
+
+update_7_test(_) ->
+    Spec = #{'_' => {map, #{'_' => {register, integer}}}},
+    M0 = babel_map:new(#{<<"a">> => #{<<"a1">> => 1}}, Spec),
+    Update0 = #{
+        <<"a">> => #{<<"a2">> => 2},
+        <<"b">> => #{<<"b1">> => 1}
+    },
+    Expected0 = #{
+        <<"a">> => #{<<"a1">> => 1, <<"a2">> => 2},
+        <<"b">> => #{<<"b1">> => 1}
+    },
+    M1 = babel_map:update(Update0, M0, Spec),
+    ?assertEqual(Expected0, babel_map:value(M1)),
+
+    Update1 = #{
+        <<"a">> => #{<<"a2">> => 20},
+        <<"b">> => #{<<"b1">> => 10}
+    },
+    Expected1 = #{
+        <<"a">> => #{<<"a1">> => 1, <<"a2">> => 20},
+        <<"b">> => #{<<"b1">> => 10}
+    },
+    M2 = babel_map:update(Update1, M1, Spec),
+    ?assertEqual(Expected1, babel_map:value(M2)).
+
 
 patch_1_test(_) ->
     Ctxt = <<>>,
