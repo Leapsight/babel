@@ -671,11 +671,8 @@ datatype_to_op(map, Datatype, Spec) ->
 datatype_to_op(set, Datatype, Spec) ->
     babel_set:to_riak_op(Datatype, Spec);
 
-datatype_to_op(counter, _Datatype, _Spec) ->
-    error(not_implemented);
-
-datatype_to_op(flag, _Datatype, _Spec) ->
-    error(not_implemented).
+datatype_to_op(counter, Datatype, Spec) ->
+    babel_counter:to_riak_op(Datatype, Spec).
 
 
 %% @private
@@ -685,11 +682,8 @@ to_babel_datatype(map, RiakDatatype, Spec) ->
 to_babel_datatype(set, Datatype, Spec) ->
     babel_set:from_riak_set(Datatype, Spec);
 
-to_babel_datatype(counter, _Datatype, _Spec) ->
-    error(not_implemented);
-
-to_babel_datatype(flag, _Datatype, _Spec) ->
-    error(not_implemented).
+to_babel_datatype(counter, Datatype, Spec) ->
+    babel_counter:from_riak_counter(Datatype, Spec).
 
 
 %% @private
@@ -701,11 +695,9 @@ to_update_task(set, TypedBucket, Key, Datatype, Spec) ->
     Op = babel_set:to_riak_op(Datatype, Spec),
     to_update_task(TypedBucket, Key, Op);
 
-to_update_task(counter, _TypedBucket, _Key, _Datatype, _Spec) ->
-    error(not_implemented);
-
-to_update_task(flag, _TypedBucket, _Key, _Datatype, _Spec) ->
-    error(not_implemented).
+to_update_task(counter, TypedBucket, Key, Datatype, Spec) ->
+    Op = babel_set:to_riak_op(Datatype, Spec),
+    to_update_task(TypedBucket, Key, Op).
 
 
 %% @private
