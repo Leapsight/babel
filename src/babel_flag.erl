@@ -36,6 +36,7 @@
 -export([enable/1]).
 -export([from_riak_flag/3]).
 -export([is_type/1]).
+-export([is_valid_type_spec/1]).
 -export([new/0]).
 -export([new/1]).
 -export([new/2]).
@@ -136,6 +137,17 @@ type() -> flag.
 
 is_type(Term) ->
     is_record(Term, babel_flag).
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec is_valid_type_spec(term()) -> boolean().
+
+is_valid_type_spec(boolean) -> true;
+is_valid_type_spec(_) -> false.
 
 
 %% -----------------------------------------------------------------------------

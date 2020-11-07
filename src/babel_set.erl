@@ -58,6 +58,7 @@
 -export([is_element/2]).
 -export([is_original_element/2]).
 -export([is_type/1]).
+-export([is_valid_type_spec/1]).
 -export([new/0]).
 -export([new/1]).
 -export([new/2]).
@@ -211,6 +212,24 @@ type() -> set.
 
 is_type(Term) ->
     is_record(Term, babel_set).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec is_valid_type_spec(term()) -> boolean().
+
+is_valid_type_spec(atom) -> true;
+is_valid_type_spec(existing_atom) -> true;
+is_valid_type_spec(boolean) -> true;
+is_valid_type_spec(integer) -> true;
+is_valid_type_spec(float) -> true;
+is_valid_type_spec(binary) -> true;
+is_valid_type_spec(list) -> true;
+is_valid_type_spec(Fun) when is_function(Fun, 1) -> true;
+is_valid_type_spec(Fun) when is_function(Fun, 2) -> true;
+is_valid_type_spec(_) -> false.
 
 
 %% -----------------------------------------------------------------------------

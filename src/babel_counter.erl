@@ -37,6 +37,7 @@
 -export([increment/1]).
 -export([increment/2]).
 -export([is_type/1]).
+-export([is_valid_type_spec/1]).
 -export([new/0]).
 -export([new/1]).
 -export([original_value/1]).
@@ -45,6 +46,7 @@
 -export([to_riak_op/2]).
 -export([type/0]).
 -export([value/1]).
+
 
 
 
@@ -120,6 +122,16 @@ type() -> counter.
 
 is_type(Term) ->
     is_record(Term, babel_counter).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec is_valid_type_spec(term()) -> boolean().
+
+is_valid_type_spec(integer) -> true;
+is_valid_type_spec(_) -> false.
 
 
 %% -----------------------------------------------------------------------------

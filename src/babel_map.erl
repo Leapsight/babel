@@ -143,7 +143,7 @@
 -export([update/3]).
 -export([updated_key_paths/1]).
 -export([value/1]).
-
+-export([validate_type_spec/1]).
 
 
 
@@ -239,7 +239,8 @@ from_riak_map(Values, Spec) when is_list(Values) ->
 to_riak_op(T, #{'_' := TypeOrSpec}) ->
     to_riak_op(T, expand_spec(modified_keys(T), TypeOrSpec));
 
-to_riak_op(#babel_map{} = T, Spec) when is_map(Spec) ->
+to_riak_op(#babel_map{} = T, Spec0) when is_map(Spec0) ->
+    Spec = validate_type_spec(Spec0),
     Updates = prepare_update_ops(T, Spec),
     Removes = prepare_remove_ops(T, Spec),
 
@@ -253,6 +254,52 @@ to_riak_op(#babel_map{} = T, Spec) when is_map(Spec) ->
 to_riak_op(Term, _) ->
     badtype(map, Term).
 
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec validate_type_spec(Spec :: type_spec()) -> type_spec() | no_return().
+
+validate_type_spec(#{'$validated' := true} = Spec) ->
+    Spec;
+
+validate_type_spec(Spec0) ->
+    _ = validate_type_spec(Spec0, []),
+    maps:put('$validated', true, Spec0).
+
+
+%% @private
+validate_type_spec(Spec0, Acc) ->
+    Validate = fun
+        (K, {map, MapSpec}, FAcc) when is_binary(K) orelse K == '_' ->
+            validate_type_spec(MapSpec, FAcc);
+
+        (K, {Type, TypeSpec} = V, FAcc) when is_binary(K) orelse K == '_' ->
+            case type_to_mod(Type) of
+                undefined ->
+                    %% register
+                    FAcc;
+                error ->
+                    [{K, V} | FAcc];
+                Mod ->
+                    case Mod:is_valid_type_spec(TypeSpec) of
+                        true -> FAcc;
+                        false -> [{K, V} | FAcc]
+                    end
+            end;
+
+        (K, V, FAcc) ->
+            [{K, V} | FAcc]
+    end,
+
+    case maps:fold(Validate, Acc, Spec0) of
+        [] ->
+            Acc;
+        Errors ->
+            error({invalid_spec, Errors})
+    end.
 
 
 %% -----------------------------------------------------------------------------
@@ -686,22 +733,17 @@ set_elements(Key, Values, Map) ->
 -spec update(Values :: babel_key_value:t(), T :: t(), Spec :: type_spec()) ->
     NewT :: t().
 
-update(Values, T, #{'_' := TypeSpec}) ->
-    Fun = fun
-        Fold({Key, _}, Value, Acc) ->
-            %% A Riak Map key
-            Fold(Key, Value, Acc);
-        Fold(Key, Value, Acc) ->
-            do_update(Key, Value, Acc, TypeSpec)
+update(Values, #babel_map{} = T, #{'_' := TypeSpec}) ->
+    Fun = fun(Key0, Value, Acc) ->
+        Key = to_key(Key0),
+        do_update(Key, Value, Acc, TypeSpec)
     end,
     babel_key_value:fold(Fun, T, Values);
 
-update(Values, T, MapSpec) ->
-    Fun = fun
-        Fold({Key, _}, Value, Acc) ->
-            %% A Riak Map key
-            Fold(Key, Value, Acc);
-        Fold(Key, Value, Acc) ->
+update(Values, #babel_map{} = T, MapSpec0) when is_map(MapSpec0) ->
+    MapSpec = validate_type_spec(MapSpec0),
+    Fun = fun(Key0, Value, Acc) ->
+            Key = to_key(Key0),
             case maps:find(Key, MapSpec) of
                 {ok, TypeSpec} ->
                     do_update(Key, Value, Acc, TypeSpec);
@@ -725,7 +767,8 @@ update(Values, T, MapSpec) ->
 -spec patch(ActionList :: [action()], T :: t(), Spec :: type_spec()) ->
     NewT :: t().
 
-patch(ActionList, #babel_map{} = T, Spec) ->
+patch(ActionList, #babel_map{} = T, Spec0) ->
+    Spec = validate_type_spec(Spec0),
     Fun = fun(Action, Acc) ->
         patch_eval(Action, Acc, Spec)
     end,
@@ -907,7 +950,8 @@ merge(#babel_map{} = T1, #babel_map{values = V2}) ->
 from_map(Map, #{'_' := TypeOrSpec}, Ctxt) ->
     from_map(Map, expand_spec(maps:keys(Map), TypeOrSpec), Ctxt);
 
-from_map(Map, Spec, Ctxt) when is_map(Spec) ->
+from_map(Map, Spec0, Ctxt) when is_map(Spec0) ->
+    Spec = validate_type_spec(Spec0),
     ConvertType = fun(Key, Value) ->
         case maps:find(Key, Spec) of
             {ok, {Datatype, SpecOrType}} ->
@@ -974,7 +1018,8 @@ from_term(Term, _, register, Type) ->
 -spec from_orddict(orddict:orddict(), riakc_datatype:context(), type_spec()) ->
     maybe_no_return(t()).
 
-from_orddict(RMap, Context, Spec) when is_map(Spec) ->
+from_orddict(RMap, Context, Spec0) when is_map(Spec0) ->
+    Spec = validate_type_spec(Spec0),
     %% Convert values in RMap
     Convert = fun({Key, Datatype} = RKey, RValue, Acc) ->
         case maps:find(Key, Spec) of
@@ -1000,6 +1045,18 @@ from_orddict(RMap, Context, Spec) when is_map(Spec) ->
 %% @private
 modified_keys(#babel_map{updates = U, removes = R}) ->
     ordsets:union(U, R).
+
+
+%% @private
+to_key({Key, _}) when is_binary(Key) ->
+    Key;
+
+to_key(Key) when is_binary(Key) ->
+    Key;
+
+to_key(Term) ->
+    error({badkey, Term}).
+
 
 %% @private
 %% init_values(Spec, Acc0) ->
@@ -1083,6 +1140,15 @@ type_value(Term) ->
 
 
 %% @private
+type_to_mod(register) -> undefined;
+type_to_mod(set) -> babel_set;
+type_to_mod(counter) -> babel_counter;
+type_to_mod(flag) -> babel_flag;
+type_to_mod(map) -> ?MODULE;
+type_to_mod(_) -> error.
+
+
+%% @private
 -spec badtype(datatype(), binary()) -> no_return().
 
 badtype(register, Key) ->
@@ -1159,8 +1225,6 @@ path_type([H|T], Spec) ->
         error ->
             error({missing_spec, H})
     end.
-
-
 
 
 %% @private
@@ -1341,6 +1405,7 @@ do_remove(Key, #babel_map{}) when not is_binary(Key) ->
 do_remove(_, Term) ->
     badtype(map, Term).
 
+
 %% @private
 maybe_merge(Key, Term2, Acc) ->
     Type = babel:type(Term2),
@@ -1467,7 +1532,6 @@ updated_key_paths(#babel_map{updates = U} = Parent, Acc, Path0) ->
         Acc,
         U
     ).
-
 
 
 %% @private
