@@ -111,7 +111,6 @@ new(Data) when is_list(Data) ->
     Ctxt :: riakc_datatype:context())  -> t().
 
 new(Data, Ctxt) when is_list(Data) ->
-    %% TODO validate all elements are of type Type
     Adds = ordsets:from_list(Data),
     #babel_set{adds = Adds, size = ordsets:size(Adds), context = Ctxt}.
 
