@@ -30,6 +30,7 @@ all() ->
         patch_1_test,
         patch_2_test,
         patch_3_test,
+        undefined_test_1,
         set_undefined_test_1,
         set_undefined_test_2
     ].
@@ -404,11 +405,19 @@ patch_2_test(_) ->
 patch_3_test(_) ->
     ok.
 
+
+undefined_test_1(_) ->
+    TypeSpec = #{<<"a">> => {register, binary}},
+    T1 = babel_map:new(#{<<"a">> => undefined}, TypeSpec),
+    ?assertEqual([], babel_map:keys(T1)).
+
+
 set_undefined_test_1(_) ->
     T1 = babel_map:new(#{<<"a">> => 1}, #{<<"a">> => {register, integer}}),
     %% No context, so nop
     T2 = babel_map:set(<<"a">>, undefined, T1),
     ?assertEqual([<<"a">>], babel_map:keys(T2)).
+
 
 set_undefined_test_2(_) ->
     Ctxt = <<>>,

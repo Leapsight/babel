@@ -164,15 +164,17 @@ new()->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Creates a new Babel Map from the erlang map `Data', previously
+%% filtering out all keys assigned to the `undefined'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec new(Data :: map()) -> t().
 
 new(Data) when is_map(Data) ->
+    Valid = maps:filter(fun(_, V) -> V /= undefined end, Data),
     #babel_map{
-        values = Data,
-        updates = ordsets:from_list(maps:keys(Data))
+        values = Valid,
+        updates = ordsets:from_list(maps:keys(Valid))
     }.
 
 
@@ -187,7 +189,8 @@ new(Data, Spec) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Creates a new Babel Map from the erlang map `Data', previously
+%% filtering out all keys assigned to the `undefined'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec new(
@@ -952,15 +955,21 @@ from_map(Map, #{'_' := TypeOrSpec}, Ctxt) ->
 
 from_map(Map, Spec0, Ctxt) when is_map(Spec0) ->
     Spec = validate_type_spec(Spec0),
-    ConvertType = fun(Key, Value) ->
-        case maps:find(Key, Spec) of
-            {ok, {Datatype, SpecOrType}} ->
-                from_term(Value, Ctxt, Datatype, SpecOrType);
-            error ->
-                error({missing_spec, Key})
-        end
+
+    ConvertType = fun
+        (_, undefined, Acc) ->
+            %% We filter out entries with undefined value
+            Acc;
+        (Key, Value, Acc) ->
+            case maps:find(Key, Spec) of
+                {ok, {Datatype, SpecOrType}} ->
+                    NewValue = from_term(Value, Ctxt, Datatype, SpecOrType),
+                    maps:put(Key, NewValue, Acc);
+                error ->
+                    error({missing_spec, Key})
+            end
     end,
-    Values0 = maps:map(ConvertType, Map),
+    Values0 = maps:fold(ConvertType, maps:new(), Map),
 
     %% Initialise values for Spec keys not present in Map
     %% Keys = maps:keys(Map),
