@@ -34,7 +34,7 @@
  {<<"pooler">>,{pkg,<<"pooler">>,<<"1.5.3">>},1},
  {<<"reliable">>,
   {git,"https://gitlab.com/leapsight/reliable.git",
-       {ref,"5539b7a56d4aec28d59661917e1c5841bd65f5c8"}},
+       {ref,"506c09427749cd5c10f7dc5bfd9d6d6ed3881285"}},
   0},
  {<<"riak_pb">>,
   {git,"https://github.com/basho/riak_pb",
