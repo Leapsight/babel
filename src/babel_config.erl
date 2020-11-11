@@ -53,6 +53,7 @@
 init() ->
     %% _ = logger:set_application_level(babel, info),
     %% _ = logger:set_application_level(reliable, error),
+    ?LOG_INFO(#{message => "Initialising Babel configuration"}),
     ok = app_config:init(?APP, #{callback_mod => ?MODULE}),
     ok = apply_reliable_config(),
     apply_private_config().
