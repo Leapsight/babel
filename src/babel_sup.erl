@@ -23,6 +23,8 @@
 
 -module(babel_sup).
 -behaviour(supervisor).
+-include_lib("kernel/include/logger.hrl").
+
 
 -define(SUPERVISOR(Id, Mod, Args, Restart, Timeout), #{
     id => Id,
@@ -66,7 +68,15 @@
 
 
 start_link() ->
-    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+    try
+        ok = babel_config:init(),
+        ok = maybe_add_pool(),
+        supervisor:start_link({local, ?MODULE}, ?MODULE, [])
+    catch
+        _:Reason ->
+            {error, Reason}
+    end.
+
 
 
 
@@ -78,7 +88,6 @@ start_link() ->
 
 init([]) ->
     %% We first initialise the config
-    ok = babel_config:init(),
     TTL = babel_config:get(cache_ttl_secs, 60),
 
     Children = [
@@ -105,3 +114,41 @@ init([]) ->
         )
     ],
     {ok, {{one_for_one, 1, 5}, Children}}.
+
+
+
+%% =============================================================================
+%% PRIVATE
+%% =============================================================================
+
+
+
+
+maybe_add_pool() ->
+    case babel_config:get(riak_pools, undefined) of
+        undefined ->
+            ?LOG_INFO(#{
+                message => "No Riak KV connection pool configured"
+            }),
+            ok;
+        Pools when is_list(Pools) ->
+            ok = lists:foreach(
+                fun
+                    (#{name := Name} = Pool) ->
+                        case riak_pool:add_pool(default, Pool) of
+                            ok ->
+                                ?LOG_INFO(#{
+                                    message => "Riak KV connection pool configured",
+                                    poolname => Name,
+                                    config => Pool
+                                }),
+                                ok;
+                            {error, Reason} ->
+                                throw(Reason)
+                        end;
+                    (Pool) ->
+                        throw({missing_poolname, Pool})
+                end,
+                Pools
+            )
+    end.
