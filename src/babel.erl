@@ -27,13 +27,26 @@
 -include_lib("kernel/include/logger.hrl").
 
 
--type datatype()        ::  babel_map:t() | babel_set:t().
--type type_spec()       ::  babel_map:type_spec() | babel_set:type_spec().
+-type datatype()        ::  babel_map:t() | babel_set:t() | babel_counter:t().
+-type type_spec()       ::  babel_map:type_spec()
+                            | babel_set:type_spec()
+                            | babel_counter:type_spec().
 -type riak_op()         ::  riakc_datatype:update(term()).
 
 -export_type([datatype/0]).
+-export_type([type_spec/0]).
 -export_type([riak_op/0]).
 
+%% API
+-export([delete/3]).
+-export([get/4]).
+-export([get_connection/1]).
+-export([module/1]).
+-export([put/5]).
+-export([type/1]).
+-export([validate_riak_opts/1]).
+
+%% API: WORKFLOW & WORKFLOW AWARE FUNCTIONS
 -export([create_collection/2]).
 -export([create_index/2]).
 -export([delete_collection/1]).
@@ -42,13 +55,6 @@
 -export([update_indices/3]).
 -export([workflow/1]).
 -export([workflow/2]).
--export([validate_riak_opts/1]).
--export([get_connection/1]).
--export([put/5]).
--export([delete/3]).
--export([get/4]).
--export([type/1]).
--export([module/1]).
 
 
 %% =============================================================================
@@ -56,8 +62,9 @@
 %% =============================================================================
 
 
+
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns the atom name for a babel datatype.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec type(term()) -> set | map | counter | flag | register.
@@ -70,7 +77,7 @@ type(Term) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns the module associated with the type of term `Term'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec module(Term :: any()) -> module() | undefined.
@@ -93,13 +100,31 @@ module(Term) when is_tuple(Term) ->
     end;
 
 module(_) ->
-    %% We do not have a wrapper module for registers
+    %% We do not have a wrapper module for register as we treat most Erlang
+    %% types as registers through the transformations provided by
+    %% babel_map:type_spec().
     undefined.
 
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Retrieves a Riak Datatype (counter, set or map) from bucket type and
+%% bucket `TypedBucket' and key `Key'. It uses type spec `Spec' to transform
+%% the Riak Datatype into a Babel Datatype and if successful returns a {@link
+%% babel_counter}, {@link babel_set} or {@link babel_map} respectively.
+%%
+%% This function gets the riak client connection from the options `Opts' under
+%% the key `connection' which can have the connection pid or a function object
+%% returning a connection pid. This allows a lot of flexibility such as reusing
+%% a given connection over several calls the babel function of using your own
+%% connection pool and management.
+%%
+%% In case the `connection' option does not provide a connection as explained
+%% above, this function tries to use the `default' connection pool if it was
+%% enabled through Babel's configuration options.
+%%
+%% Returns `{error, not_found}' if the key is not on the server.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec get(
@@ -107,8 +132,7 @@ module(_) ->
     Key :: binary(),
     Spec :: type_spec(),
     Opts :: map()) ->
-    ok
-    | {ok, Datatype :: datatype()}
+    {ok, Datatype :: datatype()}
     | {error, Reason :: term()}.
 
 get(TypedBucket, Key, Spec, Opts0) ->
@@ -171,6 +195,55 @@ delete(TypedBucket, Key, Opts) ->
         true ->
             schedule_delete(TypedBucket, Key, Opts)
     end.
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Validates and returns the options in proplist format as expected by
+%% Riak KV.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec validate_riak_opts(map()) -> maybe_no_return(map()).
+
+-dialyzer({nowarn_function, validate_riak_opts/1}).
+
+validate_riak_opts(#{'$validated' := true} = Opts) ->
+    Opts;
+
+validate_riak_opts(Opts) ->
+    Opts1 = maps_utils:validate(Opts, ?RIAK_OPTS_SPEC),
+    Opts1#{'$validated' => true}.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+get_connection(#{connection := Conn}) when is_pid(Conn) ->
+    Conn;
+
+get_connection(#{connection := Get}) when is_function(Get, 0) ->
+    Get();
+
+get_connection(Opts) ->
+    case babel_config:get(default_pool, undefined) of
+        undefined ->
+            error(no_connection_provided);
+        Poolname ->
+            Timeout = maps:get(timeout, Opts, 5000),
+            case riak_pool:checkout(Poolname, #{timeout => Timeout}) of
+                {ok, Pid} -> Pid;
+                {error, Reason} -> error(Reason)
+            end
+    end.
+
+
+
+
+%% =============================================================================
+%% API: WORKFLOW AND WORKFLOW-AWARE FUNCTIONS
+%% =============================================================================
+
 
 
 %% -----------------------------------------------------------------------------
@@ -361,33 +434,6 @@ create_index(Index, Collection) ->
             do_create_index(Index, Collection)
     end.
 
-
-%% -----------------------------------------------------------------------------
-%% @doc Validates and returns the options in proplist format as expected by
-%% Riak KV.
-%% @end
-%% -----------------------------------------------------------------------------
--spec validate_riak_opts(map()) -> maybe_no_return(map()).
-
--dialyzer({nowarn_function, validate_riak_opts/1}).
-
-validate_riak_opts(#{'$validated' := true} = Opts) ->
-    Opts;
-
-validate_riak_opts(Opts) ->
-    Opts1 = maps_utils:validate(Opts, ?RIAK_OPTS_SPEC),
-    Opts1#{'$validated' => true}.
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
-get_connection(#{connection := Conn}) when is_pid(Conn) ->
-    Conn;
-
-get_connection(#{connection := Get}) when is_function(Get, 0) ->
-    Get().
 
 
 %% -----------------------------------------------------------------------------
