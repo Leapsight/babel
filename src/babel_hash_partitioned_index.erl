@@ -34,6 +34,8 @@
 -behaviour(babel_index).
 -include("babel.hrl").
 
+%% TODO Leaf nodes in the index should be either SET or REGISTER depending on the new option 'cardinality' :: one | many.
+
 -define(KEYPATH_LIST_SPEC, {list, [binary, tuple, {list, [binary, tuple]}]}).
 
 -define(SPEC, #{
@@ -85,6 +87,13 @@
         allow_null => false,
         allow_undefined => false,
         datatype => ?KEYPATH_LIST_SPEC
+    },
+    cardinality => #{
+        required => true,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => {in, [one, many]},
+        default => many
     }
 }).
 
@@ -97,9 +106,9 @@
     partition_by := fields(),
     index_by := fields(),
     aggregate_by := fields(),
-    covered_fields := fields()
+    covered_fields := fields(),
+    cardinality := one | many
 }.
-
 
 -record(babel_hash_partitioned_index_iter, {
     partition                   ::  babel_index_partition:t() | undefined,
