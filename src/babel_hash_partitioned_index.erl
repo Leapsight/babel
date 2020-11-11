@@ -28,6 +28,8 @@
 %% With hash partitioning, an index entry is placed into a partition based
 %% on the result of passing the partitioning key into a hashing algorithm.
 %%
+%% This object is immutable.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -module(babel_hash_partitioned_index).
@@ -93,7 +95,7 @@
         allow_null => false,
         allow_undefined => false,
         datatype => {in, [one, many]},
-        default => many
+        default => one
     }
 }).
 
@@ -223,6 +225,15 @@ covered_fields(#{covered_fields := Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+-spec cardinality(t()) -> one | many.
+
+cardinality(#{cardinality := Value}) -> Value.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
 -spec partition_identifier_prefix(t()) -> binary().
 
 partition_identifier_prefix(#{partition_identifier_prefix := Value}) -> Value.
@@ -315,6 +326,11 @@ from_riak_dict(Dict) ->
         )
     ),
 
+    Cardinality = case orddict:find({<<"cardinality">>, register}, Dict) of
+        {ok, Bin} -> binary_to_existing_atom(Bin, utf8);
+        error -> one
+    end,
+
     %% As this object is read-only and embeded in an Index Collection we turn it
     %% into an Erlang map as soon as we read it from the collection for enhanced
     %% performance. So loosing its CRDT context it not an issue.
@@ -327,7 +343,8 @@ from_riak_dict(Dict) ->
         partition_identifiers => Identifiers,
         index_by => IndexBy,
         aggregate_by => AggregateBy,
-        covered_fields => CoveredFields
+        covered_fields => CoveredFields,
+        cardinality => Cardinality
     }.
 
 
@@ -348,7 +365,8 @@ to_riak_object(Config) ->
         partition_identifiers := Identifiers,
         index_by := IndexBy,
         aggregate_by := AggregateBy,
-        covered_fields := CoveredFields
+        covered_fields := CoveredFields,
+        cardinality := Cardinality
     } = Config,
 
 
@@ -361,7 +379,8 @@ to_riak_object(Config) ->
         {{<<"partition_by">>, register}, encode_fields(PartitionBy)},
         {{<<"index_by">>, register}, encode_fields(IndexBy)},
         {{<<"aggregate_by">>, register}, encode_fields(AggregateBy)},
-        {{<<"covered_fields">>, register}, encode_fields(CoveredFields)}
+        {{<<"covered_fields">>, register}, encode_fields(CoveredFields)},
+        {{<<"cardinality">>, register}, atom_to_binary(Cardinality, utf8)}
     ],
 
     lists:foldl(
@@ -378,8 +397,7 @@ to_riak_object(Config) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec init_partitions(t()) ->
-    {ok, [babel_index_partition:t()]}
-    | {error, any()}.
+    {ok, [babel_index_partition:t()]} | {error, any()}.
 
 init_partitions(#{partition_identifiers := Identifiers}) ->
     Partitions = [babel_index_partition:new(Id) || Id <- Identifiers],
@@ -407,11 +425,11 @@ partition_identifier(KeyValue, Config) ->
     Algo = partition_algorithm(Config),
     Keys = partition_by(Config),
 
-    try gen_index_key(Keys, KeyValue) of
+    %% We collect the partition keys from the key value object and build a
+    %% binary key that we then use to hash to the partition.
+    try gen_key(Keys, KeyValue) of
         PKey ->
             Bucket = babel_consistent_hashing:bucket(PKey, N, Algo),
-            %% Prefix = partition_identifier_prefix(Config),
-            %% gen_identifier(Prefix, Bucket).
             %% Bucket is zero-based
             lists:nth(Bucket + 1, partition_identifiers(Config))
     catch
@@ -447,30 +465,34 @@ partition_identifiers(Order, Config) ->
     ) -> babel_index_partition:t() | no_return().
 
 update_partition({update, Data}, Partition, Config) ->
+    Cardinality = cardinality(Config),
     AggregateBy = aggregate_by(Config),
     IndexBy = index_by(Config),
-    IndexKey = gen_index_key(IndexBy, Data),
-    Value = gen_index_key(covered_fields(Config), Data),
+
+    IndexKey = gen_key(IndexBy, Data),
+    Value = gen_key(covered_fields(Config), Data),
 
     case AggregateBy of
         [] ->
-            update_data(IndexKey, Value, Partition);
+            update_data(IndexKey, Value, Cardinality, Partition);
         IndexBy ->
-            update_data({IndexKey, IndexKey}, Value, Partition);
+            update_data({IndexKey, IndexKey}, Value, Cardinality, Partition);
         AggregateBy ->
-            AggregateKey = gen_index_key(AggregateBy, Data),
-            update_data({AggregateKey, IndexKey}, Value, Partition)
+            AggregateKey = gen_key(AggregateBy, Data),
+            update_data({AggregateKey, IndexKey}, Value, Cardinality, Partition)
     end;
 
 update_partition({delete, Data}, Partition, Config) ->
-    IndexKey = gen_index_key(index_by(Config), Data),
+    Cardinality = cardinality(Config),
+    IndexKey = gen_key(index_by(Config), Data),
+    Value = gen_key(covered_fields(Config), Data),
 
     case aggregate_by(Config) of
         [] ->
-            delete_data(IndexKey, Partition);
+            delete_data(IndexKey, Value, Cardinality, Partition);
         Fields ->
-            AggregateKey = gen_index_key(Fields, Data),
-            delete_data({AggregateKey, IndexKey}, Partition)
+            AggregateKey = gen_key(Fields, Data),
+            delete_data({AggregateKey, IndexKey}, Value, Cardinality, Partition)
     end;
 
 update_partition([H|T], Partition0, Config) ->
@@ -487,9 +509,10 @@ update_partition([], Partition, _) ->
 %% @end
 %% -----------------------------------------------------------------------------
 match(Pattern, Partition, Config) ->
+    Cardinality = cardinality(Config),
     IndexBy = index_by(Config),
-    IndexKey = safe_gen_index_key(IndexBy, Pattern),
-    AggregateKey = safe_gen_index_key(aggregate_by(Config), Pattern),
+    IndexKey = safe_gen_key(IndexBy, Pattern),
+    AggregateKey = safe_gen_key(aggregate_by(Config), Pattern),
 
     Result = case {AggregateKey, IndexKey} of
         {error, error} ->
@@ -517,7 +540,7 @@ match(Pattern, Partition, Config) ->
             )
     end,
 
-    match_output(IndexBy, covered_fields(Config), Result).
+    match_output(IndexBy, covered_fields(Config), Cardinality, Result).
 
 
 
@@ -621,16 +644,30 @@ gen_identifier(Prefix, N) ->
     <<Prefix/binary, $_, (integer_to_binary(N))/binary>>.
 
 
+%% -----------------------------------------------------------------------------
 %% @private
-gen_index_key(Keys, Data) ->
+%% @doc Collects keys `Keys' from key value data `Data' and joins them using a
+%% separator.
+%% We do this as Riak does not support list and sets are ordered.
+%% @end
+%% -----------------------------------------------------------------------------
+gen_key(Keys, Data) ->
     binary_utils:join(babel_key_value:collect(Keys, Data)).
 
 
+%% -----------------------------------------------------------------------------
 %% @private
-safe_gen_index_key([], _) ->
+%% @doc Collects keys `Keys' from key value data `Data' and joins them using a
+%% separator.
+%% We do this as Riak does not support list and sets are ordered.
+%% The diff between this function and gen_key/2 is that this one catches
+%% exceptions and returns a value.
+%% @end
+%% -----------------------------------------------------------------------------
+safe_gen_key([], _) ->
     undefined;
 
-safe_gen_index_key(Keys, Data) ->
+safe_gen_key(Keys, Data) ->
     try
         binary_utils:join(babel_key_value:collect(Keys, Data))
     catch
@@ -641,7 +678,7 @@ safe_gen_index_key(Keys, Data) ->
 
 
 %% @private
-update_data({AggregateKey, IndexKey}, Value, Partition) ->
+update_data({AggregateKey, IndexKey}, Value, one, Partition) ->
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -659,7 +696,25 @@ update_data({AggregateKey, IndexKey}, Value, Partition) ->
         Partition
     );
 
-update_data(IndexKey, Value, Partition) ->
+update_data({AggregateKey, IndexKey}, Value, many, Partition) ->
+    babel_index_partition:update_data(
+        fun(Data) ->
+            riakc_map:update(
+                {AggregateKey, map},
+                fun(AggregateMap) ->
+                    riakc_map:update(
+                        {IndexKey, set},
+                        fun(Set) -> riakc_set:add_element(Value, Set) end,
+                        AggregateMap
+                    )
+                end,
+                Data
+            )
+        end,
+        Partition
+    );
+
+update_data(IndexKey, Value, one, Partition) ->
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -669,11 +724,23 @@ update_data(IndexKey, Value, Partition) ->
             )
         end,
         Partition
+    );
+
+update_data(IndexKey, Value, many, Partition) ->
+    babel_index_partition:update_data(
+        fun(Data) ->
+            riakc_map:update(
+                {IndexKey, set},
+                fun(Set) -> riakc_set:add_element(Value, Set) end,
+                Data
+            )
+        end,
+        Partition
     ).
 
 
 %% @private
-delete_data({AggregateKey, IndexKey}, Partition) ->
+delete_data({AggregateKey, IndexKey}, _, one, Partition) ->
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -685,11 +752,42 @@ delete_data({AggregateKey, IndexKey}, Partition) ->
         Partition
     );
 
-delete_data(IndexKey, Partition) ->
+delete_data({AggregateKey, IndexKey}, Value, many, Partition) ->
+    babel_index_partition:update_data(
+        fun(Data) ->
+            riakc_map:update(
+                {AggregateKey, map},
+                fun(AggregateMap) ->
+                    riakc_map:update(
+                        {IndexKey, set},
+                        fun(Set) -> riakc_set:del_element(Value, Set) end,
+                        AggregateMap
+                    )
+                end,
+                Data
+            )
+        end,
+        Partition
+    );
+
+delete_data(IndexKey, _, one, Partition) ->
     babel_index_partition:update_data(
         fun(Data) -> riakc_map:erase({IndexKey, map}, Data) end,
         Partition
+    );
+
+delete_data(IndexKey, Value, many, Partition) ->
+    babel_index_partition:update_data(
+        fun(Data) ->
+            riakc_map:update(
+                {IndexKey, set},
+                fun(Set) -> riakc_set:del_element(Value, Set) end,
+                Data
+            )
+        end,
+        Partition
     ).
+
 
 
 %% @private
@@ -757,21 +855,40 @@ iterator_sort_ordering(#{sort_ordering := Value}, _) ->
 
 
 %% @private
-match_output(_, _, nomatch) ->
+match_output(_, _, _, nomatch) ->
     [];
 
-match_output(_, CoveredFields, Bin) when is_binary(Bin) ->
+match_output(_, CoveredFields, _, Bin) when is_binary(Bin) ->
     Values = binary:split(Bin, <<$\31>>),
     [maps:from_list(lists:zip(CoveredFields, Values))];
 
-match_output(IndexBy, CoveredFields, AggregateMap) when is_list(AggregateMap) ->
-    Fun = fun({Key, register}, Values, Acc) ->
-        Map1 = maps:from_list(
-            lists:zip(IndexBy, binary:split(Key, <<$\31>>))
-        ),
-        Map2 = maps:from_list(
-            lists:zip(CoveredFields, binary:split(Values, <<$\31>>))
-        ),
-        [maps:merge(Map1, Map2) | Acc]
+match_output(IndexBy, CoveredFields, Cardinality, AggregateMap)
+when is_list(AggregateMap) ->
+    Fun = fun
+        ({Key, register}, Bin, Acc) when Cardinality == one ->
+            Map1 = index_by_output(IndexBy, Key),
+            Map2 = covered_fields_output(CoveredFields, Bin),
+            [maps:merge(Map1, Map2) | Acc];
+
+        ({Key, set}, Set, Acc) when Cardinality == many ->
+            Map1 = index_by_output(IndexBy, Key),
+            ordsets:fold(
+                fun(Bin, IAcc) ->
+                    Map2 = covered_fields_output(CoveredFields, Bin),
+                    [maps:merge(Map1, Map2) | IAcc]
+                end,
+                Acc,
+                Set
+            )
     end,
     orddict:fold(Fun, [], AggregateMap).
+
+
+%% @private
+index_by_output(IndexBy, Key) ->
+    maps:from_list(lists:zip(IndexBy, binary:split(Key, <<$\31>>))).
+
+
+%% @private
+covered_fields_output(CoveredFields, Bin) when is_binary(Bin) ->
+    maps:from_list(lists:zip(CoveredFields, binary:split(Bin, <<$\31>>))).

@@ -476,6 +476,8 @@ update(Actions, Index, RiakOpts) when is_list(Actions) ->
 
     Update = fun({PartitionId, PActions}, Acc) ->
         Part0 = babel_index_partition:fetch(TypeBucket, PartitionId, RiakOpts),
+
+        %% The actual update is performed by the index subtype
         Part1 = Mod:update_partition(PActions, Part0, Config),
         [Part1 | Acc]
     end,
@@ -558,6 +560,8 @@ match(Pattern, Index, RiakOpts) ->
     PartitionId = Mod:partition_identifier(Pattern, Config),
     TypeBucket = typed_bucket(Index),
     Partition = babel_index_partition:fetch(TypeBucket, PartitionId, RiakOpts),
+
+    %% The actual match is performed by the index subtype
     Mod:match(Pattern, Partition, Config).
 
 

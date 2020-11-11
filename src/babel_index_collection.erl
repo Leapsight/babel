@@ -244,8 +244,8 @@ when is_binary(IndexName) ->
         Object = orddict:fetch({IndexName, map}, Data),
         babel_index:from_riak_object(Object)
     catch
-        _:_ ->
-            error(badindex)
+        _:_:Stacktrace ->
+            error(badindex, Stacktrace)
     end.
 
 
