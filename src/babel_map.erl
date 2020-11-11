@@ -902,6 +902,7 @@ decrement(Key, Value, Map) ->
 
 
 %% -----------------------------------------------------------------------------
+%% @deprecated
 %% @doc Merges two maps into a single map `Map3'.
 %% The function implements a deep merge.
 %% This function implements minimal type checking so merging two maps that use
