@@ -16,6 +16,12 @@
 %%  limitations under the License.
 %% =============================================================================
 
+%% -----------------------------------------------------------------------------
+%% @doc Counters are a bucket-level data type that can be used by themselves,
+%% associated with a bucket/key pair, or used within a {@link babel_map}.
+%% A counter’s value can only be a positive integer, negative integer, or zero.
+%% @end
+%% -----------------------------------------------------------------------------
 -module(babel_counter).
 -include("babel.hrl").
 

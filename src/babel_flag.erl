@@ -16,6 +16,15 @@
 %%  limitations under the License.
 %% =============================================================================
 
+%% -----------------------------------------------------------------------------
+%% @doc Flags behave much like Boolean values, except that instead of true or
+%% false flags have the values enable or disable.
+%%
+%% Flags cannot be used on their own, i.e. a flag cannot be stored in a bucket/
+%% key by itself. Instead, flags can only be stored within maps.
+%% To disable an existing flag, you have to read it or provide a context.
+%% @end
+%% -----------------------------------------------------------------------------
 -module(babel_flag).
 -include("babel.hrl").
 
