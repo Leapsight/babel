@@ -18,7 +18,7 @@
 -define(RIAK_EC_TYPE, [non_neg_integer , {in, [one, all, quorum, default]}]).
 -define(RIAK_OPTS_SPEC, #{
     connection => #{
-        required => true,
+        required => false,
         datatype => [pid, function]
     },
     n_val => #{
