@@ -225,7 +225,7 @@ index_5_test(_) ->
     Update = fun() ->
         %% We fetch the collection from Riak KV
         Collection = babel_index_collection:fetch(Prefix, IdxName, RiakOpts),
-        ok = babel:update_indices(Actions, Collection, RiakOpts),
+        {ok, _ItemId} = babel:update_all_indices(Actions, Collection, RiakOpts),
         ok
     end,
 
@@ -336,7 +336,7 @@ huge_index_test(_) ->
     Fun2 = fun() ->
         %% We fetch the collection from Riak KV
         Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
-        ok = babel:update_indices(Actions, Collection, RiakOpts),
+        {ok, _ItemId} = babel:update_all_indices(Actions, Collection, RiakOpts),
         ok
     end,
 
@@ -450,7 +450,7 @@ index_6_test(_) ->
     Update = fun() ->
         %% We fetch the collection from Riak KV
         Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
-        ok = babel:update_indices(Actions, Collection, RiakOpts),
+        {ok, _ItemId} = babel:update_all_indices(Actions, Collection, RiakOpts),
         ok
     end,
 
@@ -548,7 +548,7 @@ accounts_by_identification_type_and_number_test(_) ->
         Collection = babel_index_collection:fetch(
             Prefix, CName, RiakOpts),
         _Index = babel_index_collection:index(IdxName, Collection),
-        ok = babel:update_indices(Actions, Collection, RiakOpts),
+        {ok, _ItemId} = babel:update_all_indices(Actions, Collection, RiakOpts),
         ok
     end,
     {scheduled, WorkRef3, ok} = babel:workflow(Update, #{timeout => 5000}),

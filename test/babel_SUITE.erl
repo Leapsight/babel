@@ -117,7 +117,7 @@ update_indices_1_test(_) ->
         Collection = babel_index_collection:fetch(
             <<"babel_SUITE">>, <<"users">>, RiakOpts
         ),
-        ok = babel:update_indices([{update, Object}], Collection, RiakOpts),
+        ok = babel:update_all_indices([{update, Object}], Collection, RiakOpts),
         ok
     end,
 

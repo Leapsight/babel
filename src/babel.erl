@@ -20,6 +20,13 @@
 %% @doc This module acts as entry point for a number of Babel features and
 %% provides some of the `riakc_pb_socket' module functions adapted for babel
 %% datatypes.
+%%
+%% # Working with Babel Datatypes
+%%
+%% # Working with Reliable Workflows
+%%
+%% # Working with Babel Indices
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -module(babel).
@@ -53,11 +60,12 @@
 -export([delete_index/2]).
 -export([execute/3]).
 -export([rebuild_index/4]).
--export([update_indices/3]).
--export([workflow/1]).
--export([workflow/2]).
 -export([status/1]).
 -export([status/2]).
+-export([update_all_indices/3]).
+-export([update_indices/4]).
+-export([workflow/1]).
+-export([workflow/2]).
 -export([yield/1]).
 -export([yield/2]).
 
@@ -224,8 +232,7 @@ execute(Poolname, Fun, Opts)  ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Validates and returns the options in proplist format as expected by
-%% Riak KV.
+%% @doc Validates the opts
 %% @end
 %% -----------------------------------------------------------------------------
 -spec validate_riak_opts(map()) -> maybe_no_return(map()).
@@ -549,51 +556,86 @@ rebuild_index(_Index, _BucketType, _Bucket, _Opts) ->
     ok.
 
 
+
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Updates all the indices in the collection with the provided Actions and
+%% schedules the update of the relevant index partitions in the database i.e.
+%% persistind the index changes.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update_indices(
     Actions :: [{babel_index:action(), babel_index:object()}],
-    CollectionOrIndices :: babel_index_collection:t(),
+    IndexNames :: [binary()],
+    Collection :: babel_index_collection:t(),
+    Opts :: map()) ->
+    {ok, WorflowItemId :: any()}
+    | {scheduled, WorkRef :: reliable_work_ref:t(), ResultOfFun :: any()}
+    | {error, Reason :: any()}
+    | no_return().
+
+update_indices(Actions, IndexNames, Collection, Opts0) when is_list(Actions) ->
+    Fun = fun() ->
+        CollectionId = babel_index_collection:id(Collection),
+
+        %% We fail if the collection is being deleted as part of a
+        %% parent workflow
+        ok = ensure_not_deleted(CollectionId),
+
+        Opts = validate_riak_opts(Opts0),
+
+        ok = lists:foreach(
+            fun(Name) ->
+                Index = babel_index_collection:index(Name, Collection),
+                Partitions = babel_index:update(Actions, Index, Opts),
+
+                %% Tradeoff between memory intensive (lazy) or CPU
+                %% intensive (eager) evaluation.
+                %% We use eager here as we assume the
+                %% user is smart enough to aggregate all operations for a
+                %% collection and perform a single call to this function within
+                %% a workflow.
+                Items = partition_update_items(
+                    Collection, Index, Partitions, eager
+                ),
+
+                %% We use the nop just to setup the precedence digraph
+                CollectionItem = {CollectionId, undefined},
+                ok = reliable:add_workflow_items([CollectionItem | Items]),
+
+                %% If there is an update on the collection we want it to occur
+                %% before the partition updates
+                reliable:add_workflow_precedence(
+                    CollectionId, [Id || {Id, _} <- Items]
+                )
+            end,
+            IndexNames
+        ),
+
+        %% We return the CollectionId as parent workflows might want to add
+        %% precendence relationships in the digraph
+        {ok, CollectionId}
+    end,
+    workflow(Fun, Opts0).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Updates all the indices in the collection with the provided Actions and
+%% schedules the update of the relevant index partitions in the database i.e.
+%% persistind the index changes.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec update_all_indices(
+    Actions :: [{babel_index:action(), babel_index:object()}],
+    Collection :: babel_index_collection:t(),
     RiakOpts :: map()) ->
-    ok | no_return().
+    {ok, WorflowItemId :: any()}
+    | {scheduled, WorkRef :: reliable_work_ref:t(), ResultOfFun :: any()}
+    | {error, Reason :: any()}
+    | no_return().
 
-update_indices(Actions, Collection, RiakOpts) when is_list(Actions) ->
-    ok = reliable:ensure_in_workflow(),
-
-    CollectionId = babel_index_collection:id(Collection),
-    Indices = babel_index_collection:indices(Collection),
-    ok = ensure_not_deleted(CollectionId),
-    Opts = validate_riak_opts(RiakOpts),
-
-    lists:foreach(
-        fun(Index) ->
-            Partitions = babel_index:update(Actions, Index, Opts),
-
-            %% Tradeoff between memory intensive (lazy) or CPU
-            %% intensive (eager) evaluation. We use eager here as we assume the
-            %% user is smart enough to aggregate all operations for a
-            %% collection and perform a single call to this function within a
-            %% workflow.
-            PartitionItems = partition_update_items(
-                Collection, Index, Partitions, eager
-            ),
-            %% We have not modified the collection
-            CollWorkflowItem = {CollectionId, undefined},
-
-            ok = reliable:add_workflow_items(
-                [CollWorkflowItem | PartitionItems]
-            ),
-
-            %% If there is an update on the collection we want it to occur
-            %% before the partition updates
-            reliable:add_workflow_precedence(
-                CollectionId, [Id || {Id, _} <- PartitionItems]
-            )
-        end,
-        Indices
-    ).
+update_all_indices(Actions, Collection, Opts) ->
+    IndexNames = babel_index_collection:index_names(Collection),
+    update_indices(Actions, IndexNames, Collection, Opts).
 
 
 %% -----------------------------------------------------------------------------
