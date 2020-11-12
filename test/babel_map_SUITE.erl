@@ -10,9 +10,11 @@ all() ->
     [
         create_test,
         create_test_2,
+        put_1_test,
+        put_2_test,
         to_riak_op_test,
-        put_test,
-        get_test,
+        babel_put_test,
+        babel_get_test,
         merge_1_test,
         merge_2_test,
         merge_3_test,
@@ -62,7 +64,34 @@ to_riak_op_test(_) ->
     ?assertEqual(true, is_tuple(Op)).
 
 
-put_test(_) ->
+put_1_test(_) ->
+    M0 = babel_map:new(),
+    M1 = babel_map:put(<<"a">>, 1, M0),
+    ?assertEqual(1, babel_map:get_value(<<"a">>, M1)).
+
+
+put_2_test(_) ->
+    M0 = babel_map:new(),
+    M1 = babel_map:put(<<"a">>, babel_map:new(), M0),
+    M2 = babel_map:put([<<"a">>, <<"aa">>], 1, M1),
+    ?assertEqual(1, babel_map:get_value([<<"a">>, <<"aa">>], M2)),
+    ?assertEqual(1, maps:get(<<"aa">>, babel_map:get_value(<<"a">>, M2))),
+
+    M3 = babel_map:put([<<"a">>, <<"ab">>, <<"aba">>], 1, M2),
+    ?assertEqual(
+        1,
+        babel_map:get_value([<<"a">>, <<"ab">>, <<"aba">>], M3)
+    ),
+    ?assertEqual(
+        1,
+        maps:get(
+            <<"aba">>,
+            maps:get(<<"ab">>, babel_map:get_value(<<"a">>, M3))
+        )
+    ).
+
+
+babel_put_test(_) ->
     M0 = babel_map:new(data(), spec()),
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
@@ -77,7 +106,7 @@ put_test(_) ->
     ?assertEqual(babel_map:value(M0), babel_map:value(M1)).
 
 
-get_test(_) ->
+babel_get_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
     {ok, M} = babel:get(
@@ -372,29 +401,33 @@ patch_1_test(_) ->
         false,
         babel_map:get_value(<<"flag_prop">>, T2)
     ),
+    {Updates, Removes} = babel_map:changed_key_paths(T2),
     ?assertEqual(
-        lists:usort([
-            [<<"account_type">>],
-            [<<"active">>],
-            [<<"address">>, <<"address_line1">>],
-            [<<"address">>, <<"address_line2">>],
-            [<<"address">>, <<"city">>],
-            [<<"address">>, <<"country">>],
-            [<<"address">>, <<"postal_code">>],
-            [<<"address">>, <<"state">>],
-            [<<"counter_prop">>],
-            [<<"country_id">>],
-            [<<"flag_prop">>],
-            [<<"id">>],
-            [<<"identification_number">>],
-            [<<"identification_type">>],
-            [<<"name">>],
-            [<<"number">>],
-            [<<"operation_mode">>],
-            [<<"set_prop">>],
-            [<<"version">>]
-        ]),
-        lists:usort(babel_map:updated_key_paths(T2))
+        {
+            lists:usort([
+                [<<"account_type">>],
+                [<<"active">>],
+                [<<"address">>, <<"address_line1">>],
+                [<<"address">>, <<"address_line2">>],
+                [<<"address">>, <<"city">>],
+                [<<"address">>, <<"country">>],
+                [<<"address">>, <<"postal_code">>],
+                [<<"address">>, <<"state">>],
+                [<<"counter_prop">>],
+                [<<"country_id">>],
+                [<<"flag_prop">>],
+                [<<"id">>],
+                [<<"identification_number">>],
+                [<<"identification_type">>],
+                [<<"name">>],
+                [<<"number">>],
+                [<<"operation_mode">>],
+                [<<"set_prop">>],
+                [<<"version">>]
+            ]),
+            []
+        },
+        {lists:usort(Updates), Removes}
     ).
 
 
