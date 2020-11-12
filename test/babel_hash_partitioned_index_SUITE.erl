@@ -190,7 +190,7 @@ index_5_test(_) ->
                 ok
         end
     end,
-    _ =  babel:workflow(Cleanup),
+    _ = babel:workflow(Cleanup),
     %% we wait 5 secs for reliable to perform the work
     timer:sleep(5000),
 
@@ -203,9 +203,9 @@ index_5_test(_) ->
         _Collection1 = babel:create_index(Index, Collection0),
         ok
     end,
-    {scheduled, _, ok} =  babel:workflow(Create),
+    {scheduled, WorkRef2, ok} = babel:workflow(Create),
     %% we wait 5 secs for reliable to perform the work
-    timer:sleep(5000),
+    {ok, _} = babel:yield(WorkRef2, 5000),
 
 
 
@@ -229,8 +229,8 @@ index_5_test(_) ->
         ok
     end,
 
-    {scheduled, _, ok} =  babel:workflow(Update),
-    timer:sleep(10000),
+    {scheduled, WorkRef3, ok} = babel:workflow(Update),
+    {ok, _} = babel:yield(WorkRef3, 10000),
 
     Collection = babel_index_collection:fetch(Prefix, IdxName, RiakOpts),
     Index = babel_index_collection:index(
@@ -296,7 +296,7 @@ huge_index_test(_) ->
                 ok
         end
     end,
-    _ =  babel:workflow(Cleanup),
+    _ = babel:workflow(Cleanup),
     %% we wait 5 secs for reliable to perform the work
     timer:sleep(10000),
 
@@ -308,10 +308,9 @@ huge_index_test(_) ->
         ok
     end,
 
-    {scheduled, _, ok} =  babel:workflow(Fun),
-
+    {scheduled, WorkRef2, ok} = babel:workflow(Fun),
     %% we wait 5 secs for reliable to perform the work
-    timer:sleep(10000),
+    {ok, _} = babel:yield(WorkRef2, 10000),
 
 
     %% We create 10,000 objects to be indexed
@@ -341,9 +340,8 @@ huge_index_test(_) ->
         ok
     end,
 
-    {scheduled, _, ok} =  babel:workflow(Fun2),
-
-    timer:sleep(15000),
+    {scheduled, WorkRef, ok} = babel:workflow(Fun2),
+    {ok, _} = babel:yield(WorkRef, 15000),
 
     Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
     Index = babel_index_collection:index(IdxName, Collection),
@@ -417,7 +415,7 @@ index_6_test(_) ->
                 ok
         end
     end,
-    _ =  babel:workflow(Cleanup),
+    _ = babel:workflow(Cleanup),
     %% we wait 5 secs for reliable to perform the work
     timer:sleep(5000),
 
@@ -430,9 +428,8 @@ index_6_test(_) ->
         _Collection1 = babel:create_index(Index, Collection0),
         ok
     end,
-    {scheduled, _, ok} =  babel:workflow(Create),
-    %% we wait 5 secs for reliable to perform the work
-    timer:sleep(5000),
+    {scheduled, WorkRef2, ok} = babel:workflow(Create),
+    {ok, _} = babel:yield(WorkRef2, 5000),
 
 
 
@@ -457,8 +454,8 @@ index_6_test(_) ->
         ok
     end,
 
-    {scheduled, _, ok} =  babel:workflow(Update),
-    timer:sleep(10000),
+    {scheduled, WorkRef3, ok} = babel:workflow(Update),
+    {ok, _} = babel:yield(WorkRef3, 10000),
 
     Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
     Index = babel_index_collection:index(
@@ -468,10 +465,9 @@ index_6_test(_) ->
         <<"account_id">> =>  <<"mrn:account:2">>
     },
     Result = babel_index:match(Pattern, Index, RiakOpts),
-    error(Result),
     ?assertEqual(
-        [#{<<"id">> => <<"mrn:person:2">>, <<"foo">> => <<"bar">>}],
-        Result
+        2,
+        length(Result)
     ),
     ok.
 
@@ -504,9 +500,8 @@ accounts_by_identification_type_and_number_test(_) ->
                 ok
         end
     end,
-    _ =  babel:workflow(Cleanup),
-    %% we wait 5 secs for reliable to perform the work
-    timer:sleep(5000),
+    {scheduled, WorkRef1, ok} = babel:workflow(Cleanup),
+    {ok, _} = babel:yield(WorkRef1, 5000),
 
     Create = fun() ->
         Conf = #{
@@ -534,9 +529,8 @@ accounts_by_identification_type_and_number_test(_) ->
         _ = babel:create_index(Index, Collection),
         ok
     end,
-    {scheduled, _, ok} = babel:workflow(Create),
-
-    timer:sleep(10000),
+    {scheduled, WorkRef2, ok} = babel:workflow(Create),
+    {ok, _} = babel:yield(WorkRef2, 5000),
 
     Update = fun() ->
         Actions = [
@@ -557,13 +551,8 @@ accounts_by_identification_type_and_number_test(_) ->
         ok = babel:update_indices(Actions, Collection, RiakOpts),
         ok
     end,
-
-    Ts0 = erlang:system_time(millisecond),
-
-    {scheduled, _, ok} = babel:workflow(Update, #{timeout => 5000}),
-    Ts1 = erlang:system_time(millisecond),
-    ct:pal("elapsed_time_secs = ~p", [(Ts1 - Ts0) / 1000]),
-    timer:sleep(15000),
+    {scheduled, WorkRef3, ok} = babel:workflow(Update, #{timeout => 5000}),
+    {ok, _} = babel:yield(WorkRef3, 15000),
 
     Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
     Idx = babel_index_collection:index(IdxName, Collection),

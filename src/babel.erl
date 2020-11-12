@@ -373,9 +373,9 @@ workflow(Fun, Opts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec status(WorkRef :: reliable_work_ref:t()) ->
-    not_found
-    | {in_progress, Status :: reliable_work:status()}
-    | {failed, Status :: reliable_work:status()}.
+    {in_progress, Status :: reliable_work:status()}
+    | {failed, Status :: reliable_work:status()}
+    | {error, not_found | any()}.
 
 status(WorkerRef) ->
     reliable_partition_store:status(WorkerRef).
@@ -386,9 +386,9 @@ status(WorkerRef) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec status(WorkRef :: reliable_work_ref:t(), Timeout :: timeout()) ->
-    not_found
-    | {in_progress, Status :: reliable_work:status()}
-    | {failed, Status :: reliable_work:status()}.
+    {in_progress, Status :: reliable_work:status()}
+    | {failed, Status :: reliable_work:status()}
+    | {error, not_found | any()}.
 
 status(WorkerRef, Timeout) ->
     reliable_partition_store:status(WorkerRef, Timeout).
