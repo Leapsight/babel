@@ -438,9 +438,6 @@ partition_identifier(KeyValue, Config) ->
     end.
 
 
-
-
-
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -451,7 +448,6 @@ partition_identifier(KeyValue, Config) ->
 partition_identifiers(Order, Config) ->
     Default = sort_ordering(Config),
     maybe_reverse(Default, Order, partition_identifiers(Config)).
-
 
 
 %% -----------------------------------------------------------------------------
@@ -503,7 +499,6 @@ update_partition([], Partition, _) ->
     Partition.
 
 
-
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -541,7 +536,6 @@ match(Pattern, Partition, Config) ->
     end,
 
     match_output(IndexBy, covered_fields(Config), Cardinality, Result).
-
 
 
 %% -----------------------------------------------------------------------------
@@ -676,9 +670,11 @@ safe_gen_key(Keys, Data) ->
     end.
 
 
-
 %% @private
 update_data({AggregateKey, IndexKey}, Value, one, Partition) ->
+    %% - data
+    %%    - AggregateKey
+    %%        - IndexKey -> Value
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -697,6 +693,9 @@ update_data({AggregateKey, IndexKey}, Value, one, Partition) ->
     );
 
 update_data({AggregateKey, IndexKey}, Value, many, Partition) ->
+    %% - data
+    %%    - AggregateKey
+    %%        - IndexKey ->  [ Value ]
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -715,6 +714,8 @@ update_data({AggregateKey, IndexKey}, Value, many, Partition) ->
     );
 
 update_data(IndexKey, Value, one, Partition) ->
+    %% - data
+    %%    - IndexKey -> Value
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -727,6 +728,8 @@ update_data(IndexKey, Value, one, Partition) ->
     );
 
 update_data(IndexKey, Value, many, Partition) ->
+    %% - data
+    %%    - IndexKey -> [ Value ]
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
