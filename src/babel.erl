@@ -51,6 +51,7 @@
 -export([create_index/2]).
 -export([delete_collection/1]).
 -export([delete_index/2]).
+-export([execute/3]).
 -export([rebuild_index/4]).
 -export([update_indices/3]).
 -export([workflow/1]).
@@ -196,6 +197,26 @@ delete(TypedBucket, Key, Opts) ->
             schedule_delete(TypedBucket, Key, Opts)
     end.
 
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Executes a number of operations using the same Riak client connection
+%% provided by riak_pool app.
+%% `Poolname' must be an already started pool.
+%%
+%% Options:
+%%
+%% * timeout - time to get a connection from the pool
+%% @end
+%% -----------------------------------------------------------------------------
+-spec execute(
+    Poolname :: atom(),
+    Fun :: fun((RiakConn :: pid()) -> Result :: any()),
+    Opts :: map()) ->
+    {true, Result :: any()} | {false, Reason :: any()} | no_return().
+
+execute(Poolname, Fun, Opts)  ->
+    riak_pool:execute(Poolname, Fun, Opts).
 
 
 %% -----------------------------------------------------------------------------
