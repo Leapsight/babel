@@ -544,7 +544,6 @@ foreach(_Fun, _Index) ->
     ok.
 
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Returns a list of matching index entries
 %% @end
