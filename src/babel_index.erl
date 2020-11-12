@@ -128,19 +128,25 @@ end).
     stream => boolean()
 }.
 
--export_type([t/0]).
--export_type([riak_object/0]).
--export_type([partition_id/0]).
--export_type([partition_key/0]).
--export_type([local_key/0]).
+-type update_opts()             ::  #{
+    force => boolean, riak_opts => riak_opts()
+}.
+
+
 -export_type([action/0]).
--export_type([key_value/0]).
--export_type([index_key/0]).
--export_type([index_values/0]).
--export_type([riak_opts/0]).
--export_type([query_opts/0]).
 -export_type([fold_fun/0]).
 -export_type([fold_opts/0]).
+-export_type([index_key/0]).
+-export_type([index_values/0]).
+-export_type([key_value/0]).
+-export_type([local_key/0]).
+-export_type([partition_id/0]).
+-export_type([partition_key/0]).
+-export_type([query_opts/0]).
+-export_type([riak_object/0]).
+-export_type([riak_opts/0]).
+-export_type([t/0]).
+-export_type([update_opts/0]).
 
 %% API
 %% -export([get/4]).
@@ -466,7 +472,7 @@ partition_identifier(KeyValue, Index) ->
 -spec update(
     Actions :: [{action(), key_value()}],
     Index :: t(),
-    RiakOpts :: riak_opts()) ->
+    RiakOpts :: update_opts()) ->
     maybe_no_return([babel_index_partition:t()]).
 
 update(Actions, Index, RiakOpts) when is_list(Actions) ->
