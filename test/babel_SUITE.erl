@@ -74,7 +74,7 @@ scheduled_for_delete_test(_) ->
         Index = babel_index:new(Conf),
         Collection0 = babel_index_collection:new(
             <<"babel_SUITE">>, <<"users">>),
-        ok = babel:delete_collection(Collection0),
+        ok = babel:drop_collection(Collection0),
         _Collection1 = babel:create_index(Index, Collection0),
         ok
     end,

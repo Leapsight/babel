@@ -56,6 +56,10 @@
 -export([update_indices/3]).
 -export([workflow/1]).
 -export([workflow/2]).
+-export([status/1]).
+-export([status/2]).
+-export([yield/1]).
+-export([yield/2]).
 
 
 %% =============================================================================
@@ -270,6 +274,10 @@ get_connection(Opts) ->
 %% -----------------------------------------------------------------------------
 %% @doc Equivalent to calling {@link workflow/2} with and empty map passed as
 %% the `Opts' argument.
+%%
+%% > Notice subscriptions are not working at the moment
+%% > See {@link yield/1,2} to track progress.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun :: fun(() -> any())) ->
@@ -345,6 +353,9 @@ workflow(Fun) ->
 %% perform a cleanup operation you might use the function `is_nested_worflow/0'
 %% to take a decision.
 %%
+%% > Notice subscriptions are not working at the moment
+%% > See {@link yield/1,2} to track progress.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun ::fun(() -> any()), Opts :: babel_workflow:opts()) ->
@@ -355,6 +366,72 @@ workflow(Fun) ->
 
 workflow(Fun, Opts) ->
     reliable:workflow(Fun, Opts).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec status(WorkRef :: reliable_work_ref:t()) ->
+    not_found
+    | {in_progress, Status :: reliable_work:status()}
+    | {failed, Status :: reliable_work:status()}.
+
+status(WorkerRef) ->
+    reliable_partition_store:status(WorkerRef).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec status(WorkRef :: reliable_work_ref:t(), Timeout :: timeout()) ->
+    not_found
+    | {in_progress, Status :: reliable_work:status()}
+    | {failed, Status :: reliable_work:status()}.
+
+status(WorkerRef, Timeout) ->
+    reliable_partition_store:status(WorkerRef, Timeout).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the value associated with the key `event_payload' when used as
+%% option from a previous {@link enqueue/2}. The calling process is suspended
+%% until the work is completed or
+%%
+%% > The current implementation is not ideal as it recursively reads then status
+%% from the database. So do not abuse it.
+%% > Also at the moment complete tasks are deleted, so the abscense of a task
+%% is considered as either succesful or failed, this will also change as we
+%% will be retaining tasks that are discarded or completed.
+%% > This will be replaced by a pubsub version soon.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec yield(WorkRef :: reliable_worker:work_ref()) ->
+    {ok, Payload :: any()} | timeout.
+
+yield(WorkRef) ->
+    yield(WorkRef, infinity).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the value associated with the key `event_payload' when used as
+%% option from a previous {@link enqueue/2} or `timeout' when `Timeout'
+%% milliseconds has elapsed.
+%%
+%% > The current implementation is not ideal as it recursively reads then status
+%% from the database. So do not abuse it.
+%% > Also at the moment complete tasks are deleted, so the abscense of a task
+%% is considered as either succesful or failed, this will also change as we
+%% will be retaining tasks that are discarded or completed.
+%% > This will be replaced by a pubsub version soon.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec yield(WorkRef :: reliable_worker:work_ref(), Timeout :: timeout()) ->
+    {ok, Payload :: any()} | timeout.
+
+yield(WorkRef, Timeout) ->
+    reliable:yield(WorkRef, Timeout).
 
 
 %% -----------------------------------------------------------------------------
