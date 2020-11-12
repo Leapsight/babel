@@ -110,6 +110,8 @@
 -export([add_elements/3]).
 -export([collect/2]).
 -export([collect/3]).
+-export([collect_map/2]).
+-export([collect_map/3]).
 -export([context/1]).
 -export([decrement/2]).
 -export([decrement/3]).
@@ -141,7 +143,7 @@
 -export([to_riak_op/2]).
 -export([type/0]).
 -export([update/3]).
--export([updated_key_paths/1]).
+-export([changed_key_paths/1]).
 -export([value/1]).
 -export([validate_type_spec/1]).
 
@@ -169,7 +171,7 @@ new()->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec new(Data :: map()) -> t().
-
+%% TODO this function should be banned, we need to always use a spec
 new(Data) when is_map(Data) ->
     Valid = maps:filter(fun(_, V) -> V /= undefined end, Data),
     #babel_map{
@@ -344,16 +346,22 @@ keys(Term) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns a list of the key paths that have been modified in map `T'.
+%% @doc Returns a list of the key paths that have been removed in map `T'.
 %% The call fails with a `{badmap, T}' exception if `T' is not a map.
 %% @end
 %% -----------------------------------------------------------------------------
--spec updated_key_paths(T :: t()) -> [key_path()] | no_return().
+-spec changed_key_paths(T :: t()) -> [key_path()] | no_return().
 
-updated_key_paths(#babel_map{} = T) ->
-    updated_key_paths(T, [], []);
+changed_key_paths(#babel_map{} = T) ->
 
-updated_key_paths(Term) ->
+    {U0, R} = changed_key_paths(T, {[], []}, []),
+    %% We need to eliminate all removed KeyPaths that are in Updates
+    U1 = ordsets:to_list(
+        ordsets:subtract(ordsets:from_list(U0), ordsets:from_list(R))
+    ),
+    {U1, R};
+
+changed_key_paths(Term) ->
     badtype(map, Term).
 
 
@@ -545,7 +553,7 @@ collect(Keys, Map) ->
 
 collect([Key], Map, Default) ->
     try
-        [get(Key, Map, Default)]
+        [get_value(Key, Map, Default)]
     catch
         error:badkey ->
             error({badkey, Key})
@@ -553,6 +561,49 @@ collect([Key], Map, Default) ->
 
 collect(Keys, Map, Default) when is_list(Keys) ->
     collect(Keys, Map, Default, []).
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns a list of values associated with the keys `Keys'.
+%% Fails with a `{badkey, K}` exeception if any key `K' in `Keys' is not
+%% present in the map.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec collect_map([key_path()], Map :: t()) -> map().
+
+collect_map(Keys, Map) ->
+    collect_map(Keys, Map, ?BADKEY).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns a list of values associated with the keys `Keys'. If any key
+%% `K' in `Keys' is not present in the map the value `Default' is returned.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec collect_map(Keys :: [key_path()], Map :: t(), Default :: any()) ->
+    map().
+
+collect_map([KeyPath], Map, Default) ->
+    try
+        Value = get_value(KeyPath, Map, Default),
+        [H|T] = lists:reverse(KeyPath),
+        collect_map_acc(T, #{H => Value})
+    catch
+        error:badkey ->
+            error({badkey, KeyPath})
+    end;
+
+collect_map(Keys, Map, Default) when is_list(Keys) ->
+    collect_map(Keys, Map, Default, #{}).
+
+
+%% @private
+collect_map_acc([H|T], Value) ->
+    collect_map_acc(T, maps:put(H, Value, maps:new()));
+
+collect_map_acc([], Value) ->
+    Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -1385,6 +1436,19 @@ collect([], _, _, Acc) ->
     lists:reverse(Acc).
 
 
+%% @private
+collect_map([H|T], Map, Default, Acc) ->
+    try
+        %% TODO This is wrong, acc on a map
+        collect_map(T, Map, Default, [get(H, Map, Default)|Acc])
+    catch
+        error:badkey ->
+            error({badkey, H})
+    end;
+
+collect_map([], _, _, Acc) ->
+    Acc.
+
 
 %% @private
 do_remove([H|[]], Map) ->
@@ -1525,22 +1589,28 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
 
 
 %% @private
--spec updated_key_paths(t(), AccIn :: list(), Path :: list()) ->
+-spec changed_key_paths(t(), AccIn :: list(), Path :: list()) ->
     AccOut :: list().
 
-updated_key_paths(#babel_map{updates = U} = Parent, Acc, Path0) ->
+changed_key_paths(
+    #babel_map{updates = U, removes = R} = Parent, Acc, Path0) ->
     lists:foldl(
-        fun(Key, InnerAcc0) ->
+        fun({Op, Key}, {UAcc0, RAcc0} = IAcc) ->
             Path1 = Path0 ++ [Key],
             case get(Key, Parent, undefined) of
                 #babel_map{} = Child ->
-                    updated_key_paths(Child, InnerAcc0, Path1);
-                _ ->
-                    [Path1 | InnerAcc0]
+                    changed_key_paths(Child, IAcc, Path1);
+                _ when Op == update ->
+                    {[Path1 | UAcc0], RAcc0};
+                _ when Op == remove ->
+                    {UAcc0, [Path1 | RAcc0]}
             end
         end,
         Acc,
-        U
+        lists:append(
+            [{update, X} || X <- ordsets:to_list(U)],
+            [{remove, X} || X <- ordsets:to_list(R)]
+        )
     ).
 
 
