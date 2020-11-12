@@ -158,6 +158,7 @@
 -export([partition_identifiers/2]).
 -export([to_riak_object/1]).
 -export([update_partition/3]).
+-export([update_key_paths/1]).
 
 
 %% =============================================================================
@@ -448,6 +449,23 @@ partition_identifier(KeyValue, Config) ->
 partition_identifiers(Order, Config) ->
     Default = sort_ordering(Config),
     maybe_reverse(Default, Order, partition_identifiers(Config)).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec update_key_paths(Config :: t()) -> [babel_key_value:path()].
+
+update_key_paths(Config) ->
+    ordsets:to_list(
+        ordsets:union([
+            ordsets:from_list(partition_by(Config)),
+            ordsets:from_list(aggregate_by(Config)),
+            ordsets:from_list(index_by(Config)),
+            ordsets:from_list(covered_fields(Config))
+        ])
+    ).
 
 
 %% -----------------------------------------------------------------------------

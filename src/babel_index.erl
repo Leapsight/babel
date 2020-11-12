@@ -171,6 +171,7 @@ end).
 -export([type/1]).
 -export([typed_bucket/1]).
 -export([update/3]).
+-export([update_key_paths/1]).
 
 
 %% Till we fix maps_utils:validate
@@ -207,9 +208,7 @@ end).
     [{action(), key_value()}], babel_index_partition:t(), map()) ->
     babel_index_partition:t().
 
-%% -callback validate_pattern(Pattern :: key_value(), map()) -> ok | {error, any()}.
-
-%% -callback format_error(Reason :: any()) -> map().
+-callback update_key_paths(Config :: map()) -> [babel_key_value:path()].
 
 -callback match(Pattern :: key_value(), babel_index_partition:t(), map()) ->
     [map()] | no_return().
@@ -463,6 +462,20 @@ partition_identifier(KeyValue, Index) ->
     Mod = type(Index),
     Config = config(Index),
     Mod:partition_identifier(KeyValue, Config).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the list of the key paths for which a value will need to be
+%% present in the key value object passed as an action to the {@linl update/3}
+%% function.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec update_key_paths(Index :: t()) -> [babel_key_value:path()].
+
+update_key_paths(Index) ->
+    Mod = type(Index),
+    Config = config(Index),
+    Mod:update_key_paths(Config).
 
 
 %% -----------------------------------------------------------------------------

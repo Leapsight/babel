@@ -14,6 +14,7 @@ all() ->
         index_4_test,
         index_5_test,
         index_6_test,
+        update_key_paths_1_test,
         huge_index_test,
         accounts_by_identification_type_and_number_test
     ].
@@ -470,6 +471,33 @@ index_6_test(_) ->
         length(Result)
     ),
     ok.
+
+update_key_paths_1_test(_) ->
+
+    Conf = #{
+        name => <<"users_by_email">>,
+        bucket_type => <<"index_data">>,
+        bucket_prefix => <<"babel_hash_partitioned_index_SUITE/johndoe">>,
+        type => babel_hash_partitioned_index,
+        config => #{
+            sort_ordering => asc,
+            number_of_partitions => 8,
+            partition_algorithm => jch,
+            partition_by => [<<"a">>, [<<"b">>, <<"ba">>]],
+            index_by => [<<"a">>],
+            covered_fields => [<<"b">>, [<<"c">>, <<"ca">>]]
+        }
+    },
+    Index = babel_index:new(Conf),
+    ?assertEqual(
+        lists:usort([
+            <<"a">>,
+            <<"b">>,
+            [<<"b">>, <<"ba">>],
+             [<<"c">>, <<"ca">>]
+        ]),
+        babel_index:update_key_paths(Index)
+    ).
 
 
 accounts_by_identification_type_and_number_test(_) ->
