@@ -139,6 +139,7 @@
 -export([set/3]).
 -export([set_context/2]).
 -export([set_elements/3]).
+-export([status/2]).
 -export([size/1]).
 -export([to_riak_op/2]).
 -export([type/0]).
@@ -353,16 +354,37 @@ keys(Term) ->
 -spec changed_key_paths(T :: t()) -> [key_path()] | no_return().
 
 changed_key_paths(#babel_map{} = T) ->
-
-    {U0, R} = changed_key_paths(T, {[], []}, []),
-    %% We need to eliminate all removed KeyPaths that are in Updates
-    U1 = ordsets:to_list(
-        ordsets:subtract(ordsets:from_list(U0), ordsets:from_list(R))
-    ),
-    {U1, R};
+    changed_key_paths(T, {[], []}, []);
 
 changed_key_paths(Term) ->
     badtype(map, Term).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the status of a key path `KeyPath' in map `Map', where status
+%% can be updated, removed, both or none.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec status(KeyPath :: babel_key_value:path(), Map :: t()) ->
+    none | both | removed | updated.
+
+status([Key], #babel_map{updates = U, removes = R}) ->
+    IsU = ordsets:is_element(Key, U),
+    IsR = ordsets:is_element(Key, R),
+    case {IsU, IsR} of
+        {true, true} -> both;
+        {true, false} -> updated;
+        {false, true} -> removed;
+        _ -> none
+    end;
+
+status([H|T], #babel_map{values = V} = Map) ->
+    case maps:find(H, V) of
+        {ok, Child} -> status(T, Child);
+        error ->
+            status([H], Map)
+    end.
+
 
 
 %% -----------------------------------------------------------------------------

@@ -14,7 +14,7 @@ all() ->
         index_4_test,
         index_5_test,
         index_6_test,
-        update_key_paths_1_test,
+        distinguished_key_paths_1_test,
         huge_index_test,
         accounts_by_identification_type_and_number_test
     ].
@@ -219,7 +219,7 @@ index_5_test(_) ->
                 <<"id">> => <<"mrn:person:", UserId/binary>>,
                 <<"account_id">> => <<"mrn:account:", AccId/binary>>
             },
-            {update, Obj}
+            {insert, Obj}
         end || X <- lists:seq(1, 2)
     ],
 
@@ -330,7 +330,7 @@ huge_index_test(_) ->
                 <<"account_id">> => <<"mrn:account:", AccId/binary>>,
                 <<"post_code">> => <<"PC", PostCode/binary>>
             },
-            {update, Obj}
+            {insert, Obj}
         end || X <- lists:seq(1, 2), Y <- lists:seq(1, 5000)
     ],
 
@@ -444,7 +444,7 @@ index_6_test(_) ->
                 <<"foo">> => <<"bar">>,
                 <<"account_id">> => <<"mrn:account:", AccId/binary>>
             },
-            {update, Obj}
+            {insert, Obj}
         end || X <- [1, 2], Y <- [1, 2] %% duplicates
     ],
 
@@ -472,7 +472,7 @@ index_6_test(_) ->
     ),
     ok.
 
-update_key_paths_1_test(_) ->
+distinguished_key_paths_1_test(_) ->
 
     Conf = #{
         name => <<"users_by_email">>,
@@ -494,9 +494,9 @@ update_key_paths_1_test(_) ->
             <<"a">>,
             <<"b">>,
             [<<"b">>, <<"ba">>],
-             [<<"c">>, <<"ca">>]
+            [<<"c">>, <<"ca">>]
         ]),
-        babel_index:update_key_paths(Index)
+        babel_index:distinguished_key_paths(Index)
     ).
 
 
@@ -569,7 +569,7 @@ accounts_by_identification_type_and_number_test(_) ->
                     <<"identification_number">> => ID,
                     <<"account_id">> => <<"mrn:account:", ID/binary>>
                 },
-                {update, Obj}
+                {insert, Obj}
             end || Type <- [<<"DNI">>, <<"CUIL">>], X <- lists:seq(1, 5000)
         ],
 

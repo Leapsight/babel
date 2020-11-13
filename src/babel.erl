@@ -69,7 +69,6 @@
 -export([yield/1]).
 -export([yield/2]).
 
-
 %% =============================================================================
 %% API
 %% =============================================================================
@@ -556,6 +555,37 @@ rebuild_index(_Index, _BucketType, _Bucket, _Opts) ->
     ok.
 
 
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc Checks path subsumption
+%%
+%% Examples:
+%%
+%% * path [a] subsumes the path [a].
+%% * path [a] does not subsume the path [].
+%% * path [a] subsumes the path [a, b, c].
+%% * path [a, b] subsumes the path [a, b, c].
+%% * path [a, b, c] subsumes the path [a, b, c].
+%% * path [a, b, c, d] does not subsume the path [a, b, c].
+%%
+%% @end
+%% -----------------------------------------------------------------------------
+subsumes_path(L, L) ->
+    true;
+
+subsumes_path([], []) ->
+    true;
+
+subsumes_path([H], [H|_]) ->
+    true;
+
+subsumes_path([H|T1], [H|T2]) ->
+    subsumes_path(T1, T2);
+
+subsumes_path(_, _) ->
+    false.
+
+
 
 %% -----------------------------------------------------------------------------
 %% @doc Updates all the indices in the collection with the provided Actions and
@@ -564,7 +594,7 @@ rebuild_index(_Index, _BucketType, _Bucket, _Opts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update_indices(
-    Actions :: [{babel_index:action(), babel_index:object()}],
+    Actions :: [babel_index:update_action()],
     IndexNames :: [binary()],
     Collection :: babel_index_collection:t(),
     Opts :: map()) ->
@@ -613,19 +643,29 @@ update_indices(Actions, IndexNames, Collection, Opts0) when is_list(Actions) ->
 
         %% We return the CollectionId as parent workflows might want to add
         %% precendence relationships in the digraph
-        {ok, CollectionId}
+        CollectionId
     end,
     workflow(Fun, Opts0).
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Updates all the indices in the collection with the provided Actions and
-%% schedules the update of the relevant index partitions in the database i.e.
-%% persistind the index changes.
+%% @doc Updates all the indices in the collection that are affected by he
+%% provided Actions and schedules the update of the relevant index partitions
+%% in the database i.e. persisting the index changes.
+%%
+%% An index in collection `Collection' will always be affectd in case the
+%% action is either `{insert, Data}' or
+%% `{delete, Data}' or when the action is `{udpate, Old, New}' and the option
+%% `force' was set to `true' or when `New' is not a babel map.
+%%
+%% In case option object `New' is a babel map, and the option `force' is missing
+%% or set to `false', an index will be affected by an update action only if the
+%% index's distinguished key paths have been updated or removed in the object
+%% `New' (See {@link babel_index:distinguished_key_paths/1})
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update_all_indices(
-    Actions :: [{babel_index:action(), babel_index:object()}],
+    Actions :: [babel_index:update_action()],
     Collection :: babel_index_collection:t(),
     RiakOpts :: map()) ->
     {ok, WorflowItemId :: any()}

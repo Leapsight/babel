@@ -125,11 +125,9 @@
     done = false                ::  boolean()
 }).
 
--type action()      ::  {babel_index:action(), babel_index:key_value()}.
 -type fields()      ::  [babel_key_value:key()].
 -type iterator()    ::  #babel_hash_partitioned_index_iter{}.
 
--export_type([action/0]).
 -export_type([fields/0]).
 
 
@@ -158,7 +156,7 @@
 -export([partition_identifiers/2]).
 -export([to_riak_object/1]).
 -export([update_partition/3]).
--export([update_key_paths/1]).
+-export([distinguished_key_paths/1]).
 
 
 %% =============================================================================
@@ -455,9 +453,9 @@ partition_identifiers(Order, Config) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec update_key_paths(Config :: t()) -> [babel_key_value:path()].
+-spec distinguished_key_paths(Config :: t()) -> [babel_key_value:path()].
 
-update_key_paths(Config) ->
+distinguished_key_paths(Config) ->
     ordsets:to_list(
         ordsets:union([
             ordsets:from_list(partition_by(Config)),
@@ -473,12 +471,31 @@ update_key_paths(Config) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update_partition(
-    ActionData :: action() | [action()],
+    ActionData :: babel_index:update_action() | [babel_index:update_action()],
     Partition :: babel_index_partition:t(),
-    Config :: t()
-    ) -> babel_index_partition:t() | no_return().
+    Config :: t()) -> babel_index_partition:t() | no_return().
 
-update_partition({update, Data}, Partition, Config) ->
+update_partition([H|T], Partition0, Config) ->
+    Partition1 = update_partition(H, Partition0, Config),
+    update_partition(T, Partition1, Config);
+
+update_partition([], Partition, _) ->
+    Partition;
+
+update_partition({delete, Data}, Partition, Config) ->
+    Cardinality = cardinality(Config),
+    IndexKey = gen_key(index_by(Config), Data),
+    Value = gen_key(covered_fields(Config), Data),
+
+    case aggregate_by(Config) of
+        [] ->
+            delete_data(IndexKey, Value, Cardinality, Partition);
+        Fields ->
+            AggregateKey = gen_key(Fields, Data),
+            delete_data({AggregateKey, IndexKey}, Value, Cardinality, Partition)
+    end;
+
+update_partition({insert, Data}, Partition, Config) ->
     Cardinality = cardinality(Config),
     AggregateBy = aggregate_by(Config),
     IndexBy = index_by(Config),
@@ -494,27 +511,7 @@ update_partition({update, Data}, Partition, Config) ->
         AggregateBy ->
             AggregateKey = gen_key(AggregateBy, Data),
             update_data({AggregateKey, IndexKey}, Value, Cardinality, Partition)
-    end;
-
-update_partition({delete, Data}, Partition, Config) ->
-    Cardinality = cardinality(Config),
-    IndexKey = gen_key(index_by(Config), Data),
-    Value = gen_key(covered_fields(Config), Data),
-
-    case aggregate_by(Config) of
-        [] ->
-            delete_data(IndexKey, Value, Cardinality, Partition);
-        Fields ->
-            AggregateKey = gen_key(Fields, Data),
-            delete_data({AggregateKey, IndexKey}, Value, Cardinality, Partition)
-    end;
-
-update_partition([H|T], Partition0, Config) ->
-    Partition1 = update_partition(H, Partition0, Config),
-    update_partition(T, Partition1, Config);
-
-update_partition([], Partition, _) ->
-    Partition.
+    end.
 
 
 %% -----------------------------------------------------------------------------

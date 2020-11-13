@@ -77,10 +77,15 @@
 
 -type t()           ::  #babel_index_collection{}.
 -type riak_object() ::  riakc_map:crdt_map().
+-type fold_fun()    ::  fun(
+                            (Key :: key(), Value :: any(), AccIn :: any()) ->
+                                AccOut :: any()
+                        ).
 
 -export_type([t/0]).
 -export_type([riak_object/0]).
 -export_type([riak_opts/0]).
+-export_type([fold_fun/0]).
 
 
 %% API
@@ -90,6 +95,7 @@
 -export([delete/3]).
 -export([delete_index/2]).
 -export([fetch/3]).
+-export([fold/3]).
 -export([from_riak_object/1]).
 -export([id/1]).
 -export([index/2]).
@@ -359,6 +365,26 @@ to_delete_task(#babel_index_collection{} = Collection) ->
     reliable_task:new(
         node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]
     ).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec fold(Fun :: fold_fun(), Acc :: any(), Collection :: t()) -> any().
+
+fold(Fun, Acc, Collection) ->
+    try data(Collection) of
+        Data ->
+            Fun = fun(_, V, IAcc) ->
+                E = babel_index:from_riak_object(V),
+                Fun(E, IAcc)
+            end,
+            lists:reverse(orddict:fold(Fun, Acc, Data))
+    catch
+        error:function_clause ->
+            []
+    end.
 
 
 %% -----------------------------------------------------------------------------

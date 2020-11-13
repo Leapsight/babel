@@ -102,7 +102,11 @@ end).
 -type partition_id()            ::  binary().
 -type partition_key()           ::  binary().
 -type local_key()               ::  binary().
--type action()                  ::  insert | delete.
+-type update_action()           ::  {insert | delete, key_value()}
+                                    | {update,
+                                        Old :: key_value() | undefined,
+                                        New :: key_value()
+                                    }.
 -type key_value()               ::  babel_key_value:t().
 -type index_key()               ::  binary().
 -type index_values()            ::  map().
@@ -133,7 +137,6 @@ end).
 }.
 
 
--export_type([action/0]).
 -export_type([fold_fun/0]).
 -export_type([fold_opts/0]).
 -export_type([index_key/0]).
@@ -146,17 +149,18 @@ end).
 -export_type([riak_object/0]).
 -export_type([riak_opts/0]).
 -export_type([t/0]).
+-export_type([update_action/0]).
 -export_type([update_opts/0]).
 
 %% API
 %% -export([get/4]).
 %% -export([list/4]).
+%% -export([fold/3]).
+%% -export([fold/4]).
 -export([bucket/1]).
 -export([bucket_type/1]).
 -export([config/1]).
 -export([create_partitions/1]).
-%% -export([fold/3]).
-%% -export([fold/4]).
 -export([foreach/2]).
 -export([from_riak_object/1]).
 -export([match/3]).
@@ -171,7 +175,7 @@ end).
 -export([type/1]).
 -export([typed_bucket/1]).
 -export([update/3]).
--export([update_key_paths/1]).
+-export([distinguished_key_paths/1]).
 
 
 %% Till we fix maps_utils:validate
@@ -205,10 +209,11 @@ end).
 -callback partition_identifiers(asc | desc, map()) -> [partition_id()].
 
 -callback update_partition(
-    [{action(), key_value()}], babel_index_partition:t(), map()) ->
-    babel_index_partition:t().
+    Actions :: [update_action()],
+    Partition :: babel_index_partition:t(),
+    Config :: map()) -> UpdatedPartition :: babel_index_partition:t().
 
--callback update_key_paths(Config :: map()) -> [babel_key_value:path()].
+-callback distinguished_key_paths(Config :: map()) -> [babel_key_value:path()].
 
 -callback match(Pattern :: key_value(), babel_index_partition:t(), map()) ->
     [map()] | no_return().
@@ -470,12 +475,12 @@ partition_identifier(KeyValue, Index) ->
 %% function.
 %% @end
 %% -----------------------------------------------------------------------------
--spec update_key_paths(Index :: t()) -> [babel_key_value:path()].
+-spec distinguished_key_paths(Index :: t()) -> [babel_key_value:path()].
 
-update_key_paths(Index) ->
+distinguished_key_paths(Index) ->
     Mod = type(Index),
     Config = config(Index),
-    Mod:update_key_paths(Config).
+    Mod:distinguished_key_paths(Config).
 
 
 %% -----------------------------------------------------------------------------
@@ -483,31 +488,27 @@ update_key_paths(Index) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update(
-    Actions :: [{action(), key_value()}],
+    Actions :: [update_action()],
     Index :: t(),
-    RiakOpts :: update_opts()) ->
+    Opts :: update_opts()) ->
     maybe_no_return([babel_index_partition:t()]).
 
-update(Actions, Index, RiakOpts) when is_list(Actions) ->
+update(Actions, Index, Opts) when is_list(Actions) ->
     Mod = type(Index),
     Config = config(Index),
     TypeBucket = typed_bucket(Index),
 
-    Update = fun({PartitionId, PActions}, Acc) ->
-        Part0 = babel_index_partition:fetch(TypeBucket, PartitionId, RiakOpts),
+    GroupedActions = actions_by_partition_id(Actions, Index, Opts),
+
+    Fun = fun({PartitionId, PActions}, Acc) ->
+        Part0 = babel_index_partition:fetch(TypeBucket, PartitionId, Opts),
 
         %% The actual update is performed by the index subtype
+
         Part1 = Mod:update_partition(PActions, Part0, Config),
         [Part1 | Acc]
     end,
-    lists:foldl(
-        Update,
-        [],
-        objects_by_partition_id(Mod, Config, Actions)
-    ).
-
-
-
+    lists:foldl(Fun, [], GroupedActions).
 
 
 
@@ -590,18 +591,94 @@ match(Pattern, Index, RiakOpts) ->
 
 
 
+%% -----------------------------------------------------------------------------
 %% @private
-objects_by_partition_id(Mod, Config, List) ->
-    Tuples = [
-        %% We generate the tuple {partition_id(), {action(), key_value()}}.
-        {Mod:partition_identifier(Data, Config), X}
-        || {_, Data} = X <- List
-    ],
+%% We generate the tuple
+%% {partition_id(), {update_action(), key_value()}}.
+%% -----------------------------------------------------------------------------
+prepare_actions([{_, Data} = Action | T], Index, Opts, Acc) ->
+    Mod = type(Index),
+    Config = config(Index),
+    P = Mod:partition_identifier(Data, Config),
+    NewAcc = [{P, Action} | Acc],
+    prepare_actions(T, Index, Opts, NewAcc);
 
-    %% We generate the list [ {partition_id(), [{action(), key_value()}]} ]
+prepare_actions([{update, undefined, Data} | T], Index, Opts, Acc) ->
+    prepare_actions([{insert, Data} | T], Index, Opts, Acc);
+
+prepare_actions([{update, Old, New} | T], Index, Opts, Acc) ->
+    %% We use this call so that we cache the distinguished_key_paths result
+    %% in Opts
+    {Keys, Opts1} = distinguished_key_paths(Index, Opts),
+    case status(Keys, New, Opts) of
+        none ->
+            %% We do not need to update the index as no distinsguished key has
+            %% changed
+            prepare_actions(T, Index, Opts, Acc);
+        removed ->
+            %% Distinguished key have been removed so ww just need to delete
+            %% the entry in this index
+            prepare_actions([{delete, Old} | T], Index, Opts, Acc);
+        Status when Status == updated; Status == both ->
+            %% updated or both
+            Mod = type(Index),
+            Config = config(Index),
+            P1 = Mod:partition_identifier(Old, Config),
+            P2 = Mod:partition_identifier(New, Config),
+            NewAcc = [{P1, {delete, Old}}, {P2, {insert, New}} | Acc],
+            prepare_actions(T, Index, Opts, NewAcc)
+    end;
+
+prepare_actions([], _, _, Acc) ->
+    lists:reverse(Acc).
+
+
+%% @private
+status(Keys, Map, #{force := true}) ->
+    both;
+
+status(Keys, Map, _) ->
+    try
+        Fold = fun(X, Acc) ->
+            case babel_map:status(X, Map) of
+                both ->
+                    throw(both);
+                Status when Acc /= none andalso Acc /= Status ->
+                    throw(both);
+                Status when Acc == none ->
+                    Status
+            end
+        end,
+        lists:foldl(Fold, none, Keys)
+    catch
+        throw:both ->
+            both
+    end.
+
+
+%% @private
+%% So that we lazily cache the distinguished_key_paths
+distinguished_key_paths(_, #{distinguished_key_paths := Val}) ->
+    Val;
+
+distinguished_key_paths(Index, Opts0) ->
+    Keys = distinguished_key_paths(Index),
+    Opts = maps:put(distinguished_key_paths, Keys, Opts0),
+    {Keys, Opts}.
+
+
+%% @private
+actions_by_partition_id(Actions, Index, Opts) ->
+    Tuples = prepare_actions(Actions, Index, Opts, []),
+
+    %% We group by partition id
+    %% This produces the list:
+    %%    [ {partition_id(), [{update_action(), key_value()}]} ]
     %% by grouping by the 1st element and collecting the 2nd element
     Proj = {1, {function, collect, [2]}},
-    leap_tuples:summarize(Tuples, Proj, #{}).
+    %% We sort as we need deletes to precede inserts on the same partition
+    SOpts = #{sort => true},
+    leap_tuples:summarize(Tuples, Proj, SOpts).
 
 
 %% %% @private
