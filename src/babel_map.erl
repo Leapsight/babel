@@ -81,7 +81,10 @@
 
 -opaque t()                 ::  #babel_map{}.
 -type datatype()            ::  counter | flag | register | set | map.
--type type_spec()           ::  #{key() | '_' => type_mapping()}.
+-type type_spec()           ::  #{
+                                    '$validated' => true,
+                                    key() | '_'  => type_mapping()
+                                }.
 -type type_mapping()        ::  {map, type_spec()}
                                 | {set, erl_type()}
                                 | {counter, erl_type()}
@@ -1466,8 +1469,7 @@ collect([], _, _, Acc) ->
 %% @private
 collect_map([H|T], Map, Default, Acc) ->
     try
-        %% TODO This is wrong, acc on a map
-        collect_map(T, Map, Default, [get(H, Map, Default)|Acc])
+        collect_map(T, Map, Default, maps:put(H, get(H, Map, Default), Acc))
     catch
         error:badkey ->
             error({badkey, H})
