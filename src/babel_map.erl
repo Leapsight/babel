@@ -17,7 +17,7 @@
 %% =============================================================================
 
 %% -----------------------------------------------------------------------------
-%% @doc Provides an alternative to Riak map datatype.
+%% @doc Provides an alternative to Riak Map Datatype.
 %%
 %% # Overview
 %%
@@ -25,9 +25,9 @@
 %%
 %% * Maps are special key-value structures where the key is a binary name and
 %% the value is a Babel datatype, each one an alternative of the Riak's
-%% counterparts,  with the exception of the Riak Register type which can be
-%% represented by any Erlang Term in Babel (and not just a binary) provide
-%% there exist a valid type conversion specification.
+%% counterparts, with the exception of the Riak Register type which can be
+%% represented by any Erlang Term in Babel (and not just a binary) provided
+%% there exists a valid type conversion specification (see <a href="#type-specification">Type Specifications</a>).
 %% * Maps maintain the same semantics as Riak Maps but with some key differences
 %%     * As with Riak Map, removals, and modifications are captured for later
 %% application by Riak but they are also applied to the local state. That is,
@@ -47,7 +47,7 @@
 %%     * Certain function e.g. `set/3' allows you to set a value in a key or a
 %% path (list of nested keys).
 %%
-%% # Type Specifications
+%% # <a name="type-specifications"></a>Type Specifications
 %%
 %% A type specification is an Erlang map where the keys are the Babel map keys
 %% and their value is another specification or a
@@ -108,6 +108,8 @@
 %% API
 -export([add_element/3]).
 -export([add_elements/3]).
+-export([change_status/2]).
+-export([changed_key_paths/1]).
 -export([collect/2]).
 -export([collect/3]).
 -export([collect_map/2]).
@@ -139,14 +141,12 @@
 -export([set/3]).
 -export([set_context/2]).
 -export([set_elements/3]).
--export([status/2]).
 -export([size/1]).
 -export([to_riak_op/2]).
 -export([type/0]).
 -export([update/3]).
--export([changed_key_paths/1]).
--export([value/1]).
 -export([validate_type_spec/1]).
+-export([value/1]).
 
 
 
@@ -347,11 +347,16 @@ keys(Term) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns a list of the key paths that have been removed in map `T'.
+%% @doc Returns a tuple where the first element is the list of the key paths
+%% that have been updated and the second one those which have been removed
+%% in map `T'.
+%% Notice that a key path might be both removed and updated, in which case it
+%% will be a mamber of both result elements.
 %% The call fails with a `{badmap, T}' exception if `T' is not a map.
 %% @end
 %% -----------------------------------------------------------------------------
--spec changed_key_paths(T :: t()) -> [key_path()] | no_return().
+-spec changed_key_paths(T :: t()) ->
+    {Updated :: [key_path()], Removed :: [key_path()]} | no_return().
 
 changed_key_paths(#babel_map{} = T) ->
     changed_key_paths(T, {[], []}, []);
@@ -362,13 +367,13 @@ changed_key_paths(Term) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns the status of a key path `KeyPath' in map `Map', where status
-%% can be updated, removed, both or none.
+%% can be one of `updated', `removed', `both' or `none'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec status(KeyPath :: babel_key_value:path(), Map :: t()) ->
+-spec change_status(KeyPath :: babel_key_value:path(), Map :: t()) ->
     none | both | removed | updated.
 
-status([Key], #babel_map{updates = U, removes = R}) ->
+change_status([Key], #babel_map{updates = U, removes = R}) ->
     IsU = ordsets:is_element(Key, U),
     IsR = ordsets:is_element(Key, R),
     case {IsU, IsR} of
@@ -378,11 +383,11 @@ status([Key], #babel_map{updates = U, removes = R}) ->
         _ -> none
     end;
 
-status([H|T], #babel_map{values = V} = Map) ->
+change_status([H|T], #babel_map{values = V} = Map) ->
     case maps:find(H, V) of
-        {ok, Child} -> status(T, Child);
+        {ok, Child} -> change_status(T, Child);
         error ->
-            status([H], Map)
+            change_status([H], Map)
     end.
 
 
@@ -476,7 +481,7 @@ find(_, Term) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc An util function equivalent to calling `DatatypeMod:value(get(Key, T))`.
+%% @doc An util function equivalent to calling `DatatypeMod:value(get(Key, T))'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec get_value(Key :: key_path(), T :: t()) -> any().
@@ -487,7 +492,7 @@ get_value(Key, T) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc An util function equivalent to calling
-%% `DatatypeMod:value(get(Key, T, Default))`.
+%% `DatatypeMod:value(get(Key, T, Default))'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec get_value(Key :: key_path(), T :: t(), Default :: any()) ->
@@ -650,7 +655,7 @@ set(Key, Value, Map) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Same as {@set/3}.
+%% @doc Same as {@link set/3}.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec put(Key :: key_path(), Value :: value(), Map :: t()) ->
@@ -1141,7 +1146,7 @@ to_key(Term) ->
     error({badkey, Term}).
 
 
-%% @private
+
 %% init_values(Spec, Acc0) ->
 %%     %% We only set the missing container values
 %%     Fun = fun
@@ -1611,8 +1616,11 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
 
 
 %% @private
--spec changed_key_paths(t(), AccIn :: list(), Path :: list()) ->
-    AccOut :: list().
+-spec changed_key_paths(
+    t(),
+    AccIn :: {Updated :: [key_path()], Removed :: [key_path()]},
+    Path :: list()) ->
+    AccOut :: {Updated :: [key_path()], Removed :: [key_path()]}.
 
 changed_key_paths(
     #babel_map{updates = U, removes = R} = Parent, Acc, Path0) ->

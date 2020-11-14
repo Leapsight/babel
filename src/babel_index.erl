@@ -471,7 +471,7 @@ partition_identifier(KeyValue, Index) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns the list of the key paths for which a value will need to be
-%% present in the key value object passed as an action to the {@linl update/3}
+%% present in the key value object passed as an action to the {@link update/3}
 %% function.
 %% @end
 %% -----------------------------------------------------------------------------
@@ -607,18 +607,19 @@ prepare_actions([{update, undefined, Data} | T], Index, Opts, Acc) ->
     prepare_actions([{insert, Data} | T], Index, Opts, Acc);
 
 prepare_actions([{update, Old, New} | T], Index, Opts, Acc) ->
-    %% We use this call so that we cache the distinguished_key_paths result
-    %% in Opts
+    %% We use this call so that we cache the distinguished_key_paths
+    %% result in Opts
     {Keys, Opts1} = distinguished_key_paths(Index, Opts),
-    case status(Keys, New, Opts) of
+
+    case change_status(Keys, New, Opts1) of
         none ->
             %% We do not need to update the index as no distinsguished key has
             %% changed
-            prepare_actions(T, Index, Opts, Acc);
+            prepare_actions(T, Index, Opts1, Acc);
         removed ->
             %% Distinguished key have been removed so ww just need to delete
             %% the entry in this index
-            prepare_actions([{delete, Old} | T], Index, Opts, Acc);
+            prepare_actions([{delete, Old} | T], Index, Opts1, Acc);
         Status when Status == updated; Status == both ->
             %% updated or both
             Mod = type(Index),
@@ -626,7 +627,7 @@ prepare_actions([{update, Old, New} | T], Index, Opts, Acc) ->
             P1 = Mod:partition_identifier(Old, Config),
             P2 = Mod:partition_identifier(New, Config),
             NewAcc = [{P1, {delete, Old}}, {P2, {insert, New}} | Acc],
-            prepare_actions(T, Index, Opts, NewAcc)
+            prepare_actions(T, Index, Opts1, NewAcc)
     end;
 
 prepare_actions([], _, _, Acc) ->
@@ -634,13 +635,13 @@ prepare_actions([], _, _, Acc) ->
 
 
 %% @private
-status(Keys, Map, #{force := true}) ->
+change_status(_, _, #{force := true}) ->
     both;
 
-status(Keys, Map, _) ->
+change_status(Keys, Map, _) ->
     try
         Fold = fun(X, Acc) ->
-            case babel_map:status(X, Map) of
+            case babel_map:change_status(X, Map) of
                 both ->
                     throw(both);
                 Status when Acc /= none andalso Acc /= Status ->
