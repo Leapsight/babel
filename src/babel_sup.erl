@@ -135,7 +135,8 @@ maybe_add_pool() ->
             ok = lists:foreach(
                 fun
                     (#{name := Name} = Pool) ->
-                        case riak_pool:add_pool(default, Pool) of
+                        Config = maps:without([name], Pool),
+                        case riak_pool:add_pool(default, Config) of
                             ok ->
                                 ?LOG_INFO(#{
                                     message => "Riak KV connection pool configured",
