@@ -27,7 +27,7 @@
 %% the value is a Babel datatype, each one an alternative of the Riak's
 %% counterparts, with the exception of the Riak Register type which can be
 %% represented by any Erlang Term in Babel (and not just a binary) provided
-%% there exists a valid type conversion specification (see <a href="#type-specification">Type Specifications</a>).
+%% there exists a valid type conversion specification (see <a href="#type-specifications">Type Specifications</a>).
 %% * Maps maintain the same semantics as Riak Maps but with some key differences
 %%     * As with Riak Map, removals, and modifications are captured for later
 %% application by Riak but they are also applied to the local state. That is,

@@ -20,7 +20,7 @@ Babel maps (maps) differ from Riak's and Erlang's maps in several ways:
 the value is a Babel datatype, each one an alternative of the Riak's
 counterparts, with the exception of the Riak Register type which can be
 represented by any Erlang Term in Babel (and not just a binary) provided
-there exists a valid type conversion specification (see [Type Specifications](#type-specification)).
+there exists a valid type conversion specification (see [Type Specifications](#type-specifications)).
 * Maps maintain the same semantics as Riak Maps but with some key differences
 * As with Riak Map, removals, and modifications are captured for later
 application by Riak but they are also applied to the local state. That is,
