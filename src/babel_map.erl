@@ -60,10 +60,10 @@
 %% result in a map containing the key `<<"friends">>' and a babel set contining
 %% the elements converted from binaries to lists.
 %%
-%% The special '_' key name provides the capability to convert a Riak Map where
+%% The special '\_' key name provides the capability to convert a Riak Map where
 %% the keys are not known in advance, and their values are all of the same
 %% type. These specs can only have a single entry as follows
-%% `#{{'_', set}, binary}'.
+%% `#{{'\_', set}, binary}'.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
