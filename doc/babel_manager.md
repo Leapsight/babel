@@ -1,9 +1,12 @@
 
 
 # Module babel_manager #
+* [Description](#description)
 * [Data Types](#types)
 * [Function Index](#index)
 * [Function Details](#functions)
+
+LEGACY CODE TO RE-INDEX USING SOLR, TO BE REPLACED BY BABEL.
 
 __Behaviours:__ [`gen_server`](gen_server.md).
 

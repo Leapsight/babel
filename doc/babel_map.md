@@ -6,7 +6,7 @@
 * [Function Index](#index)
 * [Function Details](#functions)
 
-Provides an alternative to Riak map datatype.
+Provides an alternative to Riak Map Datatype.
 
 <a name="description"></a>
 
@@ -17,14 +17,10 @@ Provides an alternative to Riak map datatype.
 Babel maps (maps) differ from Riak's and Erlang's maps in several ways:
 
 * Maps are special key-value structures where the key is a binary name and
-the value is either an Erlang term or another Babel data structure (each one
-an alternative of the Riak's counterparts). In case the value is an Erlang
-term, it is denoted as a Riak register but without the restriction of them
-being binaries as in Riak. To be able to do this certain map operations
-require a Specification object, a sort of schema that tells Babel map the
-type of each value. This enables the map to use Erlang terms and only
-convert them to the required Riak datatypes when storing the object in the
-database.
+the value is a Babel datatype, each one an alternative of the Riak's
+counterparts, with the exception of the Riak Register type which can be
+represented by any Erlang Term in Babel (and not just a binary) provided
+there exists a valid type conversion specification (see [Type Specifications](#type-specification)).
 * Maps maintain the same semantics as Riak Maps but with some key differences
 * As with Riak Map, removals, and modifications are captured for later
 application by Riak but they are also applied to the local state. That is,
@@ -44,16 +40,18 @@ not present will create a new container before the set/add operation.
 * Certain function e.g. `set/3` allows you to set a value in a key or a
 path (list of nested keys).
 
-# Map Specification
+# <a name="type-specifications"></a>Type Specifications
 
-A map specification is an Erlang map where the keys are Riak keys i.e. a
-pair of a binary name and data type and value is another specification or a
-`type()`. This can be seen as an encoding specification. For example the
-specification `#{ {<<"friends">>, set} => list}`, says the map contains a
-single key name "friends" containing a set which individual elements we want
-to convert to lists i.e. a set of lists. This will result in a map
-containing the key `<<"friends">>` and a babel set contining the elements
-converted from binaries to lists.
+A type specification is an Erlang map where the keys are the Babel map keys
+and their value is another specification or a
+`type_mapping()`.
+
+For example the specification `#{<<"friends">> => {set, list}}`, says the
+map contains a single key name "friends" containing a Babel Set (compatible
+with Riak Set) where the individual
+elements are represented in Erlang as lists i.e. a set of lists. This will
+result in a map containing the key `<<"friends">>` and a babel set contining
+the elements converted from binaries to lists.
 
 The special '_' key name provides the capability to convert a Riak Map where
 the keys are not known in advance, and their values are all of the same
@@ -67,11 +65,21 @@ type. These specs can only have a single entry as follows
 
 
 
-### <a name="type-datatype">datatype()</a> ###
+### <a name="type-action">action()</a> ###
 
 
 <pre><code>
-datatype() = counter | flag | register | set | map
+action() = map()
+</code></pre>
+
+
+
+
+### <a name="type-erl_type">erl_type()</a> ###
+
+
+<pre><code>
+erl_type() = atom | existing_atom | boolean | integer | float | binary | list | fun((encode, any()) -&gt; <a href="#type-value">value()</a>) | fun((decode, <a href="#type-value">value()</a>) -&gt; any())
 </code></pre>
 
 
@@ -87,26 +95,6 @@ key_path() = binary() | [binary()]
 
 
 
-### <a name="type-key_type_spec">key_type_spec()</a> ###
-
-
-<pre><code>
-key_type_spec() = atom | existing_atom | boolean | integer | float | binary | list | <a href="#type-type_spec">type_spec()</a> | <a href="babel_set.md#type-type_spec">babel_set:type_spec()</a> | fun((encode, any()) -&gt; <a href="#type-value">value()</a>) | fun((decode, <a href="#type-value">value()</a>) -&gt; any())
-</code></pre>
-
-
-
-
-### <a name="type-riak_key">riak_key()</a> ###
-
-
-<pre><code>
-riak_key() = {binary(), <a href="#type-datatype">datatype()</a>}
-</code></pre>
-
-
-
-
 ### <a name="type-t">t()</a> ###
 
 
@@ -115,21 +103,21 @@ __abstract datatype__: `t()`
 
 
 
-### <a name="type-type_spec">type_spec()</a> ###
+### <a name="type-type_mapping">type_mapping()</a> ###
 
 
 <pre><code>
-type_spec() = #{<a href="#type-riak_key">riak_key()</a> =&gt; <a href="#type-key_type_spec">key_type_spec()</a>} | #{{_, <a href="#type-datatype">datatype()</a>} =&gt; <a href="#type-key_type_spec">key_type_spec()</a>}
+type_mapping() = {map, <a href="#type-type_spec">type_spec()</a>} | {set, <a href="#type-erl_type">erl_type()</a>} | {counter, <a href="#type-erl_type">erl_type()</a>} | {flag, <a href="#type-erl_type">erl_type()</a>} | {register, <a href="#type-erl_type">erl_type()</a>}
 </code></pre>
 
 
 
 
-### <a name="type-update_fun">update_fun()</a> ###
+### <a name="type-type_spec">type_spec()</a> ###
 
 
 <pre><code>
-update_fun() = fun((<a href="babel.md#type-datatype">babel:datatype()</a> | term()) -&gt; <a href="babel.md#type-datatype">babel:datatype()</a> | term())
+type_spec() = #{<a href="#type-key">key()</a> | _ =&gt; <a href="#type-type_mapping">type_mapping()</a>}
 </code></pre>
 
 
@@ -149,12 +137,23 @@ value() = any()
 
 <table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_element-3">add_element/3</a></td><td>Adds element <code>Value</code> to a babel set associated with key or path
 <code>Key</code> in map <code>Map</code> and inserts the association into map <code>NewMap</code>.</td></tr><tr><td valign="top"><a href="#add_elements-3">add_elements/3</a></td><td>Adds a list of values <code>Values</code> to a babel set associated with key or
-path <code>Key</code> in map <code>Map</code> and inserts the association into map <code>NewMap</code>.</td></tr><tr><td valign="top"><a href="#collect-2">collect/2</a></td><td></td></tr><tr><td valign="top"><a href="#context-1">context/1</a></td><td>Returns the Riak KV context.</td></tr><tr><td valign="top"><a href="#del_element-3">del_element/3</a></td><td>Returns a new map <code>NewMap</code> were the value <code>Value</code> has been removed from
+path <code>Key</code> in map <code>Map</code> and inserts the association into map <code>NewMap</code>.</td></tr><tr><td valign="top"><a href="#change_status-2">change_status/2</a></td><td>Returns the status of a key path <code>KeyPath</code> in map <code>Map</code>, where status
+can be one of <code>updated</code>, <code>removed</code>, <code>both</code> or <code>none</code>.</td></tr><tr><td valign="top"><a href="#changed_key_paths-1">changed_key_paths/1</a></td><td>Returns a tuple where the first element is the list of the key paths
+that have been updated and the second one those which have been removed
+in map <code>T</code>.</td></tr><tr><td valign="top"><a href="#collect-2">collect/2</a></td><td>Returns a list of values associated with the keys <code>Keys</code>.</td></tr><tr><td valign="top"><a href="#collect-3">collect/3</a></td><td>Returns a list of values associated with the keys <code>Keys</code>.</td></tr><tr><td valign="top"><a href="#collect_map-2">collect_map/2</a></td><td>Returns a list of values associated with the keys <code>Keys</code>.</td></tr><tr><td valign="top"><a href="#collect_map-3">collect_map/3</a></td><td>Returns a list of values associated with the keys <code>Keys</code>.</td></tr><tr><td valign="top"><a href="#context-1">context/1</a></td><td>Returns the Riak KV context associated with map <code>T</code>.</td></tr><tr><td valign="top"><a href="#decrement-2">decrement/2</a></td><td></td></tr><tr><td valign="top"><a href="#decrement-3">decrement/3</a></td><td></td></tr><tr><td valign="top"><a href="#del_element-3">del_element/3</a></td><td>Returns a new map <code>NewMap</code> were the value <code>Value</code> has been removed from
 a babel set associated with key or path <code>Key</code> in
-map <code>Map</code>.</td></tr><tr><td valign="top"><a href="#from_riak_map-2">from_riak_map/2</a></td><td></td></tr><tr><td valign="top"><a href="#get-2">get/2</a></td><td>Returns value <code>Value</code> associated with <code>Key</code> if <code>T</code> contains <code>Key</code>.</td></tr><tr><td valign="top"><a href="#get-3">get/3</a></td><td>Returns value <code>Value</code> associated with <code>Key</code> if <code>T</code> contains <code>Key</code>, or
-the default value <code>Default</code> in case <code>T</code> does not contain <code>Key</code>.</td></tr><tr><td valign="top"><a href="#is_type-1">is_type/1</a></td><td>Returns true if term <code>Term</code> is a babel map.</td></tr><tr><td valign="top"><a href="#new-0">new/0</a></td><td></td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td></td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td></td></tr><tr><td valign="top"><a href="#remove-2">remove/2</a></td><td>Removes a key and its value from the map.</td></tr><tr><td valign="top"><a href="#set-3">set/3</a></td><td>Associates <code>Key</code> with value <code>Value</code> and inserts the association into
-map <code>NewMap</code>.</td></tr><tr><td valign="top"><a href="#to_riak_op-2">to_riak_op/2</a></td><td></td></tr><tr><td valign="top"><a href="#type-0">type/0</a></td><td>Returns the symbolic name of this container.</td></tr><tr><td valign="top"><a href="#update-3">update/3</a></td><td></td></tr><tr><td valign="top"><a href="#value-1">value/1</a></td><td>Returns an external representation of the babel map <code>Map</code> as an erlang
-map.</td></tr></table>
+map <code>Map</code>.</td></tr><tr><td valign="top"><a href="#disable-2">disable/2</a></td><td></td></tr><tr><td valign="top"><a href="#enable-2">enable/2</a></td><td></td></tr><tr><td valign="top"><a href="#find-2">find/2</a></td><td>Returns the tuple <code>{ok, Value :: any()}</code> if the key 'Key' is associated
+with value <code>Value</code> in map <code>T</code>.</td></tr><tr><td valign="top"><a href="#from_riak_map-2">from_riak_map/2</a></td><td>Returns a new map by applying the type specification <code>Spec</code> to the Riak
+Map <code>RMap</code>.</td></tr><tr><td valign="top"><a href="#get-2">get/2</a></td><td>Returns value <code>Value</code> associated with <code>Key</code> if <code>T</code> contains <code>Key</code>.</td></tr><tr><td valign="top"><a href="#get-3">get/3</a></td><td>Returns value <code>Value</code> associated with <code>Key</code> if <code>T</code> contains <code>Key</code>, or
+the default value <code>Default</code> in case <code>T</code> does not contain <code>Key</code>.</td></tr><tr><td valign="top"><a href="#get_value-2">get_value/2</a></td><td>An util function equivalent to calling <code>DatatypeMod:value(get(Key, T))</code>.</td></tr><tr><td valign="top"><a href="#get_value-3">get_value/3</a></td><td>An util function equivalent to calling
+<code>DatatypeMod:value(get(Key, T, Default))</code>.</td></tr><tr><td valign="top"><a href="#increment-2">increment/2</a></td><td></td></tr><tr><td valign="top"><a href="#increment-3">increment/3</a></td><td></td></tr><tr><td valign="top"><a href="#is_type-1">is_type/1</a></td><td>Returns true if term <code>Term</code> is a babel map.</td></tr><tr><td valign="top"><a href="#keys-1">keys/1</a></td><td>Returns a complete list of keys, in any order, which resides within map
+<code>T</code>.</td></tr><tr><td valign="top"><a href="#merge-2">merge/2</a></td><td>Merges two maps into a single map <code>Map3</code>.</td></tr><tr><td valign="top"><a href="#new-0">new/0</a></td><td></td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td>Creates a new Babel Map from the erlang map <code>Data</code>, previously
+filtering out all keys assigned to the <code>undefined</code>.</td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td></td></tr><tr><td valign="top"><a href="#new-3">new/3</a></td><td>Creates a new Babel Map from the erlang map <code>Data</code>, previously
+filtering out all keys assigned to the <code>undefined</code>.</td></tr><tr><td valign="top"><a href="#patch-3">patch/3</a></td><td>Updates a map <code>T</code> with the provide key-value action list <code>ActionList</code>.</td></tr><tr><td valign="top"><a href="#put-3">put/3</a></td><td>Same as <a href="#set-3"><code>set/3</code></a>.</td></tr><tr><td valign="top"><a href="#remove-2">remove/2</a></td><td>Removes a key and its value from the map.</td></tr><tr><td valign="top"><a href="#set-3">set/3</a></td><td>Associates <code>Key</code> with value <code>Value</code> and inserts the association into
+map <code>NewMap</code>.</td></tr><tr><td valign="top"><a href="#set_context-2">set_context/2</a></td><td>Sets the context <code>Ctxt</code>.</td></tr><tr><td valign="top"><a href="#set_elements-3">set_elements/3</a></td><td>Sets a list of values <code>Values</code> to a babel set associated with key or
+path <code>Key</code> in map <code>Map</code> and inserts the association into map <code>NewMap</code>.</td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>Returns the size of the values of the map <code>T</code>.</td></tr><tr><td valign="top"><a href="#to_riak_op-2">to_riak_op/2</a></td><td>Extracts a Riak Operation from the map to be used with a Riak Client
+update request.</td></tr><tr><td valign="top"><a href="#type-0">type/0</a></td><td>Returns the symbolic name of this container.</td></tr><tr><td valign="top"><a href="#update-3">update/3</a></td><td>Updates a map <code>T</code> with the provide key-value pairs <code>Values</code>.</td></tr><tr><td valign="top"><a href="#validate_type_spec-1">validate_type_spec/1</a></td><td></td></tr><tr><td valign="top"><a href="#value-1">value/1</a></td><td>Returns an external representation of the map <code>Map</code> as an Erlang
+map().</td></tr></table>
 
 
 <a name="functions"></a>
@@ -166,7 +165,7 @@ map.</td></tr></table>
 ### add_element/3 ###
 
 <pre><code>
-add_element(Key::<a href="#type-key">key()</a>, Value::<a href="#type-value">value()</a>, Map::<a href="#type-t">t()</a>) -&gt; NewMap::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
+add_element(Key::<a href="#type-key_path">key_path()</a>, Value::<a href="#type-value">value()</a>, Map::<a href="#type-t">t()</a>) -&gt; NewMap::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
 </code></pre>
 <br />
 
@@ -189,7 +188,7 @@ is not of type binary.
 ### add_elements/3 ###
 
 <pre><code>
-add_elements(Key::<a href="#type-key">key()</a>, Values::[<a href="#type-value">value()</a>], Map::<a href="#type-t">t()</a>) -&gt; NewMap::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
+add_elements(Key::<a href="#type-key_path">key_path()</a>, Values::[<a href="#type-value">value()</a>], Map::<a href="#type-t">t()</a>) -&gt; NewMap::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
 </code></pre>
 <br />
 
@@ -207,32 +206,120 @@ is not a babel set;
 * `{badkey, Key}` - exception if no value is associated with `Key` or `Key`
 is not of type binary.
 
+<a name="change_status-2"></a>
+
+### change_status/2 ###
+
+<pre><code>
+change_status(KeyPath::<a href="babel_key_value.md#type-path">babel_key_value:path()</a>, Map::<a href="#type-t">t()</a>) -&gt; none | both | removed | updated
+</code></pre>
+<br />
+
+Returns the status of a key path `KeyPath` in map `Map`, where status
+can be one of `updated`, `removed`, `both` or `none`.
+
+<a name="changed_key_paths-1"></a>
+
+### changed_key_paths/1 ###
+
+<pre><code>
+changed_key_paths(T::<a href="#type-t">t()</a>) -&gt; {Updated::[<a href="#type-key_path">key_path()</a>], Removed::[<a href="#type-key_path">key_path()</a>]} | no_return()
+</code></pre>
+<br />
+
+Returns a tuple where the first element is the list of the key paths
+that have been updated and the second one those which have been removed
+in map `T`.
+Notice that a key path might be both removed and updated, in which case it
+will be a mamber of both result elements.
+The call fails with a `{badmap, T}` exception if `T` is not a map.
+
 <a name="collect-2"></a>
 
 ### collect/2 ###
 
 <pre><code>
-collect(Keys::[<a href="#type-key">key()</a>], Map::<a href="#type-t">t()</a>) -&gt; [any()]
+collect(Keys::[<a href="#type-key_path">key_path()</a>], Map::<a href="#type-t">t()</a>) -&gt; [any()]
 </code></pre>
 <br />
+
+Returns a list of values associated with the keys `Keys`.
+Fails with a `{badkey, K}` exeception if any key `K` in `Keys` is not
+present in the map.
+
+<a name="collect-3"></a>
+
+### collect/3 ###
+
+<pre><code>
+collect(Keys::[<a href="#type-key_path">key_path()</a>], Map::<a href="#type-t">t()</a>, Default::any()) -&gt; [any()]
+</code></pre>
+<br />
+
+Returns a list of values associated with the keys `Keys`. If any key
+`K` in `Keys` is not present in the map the value `Default` is returned.
+
+<a name="collect_map-2"></a>
+
+### collect_map/2 ###
+
+<pre><code>
+collect_map(Keys::[<a href="#type-key_path">key_path()</a>], Map::<a href="#type-t">t()</a>) -&gt; map()
+</code></pre>
+<br />
+
+Returns a list of values associated with the keys `Keys`.
+Fails with a `{badkey, K}` exeception if any key `K` in `Keys` is not
+present in the map.
+
+<a name="collect_map-3"></a>
+
+### collect_map/3 ###
+
+<pre><code>
+collect_map(Keys::[<a href="#type-key_path">key_path()</a>], Map::<a href="#type-t">t()</a>, Default::any()) -&gt; map()
+</code></pre>
+<br />
+
+Returns a list of values associated with the keys `Keys`. If any key
+`K` in `Keys` is not present in the map the value `Default` is returned.
 
 <a name="context-1"></a>
 
 ### context/1 ###
 
 <pre><code>
-context(T::<a href="#type-t">t()</a>) -&gt; <a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>
+context(T::<a href="#type-t">t()</a>) -&gt; <a href="riakc_datatype.md#type-context">riakc_datatype:context()</a> | no_return()
 </code></pre>
 <br />
 
-Returns the Riak KV context
+Returns the Riak KV context associated with map `T`.
+The call fails with a `{badmap, T}` exception if `T` is not a map.
+
+<a name="decrement-2"></a>
+
+### decrement/2 ###
+
+<pre><code>
+decrement(Key::<a href="#type-key_path">key_path()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+<a name="decrement-3"></a>
+
+### decrement/3 ###
+
+<pre><code>
+decrement(Key::<a href="#type-key_path">key_path()</a>, Value::integer(), T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+</code></pre>
+<br />
 
 <a name="del_element-3"></a>
 
 ### del_element/3 ###
 
 <pre><code>
-del_element(Key::<a href="#type-key">key()</a>, Value::<a href="#type-value">value()</a>, Map::<a href="#type-t">t()</a>) -&gt; NewMap::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
+del_element(Key::<a href="#type-key_path">key_path()</a>, Value::<a href="#type-value">value()</a>, Map::<a href="#type-t">t()</a>) -&gt; NewMap::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
 </code></pre>
 <br />
 
@@ -251,6 +338,38 @@ is not a babel set;
 * `{badkey, Key}` - exception if no value is associated with `Key` or `Key`
 is not of type binary.
 
+<a name="disable-2"></a>
+
+### disable/2 ###
+
+<pre><code>
+disable(Key::<a href="#type-key_path">key_path()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+<a name="enable-2"></a>
+
+### enable/2 ###
+
+<pre><code>
+enable(Key::<a href="#type-key_path">key_path()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+<a name="find-2"></a>
+
+### find/2 ###
+
+<pre><code>
+find(Key::<a href="#type-key_path">key_path()</a>, T::<a href="#type-t">t()</a>) -&gt; {ok, any()} | error
+</code></pre>
+<br />
+
+Returns the tuple `{ok, Value :: any()}` if the key 'Key' is associated
+with value `Value` in map `T`. Otherwise returns the atom `error`.
+The call fails with a `{badmap, T}` exception if `T` is not a map and
+`{badkey, Key}` exception if `Key` is not a binary term.
+
 <a name="from_riak_map-2"></a>
 
 ### from_riak_map/2 ###
@@ -260,12 +379,15 @@ from_riak_map(RMap::<a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a
 </code></pre>
 <br />
 
+Returns a new map by applying the type specification `Spec` to the Riak
+Map `RMap`.
+
 <a name="get-2"></a>
 
 ### get/2 ###
 
 <pre><code>
-get(Key::<a href="#type-key">key()</a>, T::<a href="#type-t">t()</a>) -&gt; any()
+get(Key::<a href="#type-key_path">key_path()</a>, T::<a href="#type-t">t()</a>) -&gt; any() | no_return()
 </code></pre>
 <br />
 
@@ -274,14 +396,14 @@ Returns value `Value` associated with `Key` if `T` contains `Key`.
 
 The call fails with a {badarg, `T`} exception if `T` is not a Babel Map.
 It also fails with a {badkey, `Key`} exception if no value is associated
-with `Key`.
+with `Key` or if `Key` is not a binary term.
 
 <a name="get-3"></a>
 
 ### get/3 ###
 
 <pre><code>
-get(Key::<a href="#type-key_path">key_path()</a>, Map::<a href="#type-t">t()</a>, Default::any()) -&gt; <a href="#type-value">value()</a>
+get(Key::<a href="#type-key_path">key_path()</a>, Map::<a href="#type-t">t()</a>, Default::any()) -&gt; Value::<a href="#type-value">value()</a>
 </code></pre>
 <br />
 
@@ -292,7 +414,48 @@ the default value `Default` in case `T` does not contain `Key`.
 
 The call fails with a `{badarg, T}` exception if `T` is not a Babel Map.
 It also fails with a `{badkey, Key}` exception if no value is associated
-with `Key`.
+with `Key` or if `Key` is not a binary term.
+
+<a name="get_value-2"></a>
+
+### get_value/2 ###
+
+<pre><code>
+get_value(Key::<a href="#type-key_path">key_path()</a>, T::<a href="#type-t">t()</a>) -&gt; any()
+</code></pre>
+<br />
+
+An util function equivalent to calling `DatatypeMod:value(get(Key, T))`.
+
+<a name="get_value-3"></a>
+
+### get_value/3 ###
+
+<pre><code>
+get_value(Key::<a href="#type-key_path">key_path()</a>, T::<a href="#type-t">t()</a>, Default::any()) -&gt; any() | no_return()
+</code></pre>
+<br />
+
+An util function equivalent to calling
+`DatatypeMod:value(get(Key, T, Default))`.
+
+<a name="increment-2"></a>
+
+### increment/2 ###
+
+<pre><code>
+increment(Key::<a href="#type-key_path">key_path()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+<a name="increment-3"></a>
+
+### increment/3 ###
+
+<pre><code>
+increment(Key::<a href="#type-key_path">key_path()</a>, Value::integer(), T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+</code></pre>
+<br />
 
 <a name="is_type-1"></a>
 
@@ -304,6 +467,37 @@ is_type(Term::any()) -&gt; boolean()
 <br />
 
 Returns true if term `Term` is a babel map.
+The call fails with a `{badmap, Term}` exception if `Term` is not a map.
+
+<a name="keys-1"></a>
+
+### keys/1 ###
+
+<pre><code>
+keys(T::<a href="#type-t">t()</a>) -&gt; [binary()] | no_return()
+</code></pre>
+<br />
+
+Returns a complete list of keys, in any order, which resides within map
+`T`.
+The call fails with a `{badmap, T}` exception if `T` is not a map.
+
+<a name="merge-2"></a>
+
+### merge/2 ###
+
+<pre><code>
+merge(T1::<a href="#type-t">t()</a>, T2::<a href="#type-t">t()</a> | map()) -&gt; Map3::<a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+Merges two maps into a single map `Map3`.
+The function implements a deep merge.
+This function implements minimal type checking so merging two maps that use
+different type specs can potentially result in an exception being thrown or
+in an invalid map at time of storing.
+
+The call fails with a {badmap,Map} exception if `T1` or `T2` is not a map.
 
 <a name="new-0"></a>
 
@@ -323,6 +517,9 @@ new(Data::map()) -&gt; <a href="#type-t">t()</a>
 </code></pre>
 <br />
 
+Creates a new Babel Map from the erlang map `Data`, previously
+filtering out all keys assigned to the `undefined`.
+
 <a name="new-2"></a>
 
 ### new/2 ###
@@ -332,12 +529,51 @@ new(Data::map(), Spec::<a href="#type-type_spec">type_spec()</a>) -&gt; <a href=
 </code></pre>
 <br />
 
+<a name="new-3"></a>
+
+### new/3 ###
+
+<pre><code>
+new(Data::map(), Spec::<a href="#type-type_spec">type_spec()</a>, Ctxt::<a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>) -&gt; <a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+Creates a new Babel Map from the erlang map `Data`, previously
+filtering out all keys assigned to the `undefined`.
+
+<a name="patch-3"></a>
+
+### patch/3 ###
+
+<pre><code>
+patch(ActionList::[<a href="#type-action">action()</a>], T::<a href="#type-t">t()</a>, Spec::<a href="#type-type_spec">type_spec()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+Updates a map `T` with the provide key-value action list `ActionList`.
+If the value associated with a key `Key` in `Values` is equal to `undefined`
+this equivalent to calling `remove(Key, Map)` with the difference that an
+exception will not be raised in case the map had no context assigned.
+
+Example:
+
+<a name="put-3"></a>
+
+### put/3 ###
+
+<pre><code>
+put(Key::<a href="#type-key_path">key_path()</a>, Value::<a href="#type-value">value()</a>, Map::<a href="#type-t">t()</a>) -&gt; NewMap::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
+</code></pre>
+<br />
+
+Same as [`set/3`](#set-3).
+
 <a name="remove-2"></a>
 
 ### remove/2 ###
 
 <pre><code>
-remove(Key::<a href="#type-key">key()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
+remove(Key::<a href="#type-key_path">key_path()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
 </code></pre>
 <br />
 
@@ -351,7 +587,7 @@ does not exist simply records a remove operation.
 ### set/3 ###
 
 <pre><code>
-set(Key::<a href="#type-key">key()</a>, Value::<a href="#type-value">value()</a>, Map::<a href="#type-t">t()</a>) -&gt; NewMap::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
+set(Key::<a href="#type-key_path">key_path()</a>, Value::<a href="#type-value">value()</a>, Map::<a href="#type-t">t()</a>) -&gt; NewMap::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
 </code></pre>
 <br />
 
@@ -360,24 +596,79 @@ map `NewMap`. If key `Key` already exists in map `Map`, the old associated
 value is replaced by value `Value`. The function returns a new map `NewMap`
 containing the new association and the old associations in `Map`.
 
+Passing a `Value` of `undefined` is equivalent to calling `remove(Key, Map)`
+with the difference that an exception will not be raised in case the map had
+no context assigned.
+
 The call fails with a `{badmap, Term}` exception if `Map` or any value of a
 partial key path is not a babel map.
+
+<a name="set_context-2"></a>
+
+### set_context/2 ###
+
+<pre><code>
+set_context(Ctxt::<a href="riakc_datatype.md#type-set_context">riakc_datatype:set_context()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+Sets the context `Ctxt`.
+
+<a name="set_elements-3"></a>
+
+### set_elements/3 ###
+
+<pre><code>
+set_elements(Key::<a href="#type-key_path">key_path()</a>, Values::[<a href="#type-value">value()</a>], Map::<a href="#type-t">t()</a>) -&gt; NewMap::<a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
+</code></pre>
+<br />
+
+Sets a list of values `Values` to a babel set associated with key or
+path `Key` in map `Map` and inserts the association into map `NewMap`.
+See [`babel_set:set_elements/2`](babel_set.md#set_elements-2).
+
+If the key `Key` does not exist in map `Map`, this function creates a new
+babel set containining `Values`.
+
+The call might fail with the following exception reasons:
+
+* `{badset, Set}` - if the initial value associated with `Key` in map `Map0`
+is not a babel set;
+* `{badmap, Map}` exception if `Map` is not a babel map.
+* `{badkey, Key}` - exception if no value is associated with `Key` or `Key`
+is not of type binary.
+
+<a name="size-1"></a>
+
+### size/1 ###
+
+<pre><code>
+size(T::<a href="#type-t">t()</a>) -&gt; non_neg_integer() | no_return()
+</code></pre>
+<br />
+
+Returns the size of the values of the map `T`.
+The call fails with a `{badmap, T}` exception if `T` is not a map.
 
 <a name="to_riak_op-2"></a>
 
 ### to_riak_op/2 ###
 
 <pre><code>
-to_riak_op(T::<a href="#type-t">t()</a>, Spec::<a href="#type-type_spec">type_spec()</a>) -&gt; <a href="riakc_datatype.md#type-update">riakc_datatype:update</a>(<a href="riakc_map.md#type-map_op">riakc_map:map_op()</a>)
+to_riak_op(T::<a href="#type-t">t()</a>, Spec::<a href="#type-type_spec">type_spec()</a>) -&gt; <a href="riakc_datatype.md#type-update">riakc_datatype:update</a>(<a href="riakc_map.md#type-map_op">riakc_map:map_op()</a>) | no_return()
 </code></pre>
 <br />
+
+Extracts a Riak Operation from the map to be used with a Riak Client
+update request.
+The call fails with a `{badmap, T}` exception if `T` is not a map.
 
 <a name="type-0"></a>
 
 ### type/0 ###
 
 <pre><code>
-type() -&gt; atom()
+type() -&gt; map
 </code></pre>
 <br />
 
@@ -388,7 +679,21 @@ Returns the symbolic name of this container.
 ### update/3 ###
 
 <pre><code>
-update(Key::<a href="#type-key">key()</a>, Fun::<a href="#type-update_fun">update_fun()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+update(Values::<a href="babel_key_value.md#type-t">babel_key_value:t()</a>, T::<a href="#type-t">t()</a>, Spec::<a href="#type-type_spec">type_spec()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+Updates a map `T` with the provide key-value pairs `Values`.
+If the value associated with a key `Key` in `Values` is equal to `undefined`
+this equivalent to calling `remove(Key, Map)` with the difference that an
+exception will not be raised in case the map had no context assigned.
+
+<a name="validate_type_spec-1"></a>
+
+### validate_type_spec/1 ###
+
+<pre><code>
+validate_type_spec(Spec::<a href="#type-type_spec">type_spec()</a>) -&gt; <a href="#type-type_spec">type_spec()</a> | no_return()
 </code></pre>
 <br />
 
@@ -397,11 +702,12 @@ update(Key::<a href="#type-key">key()</a>, Fun::<a href="#type-update_fun">updat
 ### value/1 ###
 
 <pre><code>
-value(Map::<a href="#type-t">t()</a>) -&gt; map()
+value(Map::<a href="#type-t">t()</a>) -&gt; map() | no_return()
 </code></pre>
 <br />
 
-Returns an external representation of the babel map `Map` as an erlang
-map. This is build recursively by calling the value/1 function on any
-embedded babel datatype.
+Returns an external representation of the map `Map` as an Erlang
+map(). This is build recursively by calling the value/1 function on any
+embedded datatype.
+The call fails with a `{badmap, T}` exception if `T` is not a map.
 

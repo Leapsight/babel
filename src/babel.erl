@@ -282,7 +282,7 @@ get_connection(Opts) ->
 %% the `Opts' argument.
 %%
 %% > Notice subscriptions are not working at the moment
-%% > See {@link yield/1,2} to track progress.
+%% > See {@link yield/2} to track progress.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
@@ -360,7 +360,7 @@ workflow(Fun) ->
 %% to take a decision.
 %%
 %% > Notice subscriptions are not working at the moment
-%% > See {@link yield/1,2} to track progress.
+%% > See {@link yield/2} to track progress.
 %%
 %% @end
 %% -----------------------------------------------------------------------------

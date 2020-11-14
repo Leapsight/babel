@@ -15,6 +15,16 @@ A Key Value coding interface for property lists and maps.
 
 
 
+### <a name="type-fold_fun">fold_fun()</a> ###
+
+
+<pre><code>
+fold_fun() = fun((Key::<a href="#type-key">key()</a>, Value::any(), AccIn::any()) -&gt; AccOut::any())
+</code></pre>
+
+
+
+
 ### <a name="type-key">key()</a> ###
 
 
@@ -47,7 +57,7 @@ t() = map() | [<a href="proplists.md#type-property">proplists:property()</a>] | 
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#collect-2">collect/2</a></td><td></td></tr><tr><td valign="top"><a href="#collect-3">collect/3</a></td><td></td></tr><tr><td valign="top"><a href="#get-2">get/2</a></td><td>Returns value <code>Value</code> associated with <code>Key</code> if <code>KVTerm</code> contains <code>Key</code>.</td></tr><tr><td valign="top"><a href="#get-3">get/3</a></td><td></td></tr><tr><td valign="top"><a href="#set-3">set/3</a></td><td></td></tr></table>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#collect-2">collect/2</a></td><td></td></tr><tr><td valign="top"><a href="#collect-3">collect/3</a></td><td></td></tr><tr><td valign="top"><a href="#fold-3">fold/3</a></td><td></td></tr><tr><td valign="top"><a href="#get-2">get/2</a></td><td>Returns value <code>Value</code> associated with <code>Key</code> if <code>KVTerm</code> contains <code>Key</code>.</td></tr><tr><td valign="top"><a href="#get-3">get/3</a></td><td></td></tr><tr><td valign="top"><a href="#set-3">set/3</a></td><td></td></tr></table>
 
 
 <a name="functions"></a>
@@ -69,6 +79,15 @@ collect(Keys::[<a href="#type-key">key()</a>], KVTerm::<a href="#type-t">t()</a>
 
 <pre><code>
 collect(Keys::[<a href="#type-key">key()</a>], KVTerm::<a href="#type-t">t()</a>, Default::any()) -&gt; [any()]
+</code></pre>
+<br />
+
+<a name="fold-3"></a>
+
+### fold/3 ###
+
+<pre><code>
+fold(Fun::<a href="#type-fold_fun">fold_fun()</a>, Acc::any(), KVTerm::<a href="#type-t">t()</a>) -&gt; NewAcc::any()
 </code></pre>
 <br />
 

@@ -58,11 +58,11 @@ properties.
 
 
 
-### <a name="type-data">data()</a> ###
+### <a name="type-fold_fun">fold_fun()</a> ###
 
 
 <pre><code>
-data() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
+fold_fun() = fun((Key::<a href="#type-key">key()</a>, Value::any(), AccIn::any()) -&gt; AccOut::any())
 </code></pre>
 
 
@@ -90,8 +90,8 @@ t() = #babel_index_collection{id = binary(), bucket = binary(), object = <a href
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_index-2">add_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#bucket-1">bucket/1</a></td><td></td></tr><tr><td valign="top"><a href="#data-1">data/1</a></td><td></td></tr><tr><td valign="top"><a href="#delete-3">delete/3</a></td><td></td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#fetch-3">fetch/3</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_object-1">from_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#id-1">id/1</a></td><td></td></tr><tr><td valign="top"><a href="#index-2">index/2</a></td><td>Returns the babel index associated with name <code>IndexName</code> in collection
-<code>Collection</code>.</td></tr><tr><td valign="top"><a href="#index_names-1">index_names/1</a></td><td></td></tr><tr><td valign="top"><a href="#indices-1">indices/1</a></td><td>Returns all the indices in the collection.</td></tr><tr><td valign="top"><a href="#lookup-3">lookup/3</a></td><td></td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td>Creates a new index collection object.</td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>Returns the number of elements in the collection <code>Collection</code>.</td></tr><tr><td valign="top"><a href="#store-2">store/2</a></td><td>Stores an index collection in Riak KV.</td></tr><tr><td valign="top"><a href="#to_delete_item-1">to_delete_item/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_update_action-1">to_update_action/1</a></td><td></td></tr></table>
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_index-2">add_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#bucket-1">bucket/1</a></td><td></td></tr><tr><td valign="top"><a href="#data-1">data/1</a></td><td></td></tr><tr><td valign="top"><a href="#delete-3">delete/3</a></td><td></td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#fetch-3">fetch/3</a></td><td></td></tr><tr><td valign="top"><a href="#fold-3">fold/3</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_object-1">from_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#id-1">id/1</a></td><td></td></tr><tr><td valign="top"><a href="#index-2">index/2</a></td><td>Returns the babel index associated with name <code>IndexName</code> in collection
+<code>Collection</code>.</td></tr><tr><td valign="top"><a href="#index_names-1">index_names/1</a></td><td></td></tr><tr><td valign="top"><a href="#indices-1">indices/1</a></td><td>Returns all the indices in the collection.</td></tr><tr><td valign="top"><a href="#is_index-2">is_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#lookup-3">lookup/3</a></td><td></td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td>Creates a new index collection object.</td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>Returns the number of elements in the collection <code>Collection</code>.</td></tr><tr><td valign="top"><a href="#store-2">store/2</a></td><td>Stores an index collection in Riak KV.</td></tr><tr><td valign="top"><a href="#to_delete_task-1">to_delete_task/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_update_task-1">to_update_task/1</a></td><td></td></tr></table>
 
 
 <a name="functions"></a>
@@ -121,7 +121,7 @@ bucket(Collection::<a href="#type-t">t()</a>) -&gt; binary()
 ### data/1 ###
 
 <pre><code>
-data(Collection::<a href="#type-t">t()</a>) -&gt; <a href="#type-data">data()</a>
+data(Collection::<a href="#type-t">t()</a>) -&gt; <a href="orddict.md#type-orddict">orddict:orddict()</a>
 </code></pre>
 <br />
 
@@ -149,6 +149,15 @@ delete_index(Id::binary() | <a href="babel_index.md#type-t">babel_index:t()</a>,
 
 <pre><code>
 fetch(BucketPrefix::binary(), Key::binary(), RiakOpts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
+</code></pre>
+<br />
+
+<a name="fold-3"></a>
+
+### fold/3 ###
+
+<pre><code>
+fold(Fun::<a href="#type-fold_fun">fold_fun()</a>, Acc::any(), Collection::<a href="#type-t">t()</a>) -&gt; any()
 </code></pre>
 <br />
 
@@ -203,6 +212,15 @@ indices(Collection::<a href="#type-t">t()</a>) -&gt; [<a href="babel_index.md#ty
 
 Returns all the indices in the collection.
 
+<a name="is_index-2"></a>
+
+### is_index/2 ###
+
+<pre><code>
+is_index(IndexName::binary(), Collection::<a href="#type-t">t()</a>) -&gt; <a href="babel_index.md#type-t">babel_index:t()</a> | no_return()
+</code></pre>
+<br />
+
 <a name="lookup-3"></a>
 
 ### lookup/3 ###
@@ -251,12 +269,12 @@ for the application option `index_collection_bucket_type`, bucket name
 will be the value returned by [`bucket/1`](#bucket-1), and the key will be the
 value returned by [`id/1`](#id-1).
 
-<a name="to_delete_item-1"></a>
+<a name="to_delete_task-1"></a>
 
-### to_delete_item/1 ###
+### to_delete_task/1 ###
 
 <pre><code>
-to_delete_item(Collection::<a href="#type-t">t()</a>) -&gt; <a href="babel.md#type-work_item">babel:work_item()</a>
+to_delete_task(Collection::<a href="#type-t">t()</a>) -&gt; <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-action">reliable:action()</a>
 </code></pre>
 <br />
 
@@ -269,12 +287,12 @@ to_riak_object(Collection::<a href="#type-t">t()</a>) -&gt; Object::<a href="#ty
 </code></pre>
 <br />
 
-<a name="to_update_action-1"></a>
+<a name="to_update_task-1"></a>
 
-### to_update_action/1 ###
+### to_update_task/1 ###
 
 <pre><code>
-to_update_action(Collection::<a href="#type-t">t()</a>) -&gt; <a href="babel.md#type-work_item">babel:work_item()</a>
+to_update_task(Collection::<a href="#type-t">t()</a>) -&gt; <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-action">reliable:action()</a>
 </code></pre>
 <br />
 

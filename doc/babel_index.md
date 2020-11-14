@@ -11,7 +11,7 @@ maintained index in Riak KV and the location
 `({bucket_type(), bucket()}, key()})` of its partitions
 [`babel_index_partition`](babel_index_partition.md) in Riak KV.
 
-__This module defines the `babel_index` behaviour.__<br /> Required callback functions: `init/2`, `init_partitions/1`, `from_riak_object/1`, `to_riak_object/1`, `number_of_partitions/1`, `partition_identifier/2`, `partition_identifiers/2`, `update_partition/3`, `match/3`, `iterator/3`, `iterator_move/3`, `iterator_done/1`, `iterator_key/1`, `iterator_values/1`.
+__This module defines the `babel_index` behaviour.__<br /> Required callback functions: `init/2`, `init_partitions/1`, `from_riak_dict/1`, `to_riak_object/1`, `number_of_partitions/1`, `partition_identifier/2`, `partition_identifiers/2`, `update_partition/3`, `distinguished_key_paths/1`, `match/3`, `iterator/3`, `iterator_move/3`, `iterator_done/1`, `iterator_key/1`, `iterator_values/1`.
 
 <a name="description"></a>
 
@@ -27,36 +27,6 @@ for a domain entity or resource e.g. accounts.
 <a name="types"></a>
 
 ## Data Types ##
-
-
-
-
-### <a name="type-action">action()</a> ###
-
-
-<pre><code>
-action() = insert | delete
-</code></pre>
-
-
-
-
-### <a name="type-config">config()</a> ###
-
-
-<pre><code>
-config() = map()
-</code></pre>
-
-
-
-
-### <a name="type-config_object">config_object()</a> ###
-
-
-<pre><code>
-config_object() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
-</code></pre>
 
 
 
@@ -178,15 +148,37 @@ riak_object() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 t() = #{bucket =&gt; binary(), bucket_type =&gt; binary(), config =&gt; term(), name =&gt; binary(), type =&gt; atom()}
 </code></pre>
 
+
+
+
+### <a name="type-update_action">update_action()</a> ###
+
+
+<pre><code>
+update_action() = {insert | delete, <a href="#type-key_value">key_value()</a>} | {update, Old::<a href="#type-key_value">key_value()</a> | undefined, New::<a href="#type-key_value">key_value()</a>}
+</code></pre>
+
+
+
+
+### <a name="type-update_opts">update_opts()</a> ###
+
+
+<pre><code>
+update_opts() = #{force =&gt; boolean, riak_opts =&gt; <a href="#type-riak_opts">riak_opts()</a>}
+</code></pre>
+
 <a name="index"></a>
 
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#bucket-1">bucket/1</a></td><td>Returns the Riak KV bucket were this index partitions are stored.</td></tr><tr><td valign="top"><a href="#bucket_type-1">bucket_type/1</a></td><td>Returns the Riak KV bucket type associated with this index.</td></tr><tr><td valign="top"><a href="#config-1">config/1</a></td><td>Returns the configuration associated with this index.</td></tr><tr><td valign="top"><a href="#create_partitions-1">create_partitions/1</a></td><td></td></tr><tr><td valign="top"><a href="#foreach-2">foreach/2</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_object-1">from_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#match-3">match/3</a></td><td>Returns a list of matching index entries.</td></tr><tr><td valign="top"><a href="#name-1">name/1</a></td><td>Returns name of this index.</td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td>Returns a new index based on the specification map.</td></tr><tr><td valign="top"><a href="#partition_identifier-2">partition_identifier/2</a></td><td></td></tr><tr><td valign="top"><a href="#partition_identifiers-1">partition_identifiers/1</a></td><td>Returns the list of Riak KV keys under which the partitions are stored,
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#bucket-1">bucket/1</a></td><td>Returns the Riak KV bucket were this index partitions are stored.</td></tr><tr><td valign="top"><a href="#bucket_type-1">bucket_type/1</a></td><td>Returns the Riak KV bucket type associated with this index.</td></tr><tr><td valign="top"><a href="#config-1">config/1</a></td><td>Returns the configuration associated with this index.</td></tr><tr><td valign="top"><a href="#create_partitions-1">create_partitions/1</a></td><td></td></tr><tr><td valign="top"><a href="#distinguished_key_paths-1">distinguished_key_paths/1</a></td><td>Returns the list of the key paths for which a value will need to be
+present in the key value object passed as an action to the <a href="#update-3"><code>update/3</code></a>
+function.</td></tr><tr><td valign="top"><a href="#foreach-2">foreach/2</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_object-1">from_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#match-3">match/3</a></td><td>Returns a list of matching index entries.</td></tr><tr><td valign="top"><a href="#name-1">name/1</a></td><td>Returns name of this index.</td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td>Returns a new index based on the specification map.</td></tr><tr><td valign="top"><a href="#partition_identifier-2">partition_identifier/2</a></td><td></td></tr><tr><td valign="top"><a href="#partition_identifiers-1">partition_identifiers/1</a></td><td>Returns the list of Riak KV keys under which the partitions are stored,
 in ascending order.</td></tr><tr><td valign="top"><a href="#partition_identifiers-2">partition_identifiers/2</a></td><td>Returns the list of Riak KV keys under which the partitions are stored
-in a defined order i.e.</td></tr><tr><td valign="top"><a href="#to_delete_item-2">to_delete_item/2</a></td><td>Returns the representation of this object as a Reliable Delete work
-item.</td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_update_action-2">to_update_action/2</a></td><td>Returns the representation of this object as a Reliable Update work
+in a defined order i.e.</td></tr><tr><td valign="top"><a href="#to_delete_task-2">to_delete_task/2</a></td><td>Returns the representation of this object as a Reliable Delete work
+item.</td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_update_task-2">to_update_task/2</a></td><td>Returns the representation of this object as a Reliable Update work
 item.</td></tr><tr><td valign="top"><a href="#type-1">type/1</a></td><td>Returns the type of this index.</td></tr><tr><td valign="top"><a href="#typed_bucket-1">typed_bucket/1</a></td><td>Returns the Riak KV <code>typed_bucket()</code> associated with this index.</td></tr><tr><td valign="top"><a href="#update-3">update/3</a></td><td></td></tr></table>
 
 
@@ -237,6 +229,19 @@ create_partitions(X1::<a href="#type-t">t()</a>) -&gt; [<a href="babel_index_par
 </code></pre>
 <br />
 
+<a name="distinguished_key_paths-1"></a>
+
+### distinguished_key_paths/1 ###
+
+<pre><code>
+distinguished_key_paths(Index::<a href="#type-t">t()</a>) -&gt; [<a href="babel_key_value.md#type-path">babel_key_value:path()</a>]
+</code></pre>
+<br />
+
+Returns the list of the key paths for which a value will need to be
+present in the key value object passed as an action to the [`update/3`](#update-3)
+function.
+
 <a name="foreach-2"></a>
 
 ### foreach/2 ###
@@ -251,7 +256,7 @@ foreach(Fun::<a href="#type-foreach_fun">foreach_fun()</a>, Index::<a href="#typ
 ### from_riak_object/1 ###
 
 <pre><code>
-from_riak_object(ConfigCRDT::<a href="#type-riak_object">riak_object()</a>) -&gt; Index::<a href="#type-t">t()</a>
+from_riak_object(Object::<a href="#type-riak_object">riak_object()</a>) -&gt; Index::<a href="#type-t">t()</a>
 </code></pre>
 <br />
 
@@ -337,12 +342,12 @@ partition_identifiers(Index::<a href="#type-t">t()</a>, Order::asc | desc) -&gt;
 Returns the list of Riak KV keys under which the partitions are stored
 in a defined order i.e. `asc` or `desc`.
 
-<a name="to_delete_item-2"></a>
+<a name="to_delete_task-2"></a>
 
-### to_delete_item/2 ###
+### to_delete_task/2 ###
 
 <pre><code>
-to_delete_item(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, PartitionId::binary()) -&gt; <a href="babel.md#type-work_item">babel:work_item()</a>
+to_delete_task(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, PartitionId::binary()) -&gt; <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-action">reliable:action()</a>
 </code></pre>
 <br />
 
@@ -358,12 +363,12 @@ to_riak_object(Index::<a href="#type-t">t()</a>) -&gt; IndexCRDT::<a href="#type
 </code></pre>
 <br />
 
-<a name="to_update_action-2"></a>
+<a name="to_update_task-2"></a>
 
-### to_update_action/2 ###
+### to_update_task/2 ###
 
 <pre><code>
-to_update_action(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Partition::<a href="#type-t">t()</a>) -&gt; <a href="babel.md#type-work_item">babel:work_item()</a>
+to_update_task(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Partition::<a href="babel_index_partition.md#type-t">babel_index_partition:t()</a>) -&gt; <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-action">reliable:action()</a>
 </code></pre>
 <br />
 
@@ -398,7 +403,7 @@ Returns the Riak KV `typed_bucket()` associated with this index.
 ### update/3 ###
 
 <pre><code>
-update(Actions::[{<a href="#type-action">action()</a>, <a href="#type-key_value">key_value()</a>}], Index::<a href="#type-t">t()</a>, RiakOpts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>([<a href="babel_index_partition.md#type-t">babel_index_partition:t()</a>])
+update(Actions::[<a href="#type-update_action">update_action()</a>], Index::<a href="#type-t">t()</a>, Opts::<a href="#type-update_opts">update_opts()</a>) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>([<a href="babel_index_partition.md#type-t">babel_index_partition:t()</a>])
 </code></pre>
 <br />
 

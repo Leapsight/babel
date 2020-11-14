@@ -7,8 +7,18 @@
 * [Function Details](#functions)
 
 This module acts as entry point for a number of Babel features and
-provides some of the `riakc_pb_socke` module functions adapted for babel
+provides some of the `riakc_pb_socket` module functions adapted for babel
 datatypes.
+
+<a name="description"></a>
+
+## Description ##
+
+# Working with Babel Datatypes
+
+# Working with Reliable Workflows
+
+# Working with Babel Indices
 
 <a name="types"></a>
 
@@ -21,7 +31,7 @@ datatypes.
 
 
 <pre><code>
-datatype() = <a href="babel_map.md#type-t">babel_map:t()</a> | <a href="babel_set.md#type-t">babel_set:t()</a>
+datatype() = <a href="babel_map.md#type-t">babel_map:t()</a> | <a href="babel_set.md#type-t">babel_set:t()</a> | <a href="babel_counter.md#type-t">babel_counter:t()</a>
 </code></pre>
 
 
@@ -41,7 +51,7 @@ riak_op() = <a href="riakc_datatype.md#type-update">riakc_datatype:update</a>(te
 
 
 <pre><code>
-type_spec() = <a href="babel_map.md#type-type_spec">babel_map:type_spec()</a> | <a href="babel_set.md#type-type_spec">babel_set:type_spec()</a>
+type_spec() = <a href="babel_map.md#type-type_spec">babel_map:type_spec()</a> | <a href="babel_set.md#type-type_spec">babel_set:type_spec()</a> | <a href="babel_counter.md#type-type_spec">babel_counter:type_spec()</a>
 </code></pre>
 
 <a name="index"></a>
@@ -52,10 +62,17 @@ type_spec() = <a href="babel_map.md#type-type_spec">babel_map:type_spec()</a> | 
 <table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#create_collection-2">create_collection/2</a></td><td>Schedules the creation of an empty index collection using Reliable.</td></tr><tr><td valign="top"><a href="#create_index-2">create_index/2</a></td><td>Schedules the creation of an index and its partitions according to
 <code>Config</code> using Reliable.</td></tr><tr><td valign="top"><a href="#delete-3">delete/3</a></td><td>
 > This function is workflow aware.</td></tr><tr><td valign="top"><a href="#delete_collection-1">delete_collection/1</a></td><td>Schedules the delete of a collection, all its indices and their
-partitions.</td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#execute-1">execute/1</a></td><td></td></tr><tr><td valign="top"><a href="#execute-2">execute/2</a></td><td>Executes a number of operations using the same Riak cclient connection.</td></tr><tr><td valign="top"><a href="#get-5">get/5</a></td><td></td></tr><tr><td valign="top"><a href="#get_connection-1">get_connection/1</a></td><td></td></tr><tr><td valign="top"><a href="#put-5">put/5</a></td><td>
-> This function is workflow aware.</td></tr><tr><td valign="top"><a href="#rebuild_index-4">rebuild_index/4</a></td><td></td></tr><tr><td valign="top"><a href="#type-1">type/1</a></td><td></td></tr><tr><td valign="top"><a href="#update_indices-3">update_indices/3</a></td><td></td></tr><tr><td valign="top"><a href="#validate_riak_opts-1">validate_riak_opts/1</a></td><td>Validates and returns the options in proplist format as expected by
-Riak KV.</td></tr><tr><td valign="top"><a href="#workflow-1">workflow/1</a></td><td>Equivalent to calling <a href="#workflow-2"><code>workflow/2</code></a> with and empty map passed as
-the <code>Opts</code> argument.</td></tr><tr><td valign="top"><a href="#workflow-2">workflow/2</a></td><td>Executes the functional object <code>Fun</code> as a Reliable workflow, i.e.</td></tr></table>
+partitions.</td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#execute-3">execute/3</a></td><td>Executes a number of operations using the same Riak client connection
+provided by riak_pool app.</td></tr><tr><td valign="top"><a href="#get-4">get/4</a></td><td>Retrieves a Riak Datatype (counter, set or map) from bucket type and
+bucket <code>TypedBucket</code> and key <code>Key</code>.</td></tr><tr><td valign="top"><a href="#get_connection-1">get_connection/1</a></td><td></td></tr><tr><td valign="top"><a href="#module-1">module/1</a></td><td>Returns the module associated with the type of term <code>Term</code>.</td></tr><tr><td valign="top"><a href="#put-5">put/5</a></td><td>
+> This function is workflow aware.</td></tr><tr><td valign="top"><a href="#rebuild_index-4">rebuild_index/4</a></td><td></td></tr><tr><td valign="top"><a href="#status-1">status/1</a></td><td></td></tr><tr><td valign="top"><a href="#status-2">status/2</a></td><td></td></tr><tr><td valign="top"><a href="#type-1">type/1</a></td><td>Returns the atom name for a babel datatype.</td></tr><tr><td valign="top"><a href="#update_all_indices-3">update_all_indices/3</a></td><td>Updates all the indices in the collection that are affected by he
+provided Actions and schedules the update of the relevant index partitions
+in the database i.e.</td></tr><tr><td valign="top"><a href="#update_indices-4">update_indices/4</a></td><td>Updates all the indices in the collection with the provided Actions and
+schedules the update of the relevant index partitions in the database i.e.</td></tr><tr><td valign="top"><a href="#validate_riak_opts-1">validate_riak_opts/1</a></td><td>Validates the opts.</td></tr><tr><td valign="top"><a href="#workflow-1">workflow/1</a></td><td>Equivalent to calling <a href="#workflow-2"><code>workflow/2</code></a> with and empty map passed as
+the <code>Opts</code> argument.</td></tr><tr><td valign="top"><a href="#workflow-2">workflow/2</a></td><td>Executes the functional object <code>Fun</code> as a Reliable workflow, i.e.</td></tr><tr><td valign="top"><a href="#yield-1">yield/1</a></td><td>Returns the value associated with the key <code>event_payload</code> when used as
+option from a previous <a href="#enqueue-2"><code>enqueue/2</code></a>.</td></tr><tr><td valign="top"><a href="#yield-2">yield/2</a></td><td>Returns the value associated with the key <code>event_payload</code> when used as
+option from a previous <a href="#enqueue-2"><code>enqueue/2</code></a> or <code>timeout</code> when <code>Timeout</code>
+milliseconds has elapsed.</td></tr></table>
 
 
 <a name="functions"></a>
@@ -143,40 +160,64 @@ delete_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collect
 </code></pre>
 <br />
 
-<a name="execute-1"></a>
+<a name="execute-3"></a>
 
-### execute/1 ###
+### execute/3 ###
 
 <pre><code>
-execute(Fun::fun((RiakConn::pid()) -&gt; Result::any())) -&gt; {ok, Result::any()} | {error, Reason::any()}
+execute(Poolname::atom(), Fun::fun((RiakConn::pid()) -&gt; Result::any()), Opts::map()) -&gt; {true, Result::any()} | {false, Reason::any()} | no_return()
 </code></pre>
 <br />
 
-<a name="execute-2"></a>
+Executes a number of operations using the same Riak client connection
+provided by riak_pool app.
+`Poolname` must be an already started pool.
 
-### execute/2 ###
+Options:
+
+* timeout - time to get a connection from the pool
+
+<a name="get-4"></a>
+
+### get/4 ###
 
 <pre><code>
-execute(Fun::fun((RiakConn::pid()) -&gt; Result::any()), RiakOpts::map()) -&gt; {ok, Result::any()} | {error, Reason::any()}
+get(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Spec::<a href="#type-type_spec">type_spec()</a>, Opts::map()) -&gt; {ok, Datatype::<a href="#type-datatype">datatype()</a>} | {error, Reason::term()}
 </code></pre>
 <br />
 
-Executes a number of operations using the same Riak cclient connection.
+Retrieves a Riak Datatype (counter, set or map) from bucket type and
+bucket `TypedBucket` and key `Key`. It uses type spec `Spec` to transform
+the Riak Datatype into a Babel Datatype and if successful returns a [`babel_counter`](babel_counter.md), [`babel_set`](babel_set.md) or [`babel_map`](babel_map.md) respectively.
 
-<a name="get-5"></a>
+This function gets the riak client connection from the options `Opts` under
+the key `connection` which can have the connection pid or a function object
+returning a connection pid. This allows a lot of flexibility such as reusing
+a given connection over several calls the babel function of using your own
+connection pool and management.
 
-### get/5 ###
+In case the `connection` option does not provide a connection as explained
+above, this function tries to use the `default` connection pool if it was
+enabled through Babel's configuration options.
 
-<pre><code>
-get(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>, Spec::<a href="#type-type_spec">type_spec()</a>, Opts::map()) -&gt; ok | {ok, Datatype::<a href="#type-datatype">datatype()</a>} | {error, Reason::term()}
-</code></pre>
-<br />
+Returns `{error, not_found}` if the key is not on the server.
 
 <a name="get_connection-1"></a>
 
 ### get_connection/1 ###
 
-`get_connection(X1) -> any()`
+`get_connection(Opts) -> any()`
+
+<a name="module-1"></a>
+
+### module/1 ###
+
+<pre><code>
+module(Term::any()) -&gt; module() | undefined
+</code></pre>
+<br />
+
+Returns the module associated with the type of term `Term`.
 
 <a name="put-5"></a>
 
@@ -198,23 +239,70 @@ rebuild_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Bucket
 </code></pre>
 <br />
 
+<a name="status-1"></a>
+
+### status/1 ###
+
+<pre><code>
+status(WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>) -&gt; {in_progress, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {failed, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {error, not_found | any()}
+</code></pre>
+<br />
+
+<a name="status-2"></a>
+
+### status/2 ###
+
+<pre><code>
+status(WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, Timeout::timeout()) -&gt; {in_progress, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {failed, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {error, not_found | any()}
+</code></pre>
+<br />
+
 <a name="type-1"></a>
 
 ### type/1 ###
 
 <pre><code>
-type(Term::<a href="#type-datatype">datatype()</a>) -&gt; set | map | counter | flag
+type(Term::term()) -&gt; set | map | counter | flag | register
 </code></pre>
 <br />
 
-<a name="update_indices-3"></a>
+Returns the atom name for a babel datatype.
 
-### update_indices/3 ###
+<a name="update_all_indices-3"></a>
+
+### update_all_indices/3 ###
 
 <pre><code>
-update_indices(Actions::[{<a href="babel_index.md#type-action">babel_index:action()</a>, <a href="babel_index.md#type-object">babel_index:object()</a>}], CollectionOrIndices::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, RiakOpts::map()) -&gt; ok | no_return()
+update_all_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, RiakOpts::map()) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
+
+Updates all the indices in the collection that are affected by he
+provided Actions and schedules the update of the relevant index partitions
+in the database i.e. persisting the index changes.
+
+An index in collection `Collection` will always be affectd in case the
+action is either `{insert, Data}` or
+`{delete, Data}` or when the action is `{udpate, Old, New}` and the option
+`force` was set to `true` or when `New` is not a babel map.
+
+In case option object `New` is a babel map, and the option `force` is missing
+or set to `false`, an index will be affected by an update action only if the
+index's distinguished key paths have been updated or removed in the object
+`New` (See [`babel_index:distinguished_key_paths/1`](babel_index.md#distinguished_key_paths-1))
+
+<a name="update_indices-4"></a>
+
+### update_indices/4 ###
+
+<pre><code>
+update_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], IndexNames::[binary()], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::map()) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+</code></pre>
+<br />
+
+Updates all the indices in the collection with the provided Actions and
+schedules the update of the relevant index partitions in the database i.e.
+persistind the index changes.
 
 <a name="validate_riak_opts-1"></a>
 
@@ -225,27 +313,29 @@ validate_riak_opts(Opts::map()) -&gt; <a href="#type-maybe_no_return">maybe_no_r
 </code></pre>
 <br />
 
-Validates and returns the options in proplist format as expected by
-Riak KV.
+Validates the opts
 
 <a name="workflow-1"></a>
 
 ### workflow/1 ###
 
 <pre><code>
-workflow(Fun::fun(() -&gt; any())) -&gt; {ok, {WorkId::binary(), ResultOfFun::any()}} | {error, Reason::any()} | no_return()
+workflow(Fun::fun(() -&gt; any())) -&gt; {ok, ResultOfFun::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
 Equivalent to calling [`workflow/2`](#workflow-2) with and empty map passed as
 the `Opts` argument.
 
+> Notice subscriptions are not working at the moment
+> See [`yield/2`](#yield-2) to track progress.
+
 <a name="workflow-2"></a>
 
 ### workflow/2 ###
 
 <pre><code>
-workflow(Fun::fun(() -&gt; any()), Opts::<a href="babel_workflow.md#type-opts">babel_workflow:opts()</a>) -&gt; {ok, {WorkId::binary(), ResultOfFun::any()}} | {error, Reason::any()} | no_return()
+workflow(Fun::fun(() -&gt; any()), Opts::<a href="babel_workflow.md#type-opts">babel_workflow:opts()</a>) -&gt; {ok, ResultOfFun::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -310,4 +400,47 @@ connection object to a pool. Notice that this function might be called
 multiple times in the case of nested workflows. If you need to conditionally
 perform a cleanup operation you might use the function `is_nested_worflow/0`
 to take a decision.
+
+> Notice subscriptions are not working at the moment
+> See [`yield/2`](#yield-2) to track progress.
+
+<a name="yield-1"></a>
+
+### yield/1 ###
+
+<pre><code>
+yield(WorkRef::<a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable_worker.md#type-work_ref">reliable_worker:work_ref()</a>) -&gt; {ok, Payload::any()} | timeout
+</code></pre>
+<br />
+
+Returns the value associated with the key `event_payload` when used as
+option from a previous [`enqueue/2`](#enqueue-2). The calling process is suspended
+until the work is completed or
+
+> The current implementation is not ideal as it recursively reads then status
+from the database. So do not abuse it.
+> Also at the moment complete tasks are deleted, so the abscense of a task
+is considered as either succesful or failed, this will also change as we
+will be retaining tasks that are discarded or completed.
+> This will be replaced by a pubsub version soon.
+
+<a name="yield-2"></a>
+
+### yield/2 ###
+
+<pre><code>
+yield(WorkRef::<a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable_worker.md#type-work_ref">reliable_worker:work_ref()</a>, Timeout::timeout()) -&gt; {ok, Payload::any()} | timeout
+</code></pre>
+<br />
+
+Returns the value associated with the key `event_payload` when used as
+option from a previous [`enqueue/2`](#enqueue-2) or `timeout` when `Timeout`
+milliseconds has elapsed.
+
+> The current implementation is not ideal as it recursively reads then status
+from the database. So do not abuse it.
+> Also at the moment complete tasks are deleted, so the abscense of a task
+is considered as either succesful or failed, this will also change as we
+will be retaining tasks that are discarded or completed.
+> This will be replaced by a pubsub version soon.
 

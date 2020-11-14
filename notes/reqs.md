@@ -92,13 +92,13 @@ update_index({update, Old(foobar@gmail.com), New(foobar@gmail.com)}, Idx) ->
 
 affected_indices({update, Old, New}, Coll) ->
     for each index i do
-        i.updated_key_paths
+        i.distinguished_key_paths
         New.changed_key_paths
 
     Indices.
 
     for each index i do
-        i.updated_key_paths
+        i.distinguished_key_paths
          for each kp
             Status = New.status(kp)
             if Status == updated
