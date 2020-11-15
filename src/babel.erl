@@ -21,11 +21,11 @@
 %% provides some of the `riakc_pb_socket' module functions adapted for babel
 %% datatypes.
 %%
-%% # Working with Babel Datatypes
+%% ### Working with Babel Datatypes
 %%
-%% # Working with Reliable Workflows
+%% ### Working with Reliable Workflows
 %%
-%% # Working with Babel Indices
+%% ### Working with Babel Indices
 %%
 %% @end
 %% -----------------------------------------------------------------------------
@@ -553,38 +553,6 @@ create_index(Index, Collection) ->
 rebuild_index(_Index, _BucketType, _Bucket, _Opts) ->
     %% TODO call the manager
     ok.
-
-
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc Checks path subsumption
-%%
-%% Examples:
-%%
-%% * path [a] subsumes the path [a].
-%% * path [a] does not subsume the path [].
-%% * path [a] subsumes the path [a, b, c].
-%% * path [a, b] subsumes the path [a, b, c].
-%% * path [a, b, c] subsumes the path [a, b, c].
-%% * path [a, b, c, d] does not subsume the path [a, b, c].
-%%
-%% @end
-%% -----------------------------------------------------------------------------
-subsumes_path(L, L) ->
-    true;
-
-subsumes_path([], []) ->
-    true;
-
-subsumes_path([H], [H|_]) ->
-    true;
-
-subsumes_path([H|T1], [H|T2]) ->
-    subsumes_path(T1, T2);
-
-subsumes_path(_, _) ->
-    false.
-
 
 
 %% -----------------------------------------------------------------------------

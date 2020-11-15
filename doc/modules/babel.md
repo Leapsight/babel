@@ -14,11 +14,11 @@ datatypes.
 
 ## Description ##
 
-# Working with Babel Datatypes
+### Working with Babel Datatypes
 
-# Working with Reliable Workflows
+### Working with Reliable Workflows
 
-# Working with Babel Indices
+### Working with Babel Indices
 
 <a name="types"></a>
 
