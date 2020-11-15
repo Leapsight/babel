@@ -1,5 +1,5 @@
 - Getting started
-
+  - [Home](README.md)
   - [Installation](pages/installation.md)
 
 - Reference
