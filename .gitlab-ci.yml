@@ -3,6 +3,7 @@
 pages:
   stage: deploy
   script:
+    - if [ ! -d public ]; then mkdir public; fi
     - cp -r doc/* public
   artifacts:
     paths:
