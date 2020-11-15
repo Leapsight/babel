@@ -117,7 +117,7 @@ type_mapping() = {map, <a href="#type-type_spec">type_spec()</a>} | {set, <a hre
 
 
 <pre><code>
-type_spec() = #{<a href="#type-key">key()</a> | _ =&gt; <a href="#type-type_mapping">type_mapping()</a>}
+type_spec() = #{$validated =&gt; true, <a href="#type-key">key()</a> | _ =&gt; <a href="#type-type_mapping">type_mapping()</a>}
 </code></pre>
 
 

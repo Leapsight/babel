@@ -165,7 +165,7 @@ get(TypedBucket, Key, Spec, Opts0) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc
-%% > This function is workflow aware
+%% ?> This function is workflow aware
 %% @end
 %% -----------------------------------------------------------------------------
 -spec put(
@@ -191,7 +191,7 @@ put(TypedBucket, Key, Datatype, Spec, Opts) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc
-%% > This function is workflow aware
+%% ?> This function is workflow aware
 %% @end
 %% -----------------------------------------------------------------------------
 -spec delete(
@@ -327,20 +327,17 @@ workflow(Fun) ->
 %%
 %% Example: Creating various babel objects and scheduling
 %%
-%% ```erlang
-%% > babel:workflow(
-%%     fun() ->
-%%          CollectionX0 = babel_index_collection:new(<<"foo">>, <<"bar">>),
-%%          CollectionY0 = babel_index_collection:fetch(
-%% Conn, <<"foo">>, <<"users">>),
-%%          IndexA = babel_index:new(ConfigA),
-%%          IndexB = babel_index:new(ConfigB),
-%%          _CollectionX1 = babel:create_index(IndexA, CollectionX0),
-%%          _CollextionY1 = babel:create_index(IndexB, CollectionY0),
-%%          ok
-%%     end).
-%% > {scheduled, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
-%% '''
+%% <pre lang="erlang"><![CDATA[
+%% babel:workflow(fun() ->
+%%  CollectionX0 = babel_index_collection:new(<<"foo">>, <<"bar">>),
+%%  CollectionY0 = babel_index_collection:fetch(Conn, <<"foo">>, <<"users">>),
+%%  IndexA = babel_index:new(ConfigA),
+%%  IndexB = babel_index:new(ConfigB),
+%%  _CollectionX1 = babel:create_index(IndexA, CollectionX0),
+%%  _CollectionY1 = babel:create_index(IndexB, CollectionY0),
+%%  ok
+%% end).
+%% ]]></pre>
 %%
 %% The resulting workflow execution will schedule the writes and deletes in the
 %% order defined by the dependency graph constructed using the results
@@ -359,8 +356,10 @@ workflow(Fun) ->
 %% perform a cleanup operation you might use the function `is_nested_worflow/0'
 %% to take a decision.
 %%
-%% > Notice subscriptions are not working at the moment
-%% > See {@link yield/2} to track progress.
+%% !> **Important** notice subscriptions are not working at the moment
+%%
+%%
+%% ?> **Tip** See {@link yield/2} to track progress.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
@@ -405,12 +404,13 @@ status(WorkerRef, Timeout) ->
 %% option from a previous {@link enqueue/2}. The calling process is suspended
 %% until the work is completed or
 %%
-%% > The current implementation is not ideal as it recursively reads then status
-%% from the database. So do not abuse it.
-%% > Also at the moment complete tasks are deleted, so the abscense of a task
-%% is considered as either succesful or failed, this will also change as we
-%% will be retaining tasks that are discarded or completed.
-%% > This will be replaced by a pubsub version soon.
+%%
+%% !> **Important** notice The current implementation is not ideal as it
+%% recursively reads the status from the database. So do not abuse it. Also at
+%% the moment complete tasks are deleted, so the abscense of a task is
+%% considered as either succesful or failed, this will also change as we will
+%% be retaining tasks that are discarded or completed.
+%% This will be replaced by a pubsub version soon.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec yield(WorkRef :: reliable_worker:work_ref()) ->
@@ -425,12 +425,12 @@ yield(WorkRef) ->
 %% option from a previous {@link enqueue/2} or `timeout' when `Timeout'
 %% milliseconds has elapsed.
 %%
-%% > The current implementation is not ideal as it recursively reads then status
-%% from the database. So do not abuse it.
-%% > Also at the moment complete tasks are deleted, so the abscense of a task
-%% is considered as either succesful or failed, this will also change as we
-%% will be retaining tasks that are discarded or completed.
-%% > This will be replaced by a pubsub version soon.
+%% !> **Important** notice The current implementation is not ideal as it
+%% recursively reads the status from the database. So do not abuse it. Also at
+%% the moment complete tasks are deleted, so the abscense of a task is
+%% considered as either succesful or failed, this will also change as we will
+%% be retaining tasks that are discarded or completed.
+%% This will be replaced by a pubsub version soon.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec yield(WorkRef :: reliable_worker:work_ref(), Timeout :: timeout()) ->
@@ -449,8 +449,8 @@ yield(WorkRef, Timeout) ->
 %% resulting from concatenating the value of `BucketPrefix' to the suffix `/
 %% index_collection' and the key will be the value of `Name'.
 %%
-%% > This function needs to be called within a workflow functional object,
-%% see {@link workflow/1}.
+%% !> **Important**, this function must be called within a workflow
+%% functional object, see {@link workflow/1}.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
@@ -497,8 +497,8 @@ delete_collection(Collection) ->
 %% @doc Schedules the creation of an index and its partitions according to
 %% `Config' using Reliable.
 %%
-%% > This function needs to be called within a workflow functional object,
-%% see {@link workflow/1}.
+%% !> **Important**, this function must be called within a workflow
+%% functional object, see {@link workflow/1}.
 %%
 %%
 %% Example: Creating an index and adding it to an existing collection

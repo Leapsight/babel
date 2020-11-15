@@ -61,11 +61,11 @@ type_spec() = <a href="babel_map.md#type-type_spec">babel_map:type_spec()</a> | 
 
 <table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#create_collection-2">create_collection/2</a></td><td>Schedules the creation of an empty index collection using Reliable.</td></tr><tr><td valign="top"><a href="#create_index-2">create_index/2</a></td><td>Schedules the creation of an index and its partitions according to
 <code>Config</code> using Reliable.</td></tr><tr><td valign="top"><a href="#delete-3">delete/3</a></td><td>
-> This function is workflow aware.</td></tr><tr><td valign="top"><a href="#delete_collection-1">delete_collection/1</a></td><td>Schedules the delete of a collection, all its indices and their
+?> This function is workflow aware.</td></tr><tr><td valign="top"><a href="#delete_collection-1">delete_collection/1</a></td><td>Schedules the delete of a collection, all its indices and their
 partitions.</td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#execute-3">execute/3</a></td><td>Executes a number of operations using the same Riak client connection
 provided by riak_pool app.</td></tr><tr><td valign="top"><a href="#get-4">get/4</a></td><td>Retrieves a Riak Datatype (counter, set or map) from bucket type and
 bucket <code>TypedBucket</code> and key <code>Key</code>.</td></tr><tr><td valign="top"><a href="#get_connection-1">get_connection/1</a></td><td></td></tr><tr><td valign="top"><a href="#module-1">module/1</a></td><td>Returns the module associated with the type of term <code>Term</code>.</td></tr><tr><td valign="top"><a href="#put-5">put/5</a></td><td>
-> This function is workflow aware.</td></tr><tr><td valign="top"><a href="#rebuild_index-4">rebuild_index/4</a></td><td></td></tr><tr><td valign="top"><a href="#status-1">status/1</a></td><td></td></tr><tr><td valign="top"><a href="#status-2">status/2</a></td><td></td></tr><tr><td valign="top"><a href="#type-1">type/1</a></td><td>Returns the atom name for a babel datatype.</td></tr><tr><td valign="top"><a href="#update_all_indices-3">update_all_indices/3</a></td><td>Updates all the indices in the collection that are affected by he
+?> This function is workflow aware.</td></tr><tr><td valign="top"><a href="#rebuild_index-4">rebuild_index/4</a></td><td></td></tr><tr><td valign="top"><a href="#status-1">status/1</a></td><td></td></tr><tr><td valign="top"><a href="#status-2">status/2</a></td><td></td></tr><tr><td valign="top"><a href="#type-1">type/1</a></td><td>Returns the atom name for a babel datatype.</td></tr><tr><td valign="top"><a href="#update_all_indices-3">update_all_indices/3</a></td><td>Updates all the indices in the collection that are affected by he
 provided Actions and schedules the update of the relevant index partitions
 in the database i.e.</td></tr><tr><td valign="top"><a href="#update_indices-4">update_indices/4</a></td><td>Updates all the indices in the collection with the provided Actions and
 schedules the update of the relevant index partitions in the database i.e.</td></tr><tr><td valign="top"><a href="#validate_riak_opts-1">validate_riak_opts/1</a></td><td>Validates the opts.</td></tr><tr><td valign="top"><a href="#workflow-1">workflow/1</a></td><td>Equivalent to calling <a href="#workflow-2"><code>workflow/2</code></a> with and empty map passed as
@@ -96,8 +96,8 @@ for the application option `index_collection_bucket_type`, bucket name
 resulting from concatenating the value of `BucketPrefix` to the suffix `/
 index_collection` and the key will be the value of `Name`.
 
-> This function needs to be called within a workflow functional object,
-see [`workflow/1`](#workflow-1).
+!> **Important**, this function must be called within a workflow
+functional object, see [`workflow/1`](#workflow-1).
 
 <a name="create_index-2"></a>
 
@@ -111,8 +111,8 @@ create_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collect
 Schedules the creation of an index and its partitions according to
 `Config` using Reliable.
 
-> This function needs to be called within a workflow functional object,
-see [`workflow/1`](#workflow-1).
+!> **Important**, this function must be called within a workflow
+functional object, see [`workflow/1`](#workflow-1).
 
 Example: Creating an index and adding it to an existing collection
 
@@ -137,7 +137,7 @@ delete(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::
 </code></pre>
 <br />
 
-> This function is workflow aware
+?> This function is workflow aware
 
 <a name="delete_collection-1"></a>
 
@@ -228,7 +228,7 @@ put(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::bin
 </code></pre>
 <br />
 
-> This function is workflow aware
+?> This function is workflow aware
 
 <a name="rebuild_index-4"></a>
 
@@ -368,20 +368,17 @@ execution.
 
 Example: Creating various babel objects and scheduling
 
-```
-     erlang
-  > babel:workflow(
-      fun() ->
-           CollectionX0 = babel_index_collection:new(<<"foo">>, <<"bar">>),
-           CollectionY0 = babel_index_collection:fetch(
-  Conn, <<"foo">>, <<"users">>),
-           IndexA = babel_index:new(ConfigA),
-           IndexB = babel_index:new(ConfigB),
-           _CollectionX1 = babel:create_index(IndexA, CollectionX0),
-           _CollextionY1 = babel:create_index(IndexB, CollectionY0),
-           ok
-      end).
-  > {scheduled, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
+```erlang
+
+  babel:workflow(fun() ->
+   CollectionX0 = babel_index_collection:new(<<"foo">>, <<"bar">>),
+   CollectionY0 = babel_index_collection:fetch(Conn, <<"foo">>, <<"users">>),
+   IndexA = babel_index:new(ConfigA),
+   IndexB = babel_index:new(ConfigB),
+   _CollectionX1 = babel:create_index(IndexA, CollectionX0),
+   _CollectionY1 = babel:create_index(IndexB, CollectionY0),
+   ok
+  end).
 ```
 
 The resulting workflow execution will schedule the writes and deletes in the
@@ -401,8 +398,9 @@ multiple times in the case of nested workflows. If you need to conditionally
 perform a cleanup operation you might use the function `is_nested_worflow/0`
 to take a decision.
 
-> Notice subscriptions are not working at the moment
-> See [`yield/2`](#yield-2) to track progress.
+!> **Important** notice subscriptions are not working at the moment
+
+?> **Tip** See [`yield/2`](#yield-2) to track progress.
 
 <a name="yield-1"></a>
 
@@ -417,12 +415,12 @@ Returns the value associated with the key `event_payload` when used as
 option from a previous [`enqueue/2`](#enqueue-2). The calling process is suspended
 until the work is completed or
 
-> The current implementation is not ideal as it recursively reads then status
-from the database. So do not abuse it.
-> Also at the moment complete tasks are deleted, so the abscense of a task
-is considered as either succesful or failed, this will also change as we
-will be retaining tasks that are discarded or completed.
-> This will be replaced by a pubsub version soon.
+!> **Important** notice The current implementation is not ideal as it
+recursively reads the status from the database. So do not abuse it. Also at
+the moment complete tasks are deleted, so the abscense of a task is
+considered as either succesful or failed, this will also change as we will
+be retaining tasks that are discarded or completed.
+This will be replaced by a pubsub version soon.
 
 <a name="yield-2"></a>
 
@@ -437,10 +435,10 @@ Returns the value associated with the key `event_payload` when used as
 option from a previous [`enqueue/2`](#enqueue-2) or `timeout` when `Timeout`
 milliseconds has elapsed.
 
-> The current implementation is not ideal as it recursively reads then status
-from the database. So do not abuse it.
-> Also at the moment complete tasks are deleted, so the abscense of a task
-is considered as either succesful or failed, this will also change as we
-will be retaining tasks that are discarded or completed.
-> This will be replaced by a pubsub version soon.
+!> **Important** notice The current implementation is not ideal as it
+recursively reads the status from the database. So do not abuse it. Also at
+the moment complete tasks are deleted, so the abscense of a task is
+considered as either succesful or failed, this will also change as we will
+be retaining tasks that are discarded or completed.
+This will be replaced by a pubsub version soon.
 
