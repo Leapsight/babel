@@ -6,14 +6,6 @@
 
 __Behaviours:__ [`app_config`](app_config.md).
 
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#get-1">get/1</a></td><td></td></tr><tr><td valign="top"><a href="#get-2">get/2</a></td><td></td></tr><tr><td valign="top"><a href="#init-0">init/0</a></td><td></td></tr><tr><td valign="top"><a href="#set-2">set/2</a></td><td></td></tr></table>
-
-
 <a name="functions"></a>
 
 ## Function Details ##

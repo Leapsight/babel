@@ -10,29 +10,24 @@
 ## Data Types ##
 
 
+<a name="t()"></a>
 
 
-### <a name="type-t">t()</a> ###
+### t() ###
 
 
 __abstract datatype__: `t()`
 
 
+<a name="type_spec()"></a>
 
 
-### <a name="type-type_spec">type_spec()</a> ###
+### type_spec() ###
 
 
 <pre><code>
 type_spec() = atom | existing_atom | boolean | integer | float | binary | list | fun((encode, any()) -&gt; binary()) | fun((decode, binary()) -&gt; any())
 </code></pre>
-
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_element-2">add_element/2</a></td><td>Adds an element to the set.</td></tr><tr><td valign="top"><a href="#add_elements-2">add_elements/2</a></td><td></td></tr><tr><td valign="top"><a href="#context-1">context/1</a></td><td>Returns the Riak KV context.</td></tr><tr><td valign="top"><a href="#del_element-2">del_element/2</a></td><td>Removes an element from the set.</td></tr><tr><td valign="top"><a href="#del_elements-2">del_elements/2</a></td><td>Removes an element from the set.</td></tr><tr><td valign="top"><a href="#fold-3">fold/3</a></td><td>Folds over the members of the set.</td></tr><tr><td valign="top"><a href="#from_riak_set-2">from_riak_set/2</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_set-3">from_riak_set/3</a></td><td>Overrides context.</td></tr><tr><td valign="top"><a href="#is_element-2">is_element/2</a></td><td>Test whether an element is a member of the set.</td></tr><tr><td valign="top"><a href="#is_original_element-2">is_original_element/2</a></td><td>Test whether an element is a member of the original set i,e.</td></tr><tr><td valign="top"><a href="#is_type-1">is_type/1</a></td><td></td></tr><tr><td valign="top"><a href="#is_valid_type_spec-1">is_valid_type_spec/1</a></td><td></td></tr><tr><td valign="top"><a href="#new-0">new/0</a></td><td></td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td></td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td></td></tr><tr><td valign="top"><a href="#original_value-1">original_value/1</a></td><td>Returns the original value of the set as an ordset.</td></tr><tr><td valign="top"><a href="#set_context-2">set_context/2</a></td><td>Sets the context <code>Ctxt</code>.</td></tr><tr><td valign="top"><a href="#set_elements-2">set_elements/2</a></td><td></td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>Returns the cardinality (size) of the set.</td></tr><tr><td valign="top"><a href="#to_riak_op-2">to_riak_op/2</a></td><td></td></tr><tr><td valign="top"><a href="#type-0">type/0</a></td><td>Returns the symbolic name of this container.</td></tr><tr><td valign="top"><a href="#value-1">value/1</a></td><td>Returns the current value of the set.</td></tr></table>
 
 
 <a name="functions"></a>

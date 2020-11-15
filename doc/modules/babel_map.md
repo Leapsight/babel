@@ -63,9 +63,10 @@ type. These specs can only have a single entry as follows
 ## Data Types ##
 
 
+<a name="action()"></a>
 
 
-### <a name="type-action">action()</a> ###
+### action() ###
 
 
 <pre><code>
@@ -73,9 +74,10 @@ action() = map()
 </code></pre>
 
 
+<a name="erl_type()"></a>
 
 
-### <a name="type-erl_type">erl_type()</a> ###
+### erl_type() ###
 
 
 <pre><code>
@@ -83,9 +85,10 @@ erl_type() = atom | existing_atom | boolean | integer | float | binary | list | 
 </code></pre>
 
 
+<a name="key_path()"></a>
 
 
-### <a name="type-key_path">key_path()</a> ###
+### key_path() ###
 
 
 <pre><code>
@@ -93,17 +96,19 @@ key_path() = binary() | [binary()]
 </code></pre>
 
 
+<a name="t()"></a>
 
 
-### <a name="type-t">t()</a> ###
+### t() ###
 
 
 __abstract datatype__: `t()`
 
 
+<a name="type_mapping()"></a>
 
 
-### <a name="type-type_mapping">type_mapping()</a> ###
+### type_mapping() ###
 
 
 <pre><code>
@@ -111,9 +116,10 @@ type_mapping() = {map, <a href="#type-type_spec">type_spec()</a>} | {set, <a hre
 </code></pre>
 
 
+<a name="type_spec()"></a>
 
 
-### <a name="type-type_spec">type_spec()</a> ###
+### type_spec() ###
 
 
 <pre><code>
@@ -121,39 +127,15 @@ type_spec() = #{$validated =&gt; true, <a href="#type-key">key()</a> | _ =&gt; <
 </code></pre>
 
 
+<a name="value()"></a>
 
 
-### <a name="type-value">value()</a> ###
+### value() ###
 
 
 <pre><code>
 value() = any()
 </code></pre>
-
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_element-3">add_element/3</a></td><td>Adds element <code>Value</code> to a babel set associated with key or path
-<code>Key</code> in map <code>Map</code> and inserts the association into map <code>NewMap</code>.</td></tr><tr><td valign="top"><a href="#add_elements-3">add_elements/3</a></td><td>Adds a list of values <code>Values</code> to a babel set associated with key or
-path <code>Key</code> in map <code>Map</code> and inserts the association into map <code>NewMap</code>.</td></tr><tr><td valign="top"><a href="#change_status-2">change_status/2</a></td><td>Returns the status of a key path <code>KeyPath</code> in map <code>Map</code>, where status
-can be one of <code>updated</code>, <code>removed</code>, <code>both</code> or <code>none</code>.</td></tr><tr><td valign="top"><a href="#changed_key_paths-1">changed_key_paths/1</a></td><td>Returns a tuple where the first element is the list of the key paths
-that have been updated and the second one those which have been removed
-in map <code>T</code>.</td></tr><tr><td valign="top"><a href="#collect-2">collect/2</a></td><td>Returns a list of values associated with the keys <code>Keys</code>.</td></tr><tr><td valign="top"><a href="#collect-3">collect/3</a></td><td>Returns a list of values associated with the keys <code>Keys</code>.</td></tr><tr><td valign="top"><a href="#collect_map-2">collect_map/2</a></td><td>Returns a list of values associated with the keys <code>Keys</code>.</td></tr><tr><td valign="top"><a href="#collect_map-3">collect_map/3</a></td><td>Returns a list of values associated with the keys <code>Keys</code>.</td></tr><tr><td valign="top"><a href="#context-1">context/1</a></td><td>Returns the Riak KV context associated with map <code>T</code>.</td></tr><tr><td valign="top"><a href="#decrement-2">decrement/2</a></td><td></td></tr><tr><td valign="top"><a href="#decrement-3">decrement/3</a></td><td></td></tr><tr><td valign="top"><a href="#del_element-3">del_element/3</a></td><td>Returns a new map <code>NewMap</code> were the value <code>Value</code> has been removed from
-a babel set associated with key or path <code>Key</code> in
-map <code>Map</code>.</td></tr><tr><td valign="top"><a href="#disable-2">disable/2</a></td><td></td></tr><tr><td valign="top"><a href="#enable-2">enable/2</a></td><td></td></tr><tr><td valign="top"><a href="#find-2">find/2</a></td><td>Returns the tuple <code>{ok, Value :: any()}</code> if the key 'Key' is associated
-with value <code>Value</code> in map <code>T</code>.</td></tr><tr><td valign="top"><a href="#from_riak_map-2">from_riak_map/2</a></td><td>Returns a new map by applying the type specification <code>Spec</code> to the Riak
-Map <code>RMap</code>.</td></tr><tr><td valign="top"><a href="#get-2">get/2</a></td><td>Returns value <code>Value</code> associated with <code>Key</code> if <code>T</code> contains <code>Key</code>.</td></tr><tr><td valign="top"><a href="#get-3">get/3</a></td><td>Returns value <code>Value</code> associated with <code>Key</code> if <code>T</code> contains <code>Key</code>, or
-the default value <code>Default</code> in case <code>T</code> does not contain <code>Key</code>.</td></tr><tr><td valign="top"><a href="#get_value-2">get_value/2</a></td><td>An util function equivalent to calling <code>DatatypeMod:value(get(Key, T))</code>.</td></tr><tr><td valign="top"><a href="#get_value-3">get_value/3</a></td><td>An util function equivalent to calling
-<code>DatatypeMod:value(get(Key, T, Default))</code>.</td></tr><tr><td valign="top"><a href="#increment-2">increment/2</a></td><td></td></tr><tr><td valign="top"><a href="#increment-3">increment/3</a></td><td></td></tr><tr><td valign="top"><a href="#is_type-1">is_type/1</a></td><td>Returns true if term <code>Term</code> is a babel map.</td></tr><tr><td valign="top"><a href="#keys-1">keys/1</a></td><td>Returns a complete list of keys, in any order, which resides within map
-<code>T</code>.</td></tr><tr><td valign="top"><a href="#merge-2">merge/2</a></td><td>Merges two maps into a single map <code>Map3</code>.</td></tr><tr><td valign="top"><a href="#new-0">new/0</a></td><td></td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td>Creates a new Babel Map from the erlang map <code>Data</code>, previously
-filtering out all keys assigned to the <code>undefined</code>.</td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td></td></tr><tr><td valign="top"><a href="#new-3">new/3</a></td><td>Creates a new Babel Map from the erlang map <code>Data</code>, previously
-filtering out all keys assigned to the <code>undefined</code>.</td></tr><tr><td valign="top"><a href="#patch-3">patch/3</a></td><td>Updates a map <code>T</code> with the provide key-value action list <code>ActionList</code>.</td></tr><tr><td valign="top"><a href="#put-3">put/3</a></td><td>Same as <a href="#set-3"><code>set/3</code></a>.</td></tr><tr><td valign="top"><a href="#remove-2">remove/2</a></td><td>Removes a key and its value from the map.</td></tr><tr><td valign="top"><a href="#set-3">set/3</a></td><td>Associates <code>Key</code> with value <code>Value</code> and inserts the association into
-map <code>NewMap</code>.</td></tr><tr><td valign="top"><a href="#set_context-2">set_context/2</a></td><td>Sets the context <code>Ctxt</code>.</td></tr><tr><td valign="top"><a href="#set_elements-3">set_elements/3</a></td><td>Sets a list of values <code>Values</code> to a babel set associated with key or
-path <code>Key</code> in map <code>Map</code> and inserts the association into map <code>NewMap</code>.</td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>Returns the size of the values of the map <code>T</code>.</td></tr><tr><td valign="top"><a href="#to_riak_op-2">to_riak_op/2</a></td><td>Extracts a Riak Operation from the map to be used with a Riak Client
-update request.</td></tr><tr><td valign="top"><a href="#type-0">type/0</a></td><td>Returns the symbolic name of this container.</td></tr><tr><td valign="top"><a href="#update-3">update/3</a></td><td>Updates a map <code>T</code> with the provide key-value pairs <code>Values</code>.</td></tr><tr><td valign="top"><a href="#validate_type_spec-1">validate_type_spec/1</a></td><td></td></tr><tr><td valign="top"><a href="#value-1">value/1</a></td><td>Returns an external representation of the map <code>Map</code> as an Erlang
-map().</td></tr></table>
 
 
 <a name="functions"></a>

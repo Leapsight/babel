@@ -13,9 +13,10 @@ A Key Value coding interface for property lists and maps.
 ## Data Types ##
 
 
+<a name="fold_fun()"></a>
 
 
-### <a name="type-fold_fun">fold_fun()</a> ###
+### fold_fun() ###
 
 
 <pre><code>
@@ -23,9 +24,10 @@ fold_fun() = fun((Key::<a href="#type-key">key()</a>, Value::any(), AccIn::any()
 </code></pre>
 
 
+<a name="key()"></a>
 
 
-### <a name="type-key">key()</a> ###
+### key() ###
 
 
 <pre><code>
@@ -33,9 +35,10 @@ key() = atom() | binary() | tuple() | <a href="riakc_map.md#type-key">riakc_map:
 </code></pre>
 
 
+<a name="path()"></a>
 
 
-### <a name="type-path">path()</a> ###
+### path() ###
 
 
 <pre><code>
@@ -43,21 +46,15 @@ path() = [atom() | binary() | tuple() | <a href="riakc_map.md#type-key">riakc_ma
 </code></pre>
 
 
+<a name="t()"></a>
 
 
-### <a name="type-t">t()</a> ###
+### t() ###
 
 
 <pre><code>
 t() = map() | [<a href="proplists.md#type-property">proplists:property()</a>] | <a href="babel_map.md#type-t">babel_map:t()</a> | <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 </code></pre>
-
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#collect-2">collect/2</a></td><td></td></tr><tr><td valign="top"><a href="#collect-3">collect/3</a></td><td></td></tr><tr><td valign="top"><a href="#fold-3">fold/3</a></td><td></td></tr><tr><td valign="top"><a href="#get-2">get/2</a></td><td>Returns value <code>Value</code> associated with <code>Key</code> if <code>KVTerm</code> contains <code>Key</code>.</td></tr><tr><td valign="top"><a href="#get-3">get/3</a></td><td></td></tr><tr><td valign="top"><a href="#set-3">set/3</a></td><td></td></tr></table>
 
 
 <a name="functions"></a>

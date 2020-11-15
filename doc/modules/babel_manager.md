@@ -15,28 +15,15 @@ __Behaviours:__ [`gen_server`](gen_server.md).
 ## Data Types ##
 
 
+<a name="info()"></a>
 
 
-### <a name="type-info">info()</a> ###
+### info() ###
 
 
 <pre><code>
 info() = #{connection =&gt; #{host =&gt; list(), port =&gt; integer()}, options =&gt; map(), bucket_type =&gt; atom(), bucket =&gt; atom(), start_ts =&gt; non_neg_integer(), end_ts =&gt; non_neg_integer() | undefined, succeded_count =&gt; integer(), failed_count =&gt; integer(), total_count =&gt; integer(), status =&gt; in_progress | finished | failed | canceled}
 </code></pre>
-
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#cancel-0">cancel/0</a></td><td></td></tr><tr><td valign="top"><a href="#code_change-3">code_change/3</a></td><td></td></tr><tr><td valign="top"><a href="#handle_call-3">handle_call/3</a></td><td></td></tr><tr><td valign="top"><a href="#handle_cast-2">handle_cast/2</a></td><td></td></tr><tr><td valign="top"><a href="#handle_info-2">handle_info/2</a></td><td></td></tr><tr><td valign="top"><a href="#info-0">info/0</a></td><td></td></tr><tr><td valign="top"><a href="#init-1">init/1</a></td><td></td></tr><tr><td valign="top"><a href="#rebuild_index-1">rebuild_index/1</a></td><td>
-<code>things_service_index_manager:rebuild_index(<<"mrn:agent:f5a1...">>).</code></td></tr><tr><td valign="top"><a href="#rebuild_index-2">rebuild_index/2</a></td><td>
-<pre>  things_service_index_manager:rebuild_index(
-      <<"mrn:agent:f5a1...">>, #{pr => 1, pw => 3}
-  ).</pre></td></tr><tr><td valign="top"><a href="#rebuild_indices-0">rebuild_indices/0</a></td><td>
-<pre>  things_service_index_manager:rebuild_indices(
-      #{pr => 1, pw => 3, backoff_every => 100, backoff_delay => 50}
-  ).</pre></td></tr><tr><td valign="top"><a href="#rebuild_indices-1">rebuild_indices/1</a></td><td>Do not run this function.</td></tr><tr><td valign="top"><a href="#start_link-0">start_link/0</a></td><td></td></tr><tr><td valign="top"><a href="#terminate-2">terminate/2</a></td><td></td></tr></table>
 
 
 <a name="functions"></a>

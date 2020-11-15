@@ -25,9 +25,10 @@ datatypes.
 ## Data Types ##
 
 
+<a name="datatype()"></a>
 
 
-### <a name="type-datatype">datatype()</a> ###
+### datatype() ###
 
 
 <pre><code>
@@ -35,9 +36,10 @@ datatype() = <a href="babel_map.md#type-t">babel_map:t()</a> | <a href="babel_se
 </code></pre>
 
 
+<a name="riak_op()"></a>
 
 
-### <a name="type-riak_op">riak_op()</a> ###
+### riak_op() ###
 
 
 <pre><code>
@@ -45,34 +47,15 @@ riak_op() = <a href="riakc_datatype.md#type-update">riakc_datatype:update</a>(te
 </code></pre>
 
 
+<a name="type_spec()"></a>
 
 
-### <a name="type-type_spec">type_spec()</a> ###
+### type_spec() ###
 
 
 <pre><code>
 type_spec() = <a href="babel_map.md#type-type_spec">babel_map:type_spec()</a> | <a href="babel_set.md#type-type_spec">babel_set:type_spec()</a> | <a href="babel_counter.md#type-type_spec">babel_counter:type_spec()</a>
 </code></pre>
-
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#create_collection-2">create_collection/2</a></td><td>Schedules the creation of an empty index collection using Reliable.</td></tr><tr><td valign="top"><a href="#create_index-2">create_index/2</a></td><td>Schedules the creation of an index and its partitions according to
-<code>Config</code> using Reliable.</td></tr><tr><td valign="top"><a href="#delete-3">delete/3</a></td><td>
-?> This function is workflow aware.</td></tr><tr><td valign="top"><a href="#delete_collection-1">delete_collection/1</a></td><td>Schedules the delete of a collection, all its indices and their
-partitions.</td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#execute-3">execute/3</a></td><td>Executes a number of operations using the same Riak client connection
-provided by riak_pool app.</td></tr><tr><td valign="top"><a href="#get-4">get/4</a></td><td>Retrieves a Riak Datatype (counter, set or map) from bucket type and
-bucket <code>TypedBucket</code> and key <code>Key</code>.</td></tr><tr><td valign="top"><a href="#get_connection-1">get_connection/1</a></td><td></td></tr><tr><td valign="top"><a href="#module-1">module/1</a></td><td>Returns the module associated with the type of term <code>Term</code>.</td></tr><tr><td valign="top"><a href="#put-5">put/5</a></td><td>
-?> This function is workflow aware.</td></tr><tr><td valign="top"><a href="#rebuild_index-4">rebuild_index/4</a></td><td></td></tr><tr><td valign="top"><a href="#status-1">status/1</a></td><td></td></tr><tr><td valign="top"><a href="#status-2">status/2</a></td><td></td></tr><tr><td valign="top"><a href="#type-1">type/1</a></td><td>Returns the atom name for a babel datatype.</td></tr><tr><td valign="top"><a href="#update_all_indices-3">update_all_indices/3</a></td><td>Updates all the indices in the collection that are affected by he
-provided Actions and schedules the update of the relevant index partitions
-in the database i.e.</td></tr><tr><td valign="top"><a href="#update_indices-4">update_indices/4</a></td><td>Updates all the indices in the collection with the provided Actions and
-schedules the update of the relevant index partitions in the database i.e.</td></tr><tr><td valign="top"><a href="#validate_riak_opts-1">validate_riak_opts/1</a></td><td>Validates the opts.</td></tr><tr><td valign="top"><a href="#workflow-1">workflow/1</a></td><td>Equivalent to calling <a href="#workflow-2"><code>workflow/2</code></a> with and empty map passed as
-the <code>Opts</code> argument.</td></tr><tr><td valign="top"><a href="#workflow-2">workflow/2</a></td><td>Executes the functional object <code>Fun</code> as a Reliable workflow, i.e.</td></tr><tr><td valign="top"><a href="#yield-1">yield/1</a></td><td>Returns the value associated with the key <code>event_payload</code> when used as
-option from a previous <a href="#enqueue-2"><code>enqueue/2</code></a>.</td></tr><tr><td valign="top"><a href="#yield-2">yield/2</a></td><td>Returns the value associated with the key <code>event_payload</code> when used as
-option from a previous <a href="#enqueue-2"><code>enqueue/2</code></a> or <code>timeout</code> when <code>Timeout</code>
-milliseconds has elapsed.</td></tr></table>
 
 
 <a name="functions"></a>

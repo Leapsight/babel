@@ -29,9 +29,10 @@ for a domain entity or resource e.g. accounts.
 ## Data Types ##
 
 
+<a name="fold_fun()"></a>
 
 
-### <a name="type-fold_fun">fold_fun()</a> ###
+### fold_fun() ###
 
 
 <pre><code>
@@ -39,9 +40,10 @@ fold_fun() = fun((<a href="#type-index_key">index_key()</a>, <a href="#type-inde
 </code></pre>
 
 
+<a name="fold_opts()"></a>
 
 
-### <a name="type-fold_opts">fold_opts()</a> ###
+### fold_opts() ###
 
 
 <pre><code>
@@ -49,9 +51,10 @@ fold_opts() = #{first =&gt; binary(), sort_ordering =&gt; asc | desc}
 </code></pre>
 
 
+<a name="foreach_fun()"></a>
 
 
-### <a name="type-foreach_fun">foreach_fun()</a> ###
+### foreach_fun() ###
 
 
 <pre><code>
@@ -59,9 +62,10 @@ foreach_fun() = fun((<a href="#type-index_key">index_key()</a>, <a href="#type-i
 </code></pre>
 
 
+<a name="index_key()"></a>
 
 
-### <a name="type-index_key">index_key()</a> ###
+### index_key() ###
 
 
 <pre><code>
@@ -69,9 +73,10 @@ index_key() = binary()
 </code></pre>
 
 
+<a name="index_values()"></a>
 
 
-### <a name="type-index_values">index_values()</a> ###
+### index_values() ###
 
 
 <pre><code>
@@ -79,9 +84,10 @@ index_values() = map()
 </code></pre>
 
 
+<a name="key_value()"></a>
 
 
-### <a name="type-key_value">key_value()</a> ###
+### key_value() ###
 
 
 <pre><code>
@@ -89,9 +95,10 @@ key_value() = <a href="babel_key_value.md#type-t">babel_key_value:t()</a>
 </code></pre>
 
 
+<a name="local_key()"></a>
 
 
-### <a name="type-local_key">local_key()</a> ###
+### local_key() ###
 
 
 <pre><code>
@@ -99,9 +106,10 @@ local_key() = binary()
 </code></pre>
 
 
+<a name="partition_id()"></a>
 
 
-### <a name="type-partition_id">partition_id()</a> ###
+### partition_id() ###
 
 
 <pre><code>
@@ -109,9 +117,10 @@ partition_id() = binary()
 </code></pre>
 
 
+<a name="partition_key()"></a>
 
 
-### <a name="type-partition_key">partition_key()</a> ###
+### partition_key() ###
 
 
 <pre><code>
@@ -119,9 +128,10 @@ partition_key() = binary()
 </code></pre>
 
 
+<a name="query_opts()"></a>
 
 
-### <a name="type-query_opts">query_opts()</a> ###
+### query_opts() ###
 
 
 <pre><code>
@@ -129,9 +139,10 @@ query_opts() = #{max_results =&gt; non_neg_integer() | all, continuation =&gt; a
 </code></pre>
 
 
+<a name="riak_object()"></a>
 
 
-### <a name="type-riak_object">riak_object()</a> ###
+### riak_object() ###
 
 
 <pre><code>
@@ -139,9 +150,10 @@ riak_object() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 </code></pre>
 
 
+<a name="t()"></a>
 
 
-### <a name="type-t">t()</a> ###
+### t() ###
 
 
 <pre><code>
@@ -149,9 +161,10 @@ t() = #{bucket =&gt; binary(), bucket_type =&gt; binary(), config =&gt; term(), 
 </code></pre>
 
 
+<a name="update_action()"></a>
 
 
-### <a name="type-update_action">update_action()</a> ###
+### update_action() ###
 
 
 <pre><code>
@@ -159,27 +172,15 @@ update_action() = {insert | delete, <a href="#type-key_value">key_value()</a>} |
 </code></pre>
 
 
+<a name="update_opts()"></a>
 
 
-### <a name="type-update_opts">update_opts()</a> ###
+### update_opts() ###
 
 
 <pre><code>
 update_opts() = #{force =&gt; boolean, riak_opts =&gt; <a href="#type-riak_opts">riak_opts()</a>}
 </code></pre>
-
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#bucket-1">bucket/1</a></td><td>Returns the Riak KV bucket were this index partitions are stored.</td></tr><tr><td valign="top"><a href="#bucket_type-1">bucket_type/1</a></td><td>Returns the Riak KV bucket type associated with this index.</td></tr><tr><td valign="top"><a href="#config-1">config/1</a></td><td>Returns the configuration associated with this index.</td></tr><tr><td valign="top"><a href="#create_partitions-1">create_partitions/1</a></td><td></td></tr><tr><td valign="top"><a href="#distinguished_key_paths-1">distinguished_key_paths/1</a></td><td>Returns the list of the key paths for which a value will need to be
-present in the key value object passed as an action to the <a href="#update-3"><code>update/3</code></a>
-function.</td></tr><tr><td valign="top"><a href="#foreach-2">foreach/2</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_object-1">from_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#match-3">match/3</a></td><td>Returns a list of matching index entries.</td></tr><tr><td valign="top"><a href="#name-1">name/1</a></td><td>Returns name of this index.</td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td>Returns a new index based on the specification map.</td></tr><tr><td valign="top"><a href="#partition_identifier-2">partition_identifier/2</a></td><td></td></tr><tr><td valign="top"><a href="#partition_identifiers-1">partition_identifiers/1</a></td><td>Returns the list of Riak KV keys under which the partitions are stored,
-in ascending order.</td></tr><tr><td valign="top"><a href="#partition_identifiers-2">partition_identifiers/2</a></td><td>Returns the list of Riak KV keys under which the partitions are stored
-in a defined order i.e.</td></tr><tr><td valign="top"><a href="#to_delete_task-2">to_delete_task/2</a></td><td>Returns the representation of this object as a Reliable Delete work
-item.</td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_update_task-2">to_update_task/2</a></td><td>Returns the representation of this object as a Reliable Update work
-item.</td></tr><tr><td valign="top"><a href="#type-1">type/1</a></td><td>Returns the type of this index.</td></tr><tr><td valign="top"><a href="#typed_bucket-1">typed_bucket/1</a></td><td>Returns the Riak KV <code>typed_bucket()</code> associated with this index.</td></tr><tr><td valign="top"><a href="#update-3">update/3</a></td><td></td></tr></table>
 
 
 <a name="functions"></a>

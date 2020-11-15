@@ -10,9 +10,10 @@
 ## Data Types ##
 
 
+<a name="data()"></a>
 
 
-### <a name="type-data">data()</a> ###
+### data() ###
 
 
 <pre><code>
@@ -20,9 +21,10 @@ data() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 </code></pre>
 
 
+<a name="riak_object()"></a>
 
 
-### <a name="type-riak_object">riak_object()</a> ###
+### riak_object() ###
 
 
 <pre><code>
@@ -30,21 +32,15 @@ riak_object() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 </code></pre>
 
 
+<a name="t()"></a>
 
 
-### <a name="type-t">t()</a> ###
+### t() ###
 
 
 <pre><code>
 t() = #babel_index_partition{id = binary(), created_ts = non_neg_integer(), last_updated_ts = non_neg_integer(), object = <a href="#type-riak_object">riak_object()</a>}
 </code></pre>
-
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#created_ts-1">created_ts/1</a></td><td></td></tr><tr><td valign="top"><a href="#data-1">data/1</a></td><td></td></tr><tr><td valign="top"><a href="#delete-4">delete/4</a></td><td></td></tr><tr><td valign="top"><a href="#fetch-3">fetch/3</a></td><td></td></tr><tr><td valign="top"><a href="#fetch-4">fetch/4</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_object-1">from_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#id-1">id/1</a></td><td></td></tr><tr><td valign="top"><a href="#last_updated_ts-1">last_updated_ts/1</a></td><td></td></tr><tr><td valign="top"><a href="#lookup-3">lookup/3</a></td><td></td></tr><tr><td valign="top"><a href="#lookup-4">lookup/4</a></td><td></td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td></td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td></td></tr><tr><td valign="top"><a href="#store-5">store/5</a></td><td></td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#update_data-2">update_data/2</a></td><td></td></tr></table>
 
 
 <a name="functions"></a>

@@ -30,9 +30,10 @@ This object is immutable.
 ## Data Types ##
 
 
+<a name="fields()"></a>
 
 
-### <a name="type-fields">fields()</a> ###
+### fields() ###
 
 
 <pre><code>
@@ -40,9 +41,10 @@ fields() = [<a href="babel_key_value.md#type-key">babel_key_value:key()</a>]
 </code></pre>
 
 
+<a name="iterator()"></a>
 
 
-### <a name="type-iterator">iterator()</a> ###
+### iterator() ###
 
 
 <pre><code>
@@ -50,21 +52,15 @@ iterator() = #babel_hash_partitioned_index_iter{partition = <a href="babel_index
 </code></pre>
 
 
+<a name="t()"></a>
 
 
-### <a name="type-t">t()</a> ###
+### t() ###
 
 
 <pre><code>
 t() = #{sort_ordering =&gt; asc | desc, number_of_partitions =&gt; integer(), partition_algorithm =&gt; atom(), partition_identifier_prefix =&gt; binary(), partition_identifiers =&gt; [binary()], partition_by =&gt; <a href="#type-fields">fields()</a>, index_by =&gt; <a href="#type-fields">fields()</a>, aggregate_by =&gt; <a href="#type-fields">fields()</a>, covered_fields =&gt; <a href="#type-fields">fields()</a>, cardinality =&gt; one | many}
 </code></pre>
-
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#aggregate_by-1">aggregate_by/1</a></td><td></td></tr><tr><td valign="top"><a href="#covered_fields-1">covered_fields/1</a></td><td></td></tr><tr><td valign="top"><a href="#distinguished_key_paths-1">distinguished_key_paths/1</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_dict-1">from_riak_dict/1</a></td><td></td></tr><tr><td valign="top"><a href="#index_by-1">index_by/1</a></td><td></td></tr><tr><td valign="top"><a href="#init-2">init/2</a></td><td></td></tr><tr><td valign="top"><a href="#init_partitions-1">init_partitions/1</a></td><td></td></tr><tr><td valign="top"><a href="#iterator-3">iterator/3</a></td><td></td></tr><tr><td valign="top"><a href="#iterator_done-1">iterator_done/1</a></td><td></td></tr><tr><td valign="top"><a href="#iterator_key-1">iterator_key/1</a></td><td></td></tr><tr><td valign="top"><a href="#iterator_move-3">iterator_move/3</a></td><td></td></tr><tr><td valign="top"><a href="#iterator_values-1">iterator_values/1</a></td><td></td></tr><tr><td valign="top"><a href="#match-3">match/3</a></td><td></td></tr><tr><td valign="top"><a href="#number_of_partitions-1">number_of_partitions/1</a></td><td></td></tr><tr><td valign="top"><a href="#partition_algorithm-1">partition_algorithm/1</a></td><td>Returns the partition algorithm name configured for this index.</td></tr><tr><td valign="top"><a href="#partition_by-1">partition_by/1</a></td><td></td></tr><tr><td valign="top"><a href="#partition_identifier-2">partition_identifier/2</a></td><td></td></tr><tr><td valign="top"><a href="#partition_identifier_prefix-1">partition_identifier_prefix/1</a></td><td></td></tr><tr><td valign="top"><a href="#partition_identifiers-2">partition_identifiers/2</a></td><td></td></tr><tr><td valign="top"><a href="#sort_ordering-1">sort_ordering/1</a></td><td>Returns the sort ordering configured for this index.</td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#update_partition-3">update_partition/3</a></td><td></td></tr></table>
 
 
 <a name="functions"></a>

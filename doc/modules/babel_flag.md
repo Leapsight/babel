@@ -20,29 +20,24 @@ To disable an existing flag, you have to read it or provide a context.
 ## Data Types ##
 
 
+<a name="t()"></a>
 
 
-### <a name="type-t">t()</a> ###
+### t() ###
 
 
 __abstract datatype__: `t()`
 
 
+<a name="type_spec()"></a>
 
 
-### <a name="type-type_spec">type_spec()</a> ###
+### type_spec() ###
 
 
 <pre><code>
 type_spec() = boolean
 </code></pre>
-
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#context-1">context/1</a></td><td>Returns the Riak KV context.</td></tr><tr><td valign="top"><a href="#disable-1">disable/1</a></td><td>Disables the flag, setting its value to false.</td></tr><tr><td valign="top"><a href="#enable-1">enable/1</a></td><td>Enables the flag, setting its value to true.</td></tr><tr><td valign="top"><a href="#from_riak_flag-3">from_riak_flag/3</a></td><td></td></tr><tr><td valign="top"><a href="#is_type-1">is_type/1</a></td><td></td></tr><tr><td valign="top"><a href="#is_valid_type_spec-1">is_valid_type_spec/1</a></td><td></td></tr><tr><td valign="top"><a href="#new-0">new/0</a></td><td></td></tr><tr><td valign="top"><a href="#new-1">new/1</a></td><td></td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td></td></tr><tr><td valign="top"><a href="#original_value-1">original_value/1</a></td><td>Returns the original value of the flag.</td></tr><tr><td valign="top"><a href="#set-2">set/2</a></td><td></td></tr><tr><td valign="top"><a href="#set_context-2">set_context/2</a></td><td>Sets the context <code>Ctxt</code>.</td></tr><tr><td valign="top"><a href="#to_riak_op-2">to_riak_op/2</a></td><td></td></tr><tr><td valign="top"><a href="#type-0">type/0</a></td><td>Returns the symbolic name of this container.</td></tr><tr><td valign="top"><a href="#value-1">value/1</a></td><td>Returns the current value of the flag.</td></tr></table>
 
 
 <a name="functions"></a>

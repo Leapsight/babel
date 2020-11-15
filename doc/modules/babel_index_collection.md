@@ -56,9 +56,10 @@ properties.
 ## Data Types ##
 
 
+<a name="fold_fun()"></a>
 
 
-### <a name="type-fold_fun">fold_fun()</a> ###
+### fold_fun() ###
 
 
 <pre><code>
@@ -66,9 +67,10 @@ fold_fun() = fun((Key::<a href="#type-key">key()</a>, Value::any(), AccIn::any()
 </code></pre>
 
 
+<a name="riak_object()"></a>
 
 
-### <a name="type-riak_object">riak_object()</a> ###
+### riak_object() ###
 
 
 <pre><code>
@@ -76,22 +78,15 @@ riak_object() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 </code></pre>
 
 
+<a name="t()"></a>
 
 
-### <a name="type-t">t()</a> ###
+### t() ###
 
 
 <pre><code>
 t() = #babel_index_collection{id = binary(), bucket = binary(), object = <a href="#type-riak_object">riak_object()</a>}
 </code></pre>
-
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#add_index-2">add_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#bucket-1">bucket/1</a></td><td></td></tr><tr><td valign="top"><a href="#data-1">data/1</a></td><td></td></tr><tr><td valign="top"><a href="#delete-3">delete/3</a></td><td></td></tr><tr><td valign="top"><a href="#delete_index-2">delete_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#fetch-3">fetch/3</a></td><td></td></tr><tr><td valign="top"><a href="#fold-3">fold/3</a></td><td></td></tr><tr><td valign="top"><a href="#from_riak_object-1">from_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#id-1">id/1</a></td><td></td></tr><tr><td valign="top"><a href="#index-2">index/2</a></td><td>Returns the babel index associated with name <code>IndexName</code> in collection
-<code>Collection</code>.</td></tr><tr><td valign="top"><a href="#index_names-1">index_names/1</a></td><td></td></tr><tr><td valign="top"><a href="#indices-1">indices/1</a></td><td>Returns all the indices in the collection.</td></tr><tr><td valign="top"><a href="#is_index-2">is_index/2</a></td><td></td></tr><tr><td valign="top"><a href="#lookup-3">lookup/3</a></td><td></td></tr><tr><td valign="top"><a href="#new-2">new/2</a></td><td>Creates a new index collection object.</td></tr><tr><td valign="top"><a href="#size-1">size/1</a></td><td>Returns the number of elements in the collection <code>Collection</code>.</td></tr><tr><td valign="top"><a href="#store-2">store/2</a></td><td>Stores an index collection in Riak KV.</td></tr><tr><td valign="top"><a href="#to_delete_task-1">to_delete_task/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_riak_object-1">to_riak_object/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_update_task-1">to_update_task/1</a></td><td></td></tr></table>
 
 
 <a name="functions"></a>

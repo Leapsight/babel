@@ -4,15 +4,6 @@
 * [Function Index](#index)
 * [Function Details](#functions)
 
-<a name="index"></a>
-
-## Function Index ##
-
-
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#dirty_fetch-2">dirty_fetch/2</a></td><td>Returns the "unwrapped" value associated with the key in the
-map.</td></tr><tr><td valign="top"><a href="#dirty_fetch_keys-1">dirty_fetch_keys/1</a></td><td></td></tr><tr><td valign="top"><a href="#map_entry-3">map_entry/3</a></td><td></td></tr><tr><td valign="top"><a href="#register_to_atom-2">register_to_atom/2</a></td><td></td></tr><tr><td valign="top"><a href="#register_to_binary-1">register_to_binary/1</a></td><td></td></tr><tr><td valign="top"><a href="#register_to_existing_atom-2">register_to_existing_atom/2</a></td><td></td></tr><tr><td valign="top"><a href="#register_to_integer-1">register_to_integer/1</a></td><td></td></tr><tr><td valign="top"><a href="#register_to_integer-2">register_to_integer/2</a></td><td></td></tr><tr><td valign="top"><a href="#register_to_term-1">register_to_term/1</a></td><td></td></tr><tr><td valign="top"><a href="#to_integer-1">to_integer/1</a></td><td></td></tr></table>
-
-
 <a name="functions"></a>
 
 ## Function Details ##
