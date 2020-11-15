@@ -558,7 +558,7 @@ rebuild_index(_Index, _BucketType, _Bucket, _Opts) ->
 %% -----------------------------------------------------------------------------
 %% @doc Updates all the indices in the collection with the provided Actions and
 %% schedules the update of the relevant index partitions in the database i.e.
-%% persistind the index changes.
+%% persisting the index changes.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update_indices(
