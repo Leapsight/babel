@@ -1,6 +1,5 @@
-# This file is a template, and might need editing before it works on your project.
-# Full project: https://gitlab.com/pages/plain-html
 pages:
+  stage: deploy
   script:
     # The .public workaround is so cp doesn't also copy public/ to itself
     # in an infinite loop.
