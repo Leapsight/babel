@@ -2,10 +2,12 @@
 # Full project: https://gitlab.com/pages/plain-html
 pages:
   script:
+    # The .public workaround is so cp doesn't also copy public/ to itself
+    # in an infinite loop.
     - mkdir .public
-    - cp -r doc/* .public
+    - cp -r doc/. .public
     # override edoc generated README
-    - cp README.md doc/README.md
+    - cp README.md .public/README.md
     - mv .public public
   artifacts:
     paths:
