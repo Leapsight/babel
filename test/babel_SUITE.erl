@@ -74,7 +74,7 @@ scheduled_for_delete_test(_) ->
         Index = babel_index:new(Conf),
         Collection0 = babel_index_collection:new(
             <<"babel_SUITE">>, <<"users">>),
-        ok = babel:delete_collection(Collection0),
+        {ok, _CollectionId} = babel:drop_collection(Collection0),
         _Collection1 = babel:create_index(Index, Collection0),
         ok
     end,
@@ -166,9 +166,8 @@ delete_index_test(_) ->
                 ok;
             {ok, Collection} ->
                 try
-                    Index = babel_index_collection:index(
-                        <<"users_by_email">>, Collection),
-                    _Collection1 = babel:delete_index(Index, Collection),
+                    IdxName = <<"users_by_email">>,
+                    _Collection1 = babel:drop_index(IdxName, Collection),
                     ok
                 catch
                     error:badindex ->

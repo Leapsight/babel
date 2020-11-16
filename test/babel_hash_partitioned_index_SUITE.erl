@@ -181,8 +181,7 @@ index_5_test(_) ->
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
-                        Index = babel_index_collection:index(IdxName, Collection),
-                        _ = babel:delete_index(Index, Collection),
+                        _ = babel:drop_index(IdxName, Collection),
                         ok;
                     false ->
                         ok
@@ -287,8 +286,7 @@ huge_index_test(_) ->
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
-                        Index = babel_index_collection:index(IdxName, Collection),
-                        _ = babel:delete_index(Index, Collection),
+                        _ = babel:drop_index(IdxName, Collection),
                         ok;
                     false ->
                         ok
@@ -406,8 +404,7 @@ index_6_test(_) ->
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
-                        Index = babel_index_collection:index(IdxName, Collection),
-                        _ = babel:delete_index(Index, Collection),
+                        _ = babel:drop_index(IdxName, Collection),
                         ok;
                     false ->
                         ok
@@ -518,8 +515,7 @@ accounts_by_identification_type_and_number_test(_) ->
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
-                        Index = babel_index_collection:index(IdxName, Collection),
-                        _ = babel:delete_index(Index, Collection),
+                        _ = babel:drop_index(IdxName, Collection),
                         ok;
                     false ->
                         ok
@@ -528,8 +524,13 @@ accounts_by_identification_type_and_number_test(_) ->
                 ok
         end
     end,
-    {scheduled, WorkRef1, ok} = babel:workflow(Cleanup),
-    {ok, _} = babel:yield(WorkRef1, 5000),
+    case babel:workflow(Cleanup) of
+        {scheduled, WorkRef1, ok} ->
+            {ok, _} = babel:yield(WorkRef1, 5000),
+            ok;
+        _ ->
+            ok
+    end,
 
     Create = fun() ->
         Conf = #{

@@ -96,7 +96,10 @@ babel_put_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    Opts = #{return_body => true, connection => Conn},
+    Opts = #{
+        connection => Conn,
+        riak_opts => #{return_body => true}
+    },
 
     ?assertEqual(false, reliable:is_in_workflow()),
 
