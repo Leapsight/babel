@@ -4,9 +4,11 @@ pages:
   stage: deploy
   script:
     # override edoc generated README
-    - cp README.md doc/README.md
     - if [ ! -d public ]; then mkdir public; fi
-    - cp -r doc/* public
+    - mkdir .public
+    - cp -r doc/* .public
+    - cp README.md .public/README.md
+    - mv .public public
   artifacts:
     paths:
       - public
