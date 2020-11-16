@@ -179,7 +179,7 @@ update_action() = {insert | delete, <a href="#type-key_value">key_value()</a>} |
 
 
 <pre><code>
-update_opts() = #{force =&gt; boolean, riak_opts =&gt; <a href="#type-riak_opts">riak_opts()</a>}
+update_opts() = #{force =&gt; boolean, riak_opts =&gt; <a href="babel.md#type-opts">babel:opts()</a>}
 </code></pre>
 
 
@@ -266,7 +266,7 @@ from_riak_object(Object::<a href="#type-riak_object">riak_object()</a>) -&gt; In
 ### match/3 ###
 
 <pre><code>
-match(Index::<a href="#type-t">t()</a>, Pattern::<a href="babel_index.md#type-key_value">babel_index:key_value()</a>, RiakOpts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; [{<a href="#type-index_key">index_key()</a>, <a href="#type-index_values">index_values()</a>}] | no_return()
+match(Index::<a href="#type-t">t()</a>, Pattern::<a href="babel_index.md#type-key_value">babel_index:key_value()</a>, Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; [{<a href="#type-index_key">index_key()</a>, <a href="#type-index_values">index_values()</a>}] | no_return()
 </code></pre>
 <br />
 

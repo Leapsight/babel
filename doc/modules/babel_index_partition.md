@@ -70,7 +70,7 @@ data(Partition::<a href="#type-t">t()</a>) -&gt; <a href="#type-data">data()</a>
 ### delete/4 ###
 
 <pre><code>
-delete(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; ok | {error, not_found | term()}
+delete(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; ok | {error, not_found | term()}
 </code></pre>
 <br />
 
@@ -79,7 +79,7 @@ delete(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Opts::<a hre
 ### fetch/3 ###
 
 <pre><code>
-fetch(TypedBucket::{binary(), binary()}, Key::binary(), RiakOpts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
+fetch(TypedBucket::{binary(), binary()}, Key::binary(), RiakOpts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
 </code></pre>
 <br />
 
@@ -88,7 +88,7 @@ fetch(TypedBucket::{binary(), binary()}, Key::binary(), RiakOpts::<a href="#type
 ### fetch/4 ###
 
 <pre><code>
-fetch(BucketType::binary(), BucketPrefix::binary(), Key::binary(), RiakOpts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
+fetch(BucketType::binary(), BucketPrefix::binary(), Key::binary(), RiakOpts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
 </code></pre>
 <br />
 
@@ -124,7 +124,7 @@ last_updated_ts(Partition::<a href="#type-t">t()</a>) -&gt; non_neg_integer()
 ### lookup/3 ###
 
 <pre><code>
-lookup(TypedBucket::{binary(), binary()}, Key::binary(), Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; {ok, <a href="#type-t">t()</a>} | {error, not_found | term()}
+lookup(TypedBucket::{binary(), binary()}, Key::binary(), Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; {ok, <a href="#type-t">t()</a>} | {error, not_found | term()}
 </code></pre>
 <br />
 
@@ -133,7 +133,7 @@ lookup(TypedBucket::{binary(), binary()}, Key::binary(), Opts::<a href="#type-ri
 ### lookup/4 ###
 
 <pre><code>
-lookup(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; {ok, <a href="#type-t">t()</a>} | {error, not_found | term()}
+lookup(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; {ok, <a href="#type-t">t()</a>} | {error, not_found | term()}
 </code></pre>
 <br />
 
@@ -160,7 +160,7 @@ size(Partition::<a href="#type-t">t()</a>) -&gt; non_neg_integer()
 ### store/5 ###
 
 <pre><code>
-store(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Partition::<a href="#type-t">t()</a>, RiakOpts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; ok | {error, any()}
+store(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Partition::<a href="#type-t">t()</a>, Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; ok | {error, any()}
 </code></pre>
 <br />
 

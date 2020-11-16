@@ -17,6 +17,10 @@ datatypes.
 ### Working with Babel Datatypes
 
 ### Working with Reliable Workflows
+#### Workflow aware functions
+A workflow aware function is a function that schedules its execution when it
+is called inside a workflow context. Several functions in this module are
+workflow aware e.g. [`put/5`](#put-5), [`delete/3`](#delete-3).
 
 ### Working with Babel Indices
 
@@ -36,6 +40,17 @@ datatype() = <a href="babel_map.md#type-t">babel_map:t()</a> | <a href="babel_se
 </code></pre>
 
 
+<a name="opts()"></a>
+
+
+### opts() ###
+
+
+<pre><code>
+opts() = #{connection =&gt; pid() | fun(() -&gt; pid()), riak_opts =&gt; <a href="#type-riak_opts">riak_opts()</a>, $validated =&gt; boolean()}
+</code></pre>
+
+
 <a name="riak_op()"></a>
 
 
@@ -44,6 +59,17 @@ datatype() = <a href="babel_map.md#type-t">babel_map:t()</a> | <a href="babel_se
 
 <pre><code>
 riak_op() = <a href="riakc_datatype.md#type-update">riakc_datatype:update</a>(term())
+</code></pre>
+
+
+<a name="riak_opts()"></a>
+
+
+### riak_opts() ###
+
+
+<pre><code>
+riak_opts() = #{r =&gt; <a href="#type-quorum">quorum()</a>, pr =&gt; <a href="#type-quorum">quorum()</a>, w =&gt; <a href="#type-quorum">quorum()</a>, dw =&gt; <a href="#type-quorum">quorum()</a>, pw =&gt; <a href="#type-quorum">quorum()</a>, notfound_ok =&gt; boolean(), basic_quorum =&gt; boolean(), sloppy_quorum =&gt; boolean(), timeout =&gt; timeout(), return_body =&gt; boolean()}
 </code></pre>
 
 
@@ -71,6 +97,17 @@ create_collection(BucketPrefix::binary(), Name::binary()) -&gt; <a href="babel_i
 </code></pre>
 <br />
 
+Calls [`create_collection/3`](#create_collection-3) passing an empty `Opts`.
+
+<a name="create_collection-3"></a>
+
+### create_collection/3 ###
+
+<pre><code>
+create_collection(BucketPrefix::binary(), Name::binary(), Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+</code></pre>
+<br />
+
 Schedules the creation of an empty index collection using Reliable.
 Fails if the collection already exists.
 
@@ -79,15 +116,27 @@ for the application option `index_collection_bucket_type`, bucket name
 resulting from concatenating the value of `BucketPrefix` to the suffix `/
 index_collection` and the key will be the value of `Name`.
 
-!> **Important**, this function must be called within a workflow
-functional object, see [`workflow/1`](#workflow-1).
+?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
+of the possible return values.
 
 <a name="create_index-2"></a>
 
 ### create_index/2 ###
 
 <pre><code>
-create_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; <a href="babel_index_collection.md#type-t">babel_index_collection:t()</a> | no_return()
+create_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+</code></pre>
+<br />
+
+Calls [`create_index/3`](#create_index-3) passing the default options as third
+argument.
+
+<a name="create_index-3"></a>
+
+### create_index/3 ###
+
+<pre><code>
+create_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -97,58 +146,75 @@ Schedules the creation of an index and its partitions according to
 !> **Important**, this function must be called within a workflow
 functional object, see [`workflow/1`](#workflow-1).
 
-Example: Creating an index and adding it to an existing collection
-
-```
-  > babel:workflow(
-      fun() ->
-           Collection0 = babel_index_collection:fetch(Conn, BucketPrefix, Key),
-           Index = babel_index:new(Config),
-           ok = babel:create_index(Index, Collection0),
-           ok
-      end).
-  > {scheduled, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
-```
-
-
 <a name="delete-3"></a>
 
 ### delete/3 ###
 
 <pre><code>
-delete(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Opts::map()) -&gt; ok | {scheduled, WorkflowId::{<a href="#type-bucket_and_type">bucket_and_type()</a>, <a href="#type-key">key()</a>}} | {error, Reason::term()}
+delete(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Opts::<a href="#type-opts">opts()</a>) -&gt; ok | {scheduled, WorkflowId::{<a href="#type-bucket_and_type">bucket_and_type()</a>, <a href="#type-key">key()</a>}} | {error, Reason::term()}
 </code></pre>
 <br />
 
 ?> This function is workflow aware
 
-<a name="delete_collection-1"></a>
+<a name="drop_collection-1"></a>
 
-### delete_collection/1 ###
+### drop_collection/1 ###
 
 <pre><code>
-delete_collection(Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; ok | no_return()
+drop_collection(Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
-Schedules the delete of a collection, all its indices and their
-partitions.
+Calls [`drop_collection/2`](#drop_collection-2)
 
-<a name="delete_index-2"></a>
+<a name="drop_collection-2"></a>
 
-### delete_index/2 ###
+### drop_collection/2 ###
 
 <pre><code>
-delete_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection0::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; <a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>
+drop_collection(Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
+
+Schedules the removal from Riak KV of collection `Collection`,
+all its indices and their respective partitions.
+
+?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
+of the possible return values.
+
+<a name="drop_index-2"></a>
+
+### drop_index/2 ###
+
+<pre><code>
+drop_index(Index::binary(), Collection0::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+</code></pre>
+<br />
+
+<a name="drop_index-3"></a>
+
+### drop_index/3 ###
+
+<pre><code>
+drop_index(Index::binary(), Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+</code></pre>
+<br />
+
+Schedules the removal of the index with name `IndexName` from
+collection `Collection` and all its index partitions from Riak KV.
+In case the collection is itself being dropped by a parent workflow, the
+collection will not be updated in Riak.
+
+?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
+of the possible return values.
 
 <a name="execute-3"></a>
 
 ### execute/3 ###
 
 <pre><code>
-execute(Poolname::atom(), Fun::fun((RiakConn::pid()) -&gt; Result::any()), Opts::map()) -&gt; {true, Result::any()} | {false, Reason::any()} | no_return()
+execute(Poolname::atom(), Fun::fun((RiakConn::pid()) -&gt; Result::any()), Opts::<a href="#type-opts">opts()</a>) -&gt; {true, Result::any()} | {false, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -165,7 +231,7 @@ Options:
 ### get/4 ###
 
 <pre><code>
-get(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Spec::<a href="#type-type_spec">type_spec()</a>, Opts::map()) -&gt; {ok, Datatype::<a href="#type-datatype">datatype()</a>} | {error, Reason::term()}
+get(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Spec::<a href="#type-type_spec">type_spec()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, Datatype::<a href="#type-datatype">datatype()</a>} | {error, Reason::term()}
 </code></pre>
 <br />
 
@@ -202,23 +268,32 @@ module(Term::any()) -&gt; module() | undefined
 
 Returns the module associated with the type of term `Term`.
 
+<a name="opts_to_riak_opts-1"></a>
+
+### opts_to_riak_opts/1 ###
+
+<pre><code>
+opts_to_riak_opts(X1::map()) -&gt; list()
+</code></pre>
+<br />
+
 <a name="put-5"></a>
 
 ### put/5 ###
 
 <pre><code>
-put(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>, Spec::<a href="#type-type_spec">type_spec()</a>, Opts::map()) -&gt; ok | {ok, Datatype::<a href="#type-datatype">datatype()</a>} | {ok, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>} | {scheduled, WorkflowId::{<a href="#type-bucket_and_type">bucket_and_type()</a>, <a href="#type-key">key()</a>}} | {error, Reason::term()}
+put(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>, Spec::<a href="#type-type_spec">type_spec()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; ok | {ok, Datatype::<a href="#type-datatype">datatype()</a>} | {ok, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>} | {scheduled, WorkflowId::{<a href="#type-bucket_and_type">bucket_and_type()</a>, <a href="#type-key">key()</a>}} | {error, Reason::term()}
 </code></pre>
 <br />
 
 ?> This function is workflow aware
 
-<a name="rebuild_index-4"></a>
+<a name="rebuild_index-3"></a>
 
-### rebuild_index/4 ###
+### rebuild_index/3 ###
 
 <pre><code>
-rebuild_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, BucketType::binary(), Bucket::binary(), Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; ok | no_return()
+rebuild_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; ok | no_return()
 </code></pre>
 <br />
 
@@ -231,6 +306,8 @@ status(WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>)
 </code></pre>
 <br />
 
+Calls [`status/2`](#status-2).
+
 <a name="status-2"></a>
 
 ### status/2 ###
@@ -239,6 +316,13 @@ status(WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>)
 status(WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, Timeout::timeout()) -&gt; {in_progress, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {failed, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {error, not_found | any()}
 </code></pre>
 <br />
+
+Returns the status of a Reliable Work scheduled for execution.
+
+!> **Important** notice that at the moment completed tasks are deleted, so
+the abscense of a task is considered as either successful or failed, this
+will change in the near future as we will be retaining tasks that are
+discarded or completed.
 
 <a name="type-1"></a>
 
@@ -256,7 +340,7 @@ Returns the atom name for a babel datatype.
 ### update_all_indices/3 ###
 
 <pre><code>
-update_all_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, RiakOpts::map()) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+update_all_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, RiakOpts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -274,25 +358,42 @@ or set to `false`, an index will be affected by an update action only if the
 index's distinguished key paths have been updated or removed in the object
 `New` (See [`babel_index:distinguished_key_paths/1`](babel_index.md#distinguished_key_paths-1))
 
+?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
+of the possible return values.
+
 <a name="update_indices-4"></a>
 
 ### update_indices/4 ###
 
 <pre><code>
-update_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], IndexNames::[binary()], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::map()) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+update_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], IndexNames::[binary()], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
 Updates all the indices in the collection with the provided Actions and
 schedules the update of the relevant index partitions in the database i.e.
-persistind the index changes.
+persisting the index changes.
 
-<a name="validate_riak_opts-1"></a>
+?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
+of the possible return values.
 
-### validate_riak_opts/1 ###
+<a name="validate_opts-1"></a>
+
+### validate_opts/1 ###
 
 <pre><code>
-validate_riak_opts(Opts::map()) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>(map())
+validate_opts(Opts::map()) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>(map())
+</code></pre>
+<br />
+
+Validates the opts
+
+<a name="validate_opts-2"></a>
+
+### validate_opts/2 ###
+
+<pre><code>
+validate_opts(Opts::map(), Mode::strict | relaxed) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>(map())
 </code></pre>
 <br />
 
@@ -398,10 +499,10 @@ Returns the value associated with the key `event_payload` when used as
 option from a previous [`enqueue/2`](#enqueue-2). The calling process is suspended
 until the work is completed or
 
-!> **Important** notice The current implementation is not ideal as it
+!> **Important** notice the current implementation is not ideal as it
 recursively reads the status from the database. So do not abuse it. Also at
-the moment complete tasks are deleted, so the abscense of a task is
-considered as either succesful or failed, this will also change as we will
+the moment completed tasks are deleted, so the abscense of a task is
+considered as either successful or failed, this will also change as we will
 be retaining tasks that are discarded or completed.
 This will be replaced by a pubsub version soon.
 

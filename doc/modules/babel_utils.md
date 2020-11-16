@@ -34,15 +34,6 @@ from_binary(Value::binary(), Type::<a href="#type-type">type()</a>) -&gt; any()
 </code></pre>
 <br />
 
-<a name="opts_to_riak_opts-1"></a>
-
-### opts_to_riak_opts/1 ###
-
-<pre><code>
-opts_to_riak_opts(Opts::map()) -&gt; list()
-</code></pre>
-<br />
-
 <a name="to_binary-2"></a>
 
 ### to_binary/2 ###
