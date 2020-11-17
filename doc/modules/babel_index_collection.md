@@ -102,6 +102,15 @@ add_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection
 </code></pre>
 <br />
 
+Returns a copy of collection `Collection` where the index `Index` has
+been added.
+If the an index with the same name existed in the collection, it will be
+replaced by `Index`.
+
+!> **Important**. This is a private API. If you want to add an index to the
+collection and create the index in Riak KV use [`babel:create_index/3`](babel.md#create_index-3)
+instead.
+
 <a name="bucket-1"></a>
 
 ### bucket/1 ###

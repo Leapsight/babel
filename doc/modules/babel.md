@@ -88,43 +88,12 @@ type_spec() = <a href="babel_map.md#type-type_spec">babel_map:type_spec()</a> | 
 
 ## Function Details ##
 
-<a name="create_collection-2"></a>
-
-### create_collection/2 ###
-
-<pre><code>
-create_collection(BucketPrefix::binary(), Name::binary()) -&gt; <a href="babel_index_collection.md#type-t">babel_index_collection:t()</a> | no_return()
-</code></pre>
-<br />
-
-Calls [`create_collection/3`](#create_collection-3) passing an empty `Opts`.
-
-<a name="create_collection-3"></a>
-
-### create_collection/3 ###
-
-<pre><code>
-create_collection(BucketPrefix::binary(), Name::binary(), Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
-</code></pre>
-<br />
-
-Schedules the creation of an empty index collection using Reliable.
-Fails if the collection already exists.
-
-The collection will be stored in Riak KV under the bucket type configured
-for the application option `index_collection_bucket_type`, bucket name
-resulting from concatenating the value of `BucketPrefix` to the suffix `/
-index_collection` and the key will be the value of `Name`.
-
-?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
-of the possible return values.
-
 <a name="create_index-2"></a>
 
 ### create_index/2 ###
 
 <pre><code>
-create_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+create_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -136,15 +105,15 @@ argument.
 ### create_index/3 ###
 
 <pre><code>
-create_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+create_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
 Schedules the creation of an index and its partitions according to
 `Config` using Reliable.
 
-!> **Important**, this function must be called within a workflow
-functional object, see [`workflow/1`](#workflow-1).
+?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
+of the possible return values.
 
 <a name="delete-3"></a>
 
@@ -157,38 +126,34 @@ delete(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::
 
 ?> This function is workflow aware
 
-<a name="drop_collection-1"></a>
+<a name="drop_all_indices-1"></a>
 
-### drop_collection/1 ###
+### drop_all_indices/1 ###
 
 <pre><code>
-drop_collection(Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+drop_all_indices(Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
-Calls [`drop_collection/2`](#drop_collection-2)
+Calls [`drop_all_indices/3`](#drop_all_indices-3)
 
-<a name="drop_collection-2"></a>
+<a name="drop_all_indices-2"></a>
 
-### drop_collection/2 ###
+### drop_all_indices/2 ###
 
 <pre><code>
-drop_collection(Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+drop_all_indices(Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
-Schedules the removal from Riak KV of collection `Collection`,
-all its indices and their respective partitions.
-
-?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
-of the possible return values.
+Drops all indices in collection by calling [`drop_indices/3`](#drop_indices-3).
 
 <a name="drop_index-2"></a>
 
 ### drop_index/2 ###
 
 <pre><code>
-drop_index(Index::binary(), Collection0::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+drop_index(Index::binary(), Collection0::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -197,7 +162,7 @@ drop_index(Index::binary(), Collection0::<a href="babel_index_collection.md#type
 ### drop_index/3 ###
 
 <pre><code>
-drop_index(Index::binary(), Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+drop_index(Index::binary(), Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -205,6 +170,32 @@ Schedules the removal of the index with name `IndexName` from
 collection `Collection` and all its index partitions from Riak KV.
 In case the collection is itself being dropped by a parent workflow, the
 collection will not be updated in Riak.
+
+?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
+of the possible return values.
+
+<a name="drop_indices-2"></a>
+
+### drop_indices/2 ###
+
+<pre><code>
+drop_indices(IdxNames::[binary()], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
+</code></pre>
+<br />
+
+Calls [`drop_indices/3`](#drop_indices-3)
+
+<a name="drop_indices-3"></a>
+
+### drop_indices/3 ###
+
+<pre><code>
+drop_indices(IdxNames::[binary()], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
+</code></pre>
+<br />
+
+Schedules the removal from Riak KV of indices with names `IdxNames`
+from collection `Collection` and their respective partitions.
 
 ?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
 of the possible return values.
@@ -293,7 +284,7 @@ put(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::bin
 ### rebuild_index/3 ###
 
 <pre><code>
-rebuild_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; ok | no_return()
+rebuild_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -302,7 +293,7 @@ rebuild_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collec
 ### status/1 ###
 
 <pre><code>
-status(WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>) -&gt; {in_progress, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {failed, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {error, not_found | any()}
+status(WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a> | binary()) -&gt; {in_progress, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {failed, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {error, not_found | any()}
 </code></pre>
 <br />
 
@@ -313,7 +304,7 @@ Calls [`status/2`](#status-2).
 ### status/2 ###
 
 <pre><code>
-status(WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, Timeout::timeout()) -&gt; {in_progress, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {failed, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {error, not_found | any()}
+status(WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a> | binary(), Timeout::timeout()) -&gt; {in_progress, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {failed, Status::<a href="reliable_work.md#type-status">reliable_work:status()</a>} | {error, not_found | any()}
 </code></pre>
 <br />
 
@@ -340,7 +331,7 @@ Returns the atom name for a babel datatype.
 ### update_all_indices/3 ###
 
 <pre><code>
-update_all_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, RiakOpts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+update_all_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, RiakOpts::<a href="#type-opts">opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -366,7 +357,7 @@ of the possible return values.
 ### update_indices/4 ###
 
 <pre><code>
-update_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], IndexNames::[binary()], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, WorflowItemId::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+update_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], IdxNames::[binary()], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -404,7 +395,7 @@ Validates the opts
 ### workflow/1 ###
 
 <pre><code>
-workflow(Fun::fun(() -&gt; any())) -&gt; {ok, ResultOfFun::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+workflow(Fun::fun(() -&gt; any())) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -419,7 +410,7 @@ the `Opts` argument.
 ### workflow/2 ###
 
 <pre><code>
-workflow(Fun::fun(() -&gt; any()), Opts::<a href="babel_workflow.md#type-opts">babel_workflow:opts()</a>) -&gt; {ok, ResultOfFun::any()} | {scheduled, WorkRef::<a href="reliable_work_ref.md#type-t">reliable_work_ref:t()</a>, ResultOfFun::any()} | {error, Reason::any()} | no_return()
+workflow(Fun::fun(() -&gt; any()), Opts::<a href="babel_workflow.md#type-opts">babel_workflow:opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -485,6 +476,11 @@ to take a decision.
 !> **Important** notice subscriptions are not working at the moment
 
 ?> **Tip** See [`yield/2`](#yield-2) to track progress.
+
+?> **Note on Nested workflows**. No final scheduling will be done until the
+top level workflow is terminated. So, although a nested worflow returns
+`{true, Result}`, if the enclosing parent workflow is aborted, the entire
+nested workflow is aborted.
 
 <a name="yield-1"></a>
 
