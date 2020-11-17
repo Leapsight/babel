@@ -293,7 +293,15 @@ index_names(Collection) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns a copy of collection `Collection' where the index `Index' has
+%% been added.
+%% If the an index with the same name existed in the collection, it will be
+%% replaced by `Index'.
+%%
+%% !> **Important**. This is a private API. If you want to add an index to the
+%% collection and create the index in Riak KV use {@link babel:create_index/3}
+%% instead.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec add_index(Index :: babel_index:t(), Collection :: t()) ->

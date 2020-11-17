@@ -599,13 +599,6 @@ match(Pattern, Index, Opts) ->
 %% We generate the tuple
 %% {partition_id(), {update_action(), key_value()}}.
 %% -----------------------------------------------------------------------------
-prepare_actions([{_, Data} = Action | T], Index, Opts, Acc) ->
-    Mod = type(Index),
-    Config = config(Index),
-    P = Mod:partition_identifier(Data, Config),
-    NewAcc = [{P, Action} | Acc],
-    prepare_actions(T, Index, Opts, NewAcc);
-
 prepare_actions([{update, undefined, Data} | T], Index, Opts, Acc) ->
     prepare_actions([{insert, Data} | T], Index, Opts, Acc);
 
@@ -632,6 +625,13 @@ prepare_actions([{update, Old, New} | T], Index, Opts, Acc) ->
             NewAcc = [{P1, {delete, Old}}, {P2, {insert, New}} | Acc],
             prepare_actions(T, Index, Opts1, NewAcc)
     end;
+
+prepare_actions([{_, Data} = Action | T], Index, Opts, Acc) ->
+    Mod = type(Index),
+    Config = config(Index),
+    P = Mod:partition_identifier(Data, Config),
+    NewAcc = [{P, Action} | Acc],
+    prepare_actions(T, Index, Opts, NewAcc);
 
 prepare_actions([], _, _, Acc) ->
     lists:reverse(Acc).

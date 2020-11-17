@@ -222,8 +222,8 @@ store(BucketType, BucketPrefix, Key, Partition, Opts0) ->
     Opts1 = babel:validate_opts(Opts0),
     Opts = Opts1#{
         riak_opts =>#{
-            r => quorum,
-            pr => quorum,
+            w => quorum,
+            pw => quorum,
             notfound_ok => false,
             basic_quorum => true
         }

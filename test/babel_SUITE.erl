@@ -32,7 +32,7 @@ end_per_suite(Config) ->
 
 
 nothing_test(_) ->
-    {ok, ok} = babel:workflow(fun() -> ok end).
+    {false, #{result := ok}} = babel:workflow(fun() -> ok end).
 
 
 error_test(_) ->
@@ -58,11 +58,11 @@ index_creation_1_test(_) ->
         Index = babel_index:new(Conf),
         Collection0 = babel_index_collection:new(
             <<"babel_SUITE">>, <<"users">>),
-        _Collection1 = babel:create_index(Index, Collection0),
+        {true, #{is_nested := true}} = babel:create_index(Index, Collection0),
         ok
     end,
 
-    {scheduled, _, ok} = babel:workflow(Fun),
+    {true, #{result := ok}} = babel:workflow(Fun),
     timer:sleep(5000),
     ok.
 
@@ -74,12 +74,13 @@ scheduled_for_delete_test(_) ->
         Index = babel_index:new(Conf),
         Collection0 = babel_index_collection:new(
             <<"babel_SUITE">>, <<"users">>),
-        {ok, _CollectionId} = babel:drop_collection(Collection0),
-        _Collection1 = babel:create_index(Index, Collection0),
+
+        {true, #{is_nested := true}} = babel:drop_all_indices(Collection0),
+        {true, #{is_nested := true}} = babel:create_index(Index, Collection0),
         ok
     end,
 
-    {error, {scheduled_for_delete, _Id}} = babel:workflow(Fun),
+    {true, _} = babel:workflow(Fun),
     ok.
 
 
@@ -98,11 +99,11 @@ update_indices_1_test(_) ->
         Index = babel_index:new(Conf),
         Collection0 = babel_index_collection:new(
             <<"babel_SUITE">>, <<"users">>),
-        _Collection1 = babel:create_index(Index, Collection0),
+        {true, #{is_nested := true}} = babel:create_index(Index, Collection0),
         ok
     end,
 
-    {scheduled, _, ok} =  babel:workflow(Fun),
+    {true, #{result := ok}} = babel:workflow(Fun),
     timer:sleep(5000),
 
     Object = #{
@@ -117,11 +118,11 @@ update_indices_1_test(_) ->
         Collection = babel_index_collection:fetch(
             <<"babel_SUITE">>, <<"users">>, RiakOpts
         ),
-        {ok, <<"users">>} = babel:update_all_indices([{insert, Object}], Collection, RiakOpts),
+        {true, #{is_nested := true}} = babel:update_all_indices([{insert, Object}], Collection, RiakOpts),
         ok
     end,
 
-    {scheduled, _, ok} =  babel:workflow(Fun2),
+    {true, #{result := ok}} = babel:workflow(Fun2),
 
     ok.
 
@@ -167,7 +168,8 @@ delete_index_test(_) ->
             {ok, Collection} ->
                 try
                     IdxName = <<"users_by_email">>,
-                    _Collection1 = babel:drop_index(IdxName, Collection),
+                    {true, #{is_nested := true}} = babel:drop_index(
+                        IdxName, Collection),
                     ok
                 catch
                     error:badindex ->
@@ -176,7 +178,7 @@ delete_index_test(_) ->
         end
     end,
 
-    {ok, ok} =  babel:workflow(Fun),
+    {false, #{result := ok}} = babel:workflow(Fun),
 
     %% Sleep for 5 seconds for write to happen.
     timer:sleep(5000),
