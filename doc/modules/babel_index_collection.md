@@ -102,6 +102,15 @@ add_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection
 </code></pre>
 <br />
 
+Returns a copy of collection `Collection` where the index `Index` has
+been added.
+If the an index with the same name existed in the collection, it will be
+replaced by `Index`.
+
+!> **Important**. This is a private API. If you want to add an index to the
+collection and create the index in Riak KV use [`babel:create_index/3`](babel.md#create_index-3)
+instead.
+
 <a name="bucket-1"></a>
 
 ### bucket/1 ###
@@ -125,7 +134,7 @@ data(Collection::<a href="#type-t">t()</a>) -&gt; <a href="orddict.md#type-orddi
 ### delete/3 ###
 
 <pre><code>
-delete(BucketPrefix::binary(), Key::binary(), Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; ok | {error, not_found | term()}
+delete(BucketPrefix::binary(), Key::binary(), Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; ok | {error, not_found | term()}
 </code></pre>
 <br />
 
@@ -143,7 +152,7 @@ delete_index(Id::binary() | <a href="babel_index.md#type-t">babel_index:t()</a>,
 ### fetch/3 ###
 
 <pre><code>
-fetch(BucketPrefix::binary(), Key::binary(), RiakOpts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
+fetch(BucketPrefix::binary(), Key::binary(), Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
 </code></pre>
 <br />
 
@@ -221,7 +230,7 @@ is_index(IndexName::binary(), Collection::<a href="#type-t">t()</a>) -&gt; <a hr
 ### lookup/3 ###
 
 <pre><code>
-lookup(BucketPrefix::binary(), Key::binary(), Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; {ok, <a href="#type-t">t()</a>} | {error, not_found | term()}
+lookup(BucketPrefix::binary(), Key::binary(), Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; {ok, <a href="#type-t">t()</a>} | {error, not_found | term()}
 </code></pre>
 <br />
 
@@ -254,7 +263,7 @@ Returns the number of elements in the collection `Collection`.
 ### store/2 ###
 
 <pre><code>
-store(Collection::<a href="#type-t">t()</a>, RiakOpts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; {ok, Index::<a href="#type-t">t()</a>} | {error, Reason::any()}
+store(Collection::<a href="#type-t">t()</a>, Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; {ok, Index::<a href="#type-t">t()</a>} | {error, Reason::any()}
 </code></pre>
 <br />
 

@@ -84,7 +84,6 @@
 
 -export_type([t/0]).
 -export_type([riak_object/0]).
--export_type([riak_opts/0]).
 -export_type([fold_fun/0]).
 
 
@@ -294,7 +293,15 @@ index_names(Collection) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns a copy of collection `Collection' where the index `Index' has
+%% been added.
+%% If the an index with the same name existed in the collection, it will be
+%% replaced by `Index'.
+%%
+%% !> **Important**. This is a private API. If you want to add an index to the
+%% collection and create the index in Riak KV use {@link babel:create_index/3}
+%% instead.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec add_index(Index :: babel_index:t(), Collection :: t()) ->
@@ -395,14 +402,14 @@ fold(Fun, Acc, Collection) ->
 %% value returned by {@link id/1}.
 %% @end
 %% -----------------------------------------------------------------------------
--spec store(Collection :: t(), RiakOpts :: riak_opts()) ->
+-spec store(Collection :: t(), Opts :: babel:opts()) ->
     {ok, Index :: t()} | {error, Reason :: any()}.
 
 
-store(Collection, RiakOpts) ->
-    Opts = babel:validate_riak_opts(RiakOpts),
+store(Collection, Opts0) ->
+    Opts = babel:validate_opts(Opts0),
     Conn = babel:get_connection(Opts),
-    ReqOpts = babel_utils:opts_to_riak_opts(Opts),
+    RiakOpts = babel:opts_to_riak_opts(Opts),
 
     Key = Collection#babel_index_collection.id,
     Object = Collection#babel_index_collection.object,
@@ -410,7 +417,7 @@ store(Collection, RiakOpts) ->
     Op = riakc_map:to_op(Object),
 
 
-    case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, ReqOpts) of
+    case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, RiakOpts) of
         {error, _} = Error ->
             Error;
         _ ->
@@ -425,13 +432,15 @@ store(Collection, RiakOpts) ->
 -spec fetch(
     BucketPrefix :: binary(),
     Key :: binary(),
-    RiakOpts :: riak_opts()) ->
+    Opts :: babel:opts()) ->
     t() | no_return().
 
-fetch(BucketPrefix, Key, RiakOpts) ->
-    Opts = RiakOpts#{
-        r => quorum,
-        pr => quorum
+fetch(BucketPrefix, Key, Opts0) ->
+    Opts = Opts0#{
+        riak_opts => #{
+            r => quorum,
+            pr => quorum
+        }
     },
     case lookup(BucketPrefix, Key, Opts) of
         {ok, Value} -> Value;
@@ -446,23 +455,25 @@ fetch(BucketPrefix, Key, RiakOpts) ->
 -spec lookup(
     BucketPrefix :: binary(),
     Key :: binary(),
-    Opts :: riak_opts()) ->
+    Opts :: babel:opts()) ->
     {ok, t()} | {error, not_found | term()}.
 
-lookup(BucketPrefix, Key, RiakOpts)
+lookup(BucketPrefix, Key, Opts0)
 when is_binary(BucketPrefix) andalso is_binary(Key) ->
 
-    Opts0 = babel:validate_riak_opts(RiakOpts),
-    Conn = babel:get_connection(Opts0),
-
-    Opts1 = Opts0#{
-        r => quorum,
-        pr => quorum
+    Opts1 = babel:validate_opts(Opts0),
+    Opts = Opts1#{
+        riak_opts => #{
+            r => quorum,
+            pr => quorum
+        }
     },
-    ReqOpts = babel_utils:opts_to_riak_opts(Opts1),
+
+    Conn = babel:get_connection(Opts),
+    RiakOpts = babel:opts_to_riak_opts(Opts),
     TypeBucket = typed_bucket(BucketPrefix),
 
-    case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, ReqOpts) of
+    case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, RiakOpts) of
         {ok, Object} -> {ok, from_riak_object(Object)};
         {error, {notfound, _}} -> {error, not_found};
         {error, _} = Error -> Error
@@ -476,20 +487,23 @@ when is_binary(BucketPrefix) andalso is_binary(Key) ->
 -spec delete(
     BucketPrefix :: binary(),
     Key :: binary(),
-    Opts :: riak_opts()) ->
+    Opts :: babel:opts()) ->
     ok | {error, not_found | term()}.
 
-delete(BucketPrefix, Key, ReqOpts)
+delete(BucketPrefix, Key, Opts0)
 when is_binary(BucketPrefix) andalso is_binary(Key) ->
-    Opts0 = babel:validate_riak_opts(ReqOpts),
-    Conn = babel:get_connection(Opts0),
-    Opts1 = Opts0#{
-        r => quorum,
-        w => quorum,
-        pr => quorum,
-        pw => quorum
+    Opts1 = babel:validate_opts(Opts0),
+    Opts = Opts1#{
+        riak_opts => #{
+            r => quorum,
+            w => quorum,
+            pr => quorum,
+            pw => quorum
+        }
     },
-    RiakOpts = babel_utils:opts_to_riak_opts(Opts1),
+
+    Conn = babel:get_connection(Opts),
+    RiakOpts = babel:opts_to_riak_opts(Opts),
     TypeBucket = typed_bucket(BucketPrefix),
 
     case riakc_pb_socket:delete(Conn, TypeBucket, Key, RiakOpts) of

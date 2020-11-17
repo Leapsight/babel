@@ -181,8 +181,7 @@ index_5_test(_) ->
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
-                        Index = babel_index_collection:index(IdxName, Collection),
-                        _ = babel:delete_index(Index, Collection),
+                        _ = babel:drop_index(IdxName, Collection),
                         ok;
                     false ->
                         ok
@@ -201,10 +200,10 @@ index_5_test(_) ->
         Collection0 = babel_index_collection:new(
             Prefix, IdxName
         ),
-        _Collection1 = babel:create_index(Index, Collection0),
+        {true, #{is_nested := true}} = babel:create_index(Index, Collection0),
         ok
     end,
-    {scheduled, WorkRef2, ok} = babel:workflow(Create),
+    {true, #{work_ref := WorkRef2, result := ok}} = babel:workflow(Create),
     %% we wait 5 secs for reliable to perform the work
     {ok, _} = babel:yield(WorkRef2, 5000),
 
@@ -226,11 +225,11 @@ index_5_test(_) ->
     Update = fun() ->
         %% We fetch the collection from Riak KV
         Collection = babel_index_collection:fetch(Prefix, IdxName, RiakOpts),
-        {ok, _ItemId} = babel:update_all_indices(Actions, Collection, RiakOpts),
+        {true, #{is_nested := true}} = babel:update_all_indices(Actions, Collection, RiakOpts),
         ok
     end,
 
-    {scheduled, WorkRef3, ok} = babel:workflow(Update),
+    {true, #{work_ref := WorkRef3, result := ok}} = babel:workflow(Update),
     {ok, _} = babel:yield(WorkRef3, 10000),
 
     Collection = babel_index_collection:fetch(Prefix, IdxName, RiakOpts),
@@ -287,8 +286,7 @@ huge_index_test(_) ->
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
-                        Index = babel_index_collection:index(IdxName, Collection),
-                        _ = babel:delete_index(Index, Collection),
+                        _ = babel:drop_index(IdxName, Collection),
                         ok;
                     false ->
                         ok
@@ -305,11 +303,11 @@ huge_index_test(_) ->
     Fun = fun() ->
         Index = babel_index:new(Conf),
         Collection0 = babel_index_collection:new(Prefix, CName),
-        _Collection1 = babel:create_index(Index, Collection0),
+        {true, #{is_nested := true}} = babel:create_index(Index, Collection0),
         ok
     end,
 
-    {scheduled, WorkRef2, ok} = babel:workflow(Fun),
+    {true, #{work_ref := WorkRef2, result := ok}} = babel:workflow(Fun),
     %% we wait 5 secs for reliable to perform the work
     {ok, _} = babel:yield(WorkRef2, 10000),
 
@@ -337,11 +335,11 @@ huge_index_test(_) ->
     Fun2 = fun() ->
         %% We fetch the collection from Riak KV
         Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
-        {ok, _ItemId} = babel:update_all_indices(Actions, Collection, RiakOpts),
+        {true, #{is_nested := true}} = babel:update_all_indices(Actions, Collection, RiakOpts),
         ok
     end,
 
-    {scheduled, WorkRef, ok} = babel:workflow(Fun2),
+    {true, #{work_ref := WorkRef, result := ok}} = babel:workflow(Fun2),
     {ok, _} = babel:yield(WorkRef, 15000),
 
     Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
@@ -406,8 +404,9 @@ index_6_test(_) ->
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
-                        Index = babel_index_collection:index(IdxName, Collection),
-                        _ = babel:delete_index(Index, Collection),
+                        {true, #{is_nested := true}} = babel:drop_index(
+                            IdxName, Collection
+                        ),
                         ok;
                     false ->
                         ok
@@ -426,10 +425,10 @@ index_6_test(_) ->
         Collection0 = babel_index_collection:new(
             Prefix, CName
         ),
-        _Collection1 = babel:create_index(Index, Collection0),
+        {true, #{is_nested := true}} = babel:create_index(Index, Collection0),
         ok
     end,
-    {scheduled, WorkRef2, ok} = babel:workflow(Create),
+    {true, #{work_ref := WorkRef2, result := ok}} = babel:workflow(Create),
     {ok, _} = babel:yield(WorkRef2, 5000),
 
 
@@ -451,11 +450,11 @@ index_6_test(_) ->
     Update = fun() ->
         %% We fetch the collection from Riak KV
         Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
-        {ok, _ItemId} = babel:update_all_indices(Actions, Collection, RiakOpts),
+        {true, #{is_nested := true}} = babel:update_all_indices(Actions, Collection, RiakOpts),
         ok
     end,
 
-    {scheduled, WorkRef3, ok} = babel:workflow(Update),
+    {true, #{work_ref := WorkRef3, result := ok}} = babel:workflow(Update),
     {ok, _} = babel:yield(WorkRef3, 10000),
 
     Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
@@ -518,8 +517,7 @@ accounts_by_identification_type_and_number_test(_) ->
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
-                        Index = babel_index_collection:index(IdxName, Collection),
-                        _ = babel:delete_index(Index, Collection),
+                        _ = babel:drop_index(IdxName, Collection),
                         ok;
                     false ->
                         ok
@@ -528,8 +526,13 @@ accounts_by_identification_type_and_number_test(_) ->
                 ok
         end
     end,
-    {scheduled, WorkRef1, ok} = babel:workflow(Cleanup),
-    {ok, _} = babel:yield(WorkRef1, 5000),
+    case babel:workflow(Cleanup) of
+        {true, #{work_ref := WorkRef1}} ->
+            {ok, _} = babel:yield(WorkRef1, 5000),
+            ok;
+        _ ->
+            ok
+    end,
 
     Create = fun() ->
         Conf = #{
@@ -554,10 +557,10 @@ accounts_by_identification_type_and_number_test(_) ->
         },
         Index = babel_index:new(Conf),
         Collection = babel_index_collection:new(Prefix, CName),
-        _ = babel:create_index(Index, Collection),
+        {true, #{is_nested := true}} = babel:create_index(Index, Collection),
         ok
     end,
-    {scheduled, WorkRef2, ok} = babel:workflow(Create),
+    {true, #{work_ref := WorkRef2, result := ok}} = babel:workflow(Create),
     {ok, _} = babel:yield(WorkRef2, 5000),
 
     Update = fun() ->
@@ -576,10 +579,13 @@ accounts_by_identification_type_and_number_test(_) ->
         Collection = babel_index_collection:fetch(
             Prefix, CName, RiakOpts),
         _Index = babel_index_collection:index(IdxName, Collection),
-        {ok, _ItemId} = babel:update_all_indices(Actions, Collection, RiakOpts),
+        {true, #{is_nested := true}} = babel:update_all_indices(
+            Actions, Collection, RiakOpts),
         ok
     end,
-    {scheduled, WorkRef3, ok} = babel:workflow(Update, #{timeout => 5000}),
+    {true, #{work_ref := WorkRef3, result := ok}} = babel:workflow(
+        Update, #{timeout => 5000})
+    ,
     {ok, _} = babel:yield(WorkRef3, 15000),
 
     Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),

@@ -133,7 +133,7 @@ end).
 }.
 
 -type update_opts()             ::  #{
-    force => boolean, riak_opts => riak_opts()
+    force => boolean, riak_opts => babel:opts()
 }.
 
 
@@ -147,7 +147,6 @@ end).
 -export_type([partition_key/0]).
 -export_type([query_opts/0]).
 -export_type([riak_object/0]).
--export_type([riak_opts/0]).
 -export_type([t/0]).
 -export_type([update_action/0]).
 -export_type([update_opts/0]).
@@ -218,7 +217,7 @@ end).
 -callback match(Pattern :: key_value(), babel_index_partition:t(), map()) ->
     [map()] | no_return().
 
--callback iterator(Index :: t(), Config :: map(), Opts :: riak_opts()) ->
+-callback iterator(Index :: t(), Config :: map(), Opts :: babel:opts()) ->
     Iterator :: any().
 
 -callback iterator_move(
@@ -493,7 +492,11 @@ distinguished_key_paths(Index) ->
     Opts :: update_opts()) ->
     maybe_no_return([babel_index_partition:t()]).
 
-update(Actions, Index, Opts) when is_list(Actions) ->
+update(Actions, Index, Opts0) when is_list(Actions) ->
+    %% We allow additional properties to remaing in the map
+    %% In our case 'force' but also specific index options
+    Opts = babel:validate_opts(Opts0, relaxed),
+
     Mod = type(Index),
     Config = config(Index),
     TypeBucket = typed_bucket(Index),
@@ -571,14 +574,14 @@ foreach(_Fun, _Index) ->
 -spec match(
     Index :: t(),
     Pattern :: babel_index:key_value(),
-    RiakOpts :: riak_opts()) -> [{index_key(), index_values()}] | no_return().
+    Opts :: babel:opts()) -> [{index_key(), index_values()}] | no_return().
 %% @TODO take a function as options to turn Mod:match into a mapfold
-match(Pattern, Index, RiakOpts) ->
+match(Pattern, Index, Opts) ->
     Mod = type(Index),
     Config = config(Index),
     PartitionId = Mod:partition_identifier(Pattern, Config),
     TypeBucket = typed_bucket(Index),
-    Partition = babel_index_partition:fetch(TypeBucket, PartitionId, RiakOpts),
+    Partition = babel_index_partition:fetch(TypeBucket, PartitionId, Opts),
 
     %% The actual match is performed by the index subtype
     Mod:match(Pattern, Partition, Config).
@@ -596,13 +599,6 @@ match(Pattern, Index, RiakOpts) ->
 %% We generate the tuple
 %% {partition_id(), {update_action(), key_value()}}.
 %% -----------------------------------------------------------------------------
-prepare_actions([{_, Data} = Action | T], Index, Opts, Acc) ->
-    Mod = type(Index),
-    Config = config(Index),
-    P = Mod:partition_identifier(Data, Config),
-    NewAcc = [{P, Action} | Acc],
-    prepare_actions(T, Index, Opts, NewAcc);
-
 prepare_actions([{update, undefined, Data} | T], Index, Opts, Acc) ->
     prepare_actions([{insert, Data} | T], Index, Opts, Acc);
 
@@ -629,6 +625,13 @@ prepare_actions([{update, Old, New} | T], Index, Opts, Acc) ->
             NewAcc = [{P1, {delete, Old}}, {P2, {insert, New}} | Acc],
             prepare_actions(T, Index, Opts1, NewAcc)
     end;
+
+prepare_actions([{_, Data} = Action | T], Index, Opts, Acc) ->
+    Mod = type(Index),
+    Config = config(Index),
+    P = Mod:partition_identifier(Data, Config),
+    NewAcc = [{P, Action} | Acc],
+    prepare_actions(T, Index, Opts, NewAcc);
 
 prepare_actions([], _, _, Acc) ->
     lists:reverse(Acc).

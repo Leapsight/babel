@@ -24,6 +24,10 @@
 %% ### Working with Babel Datatypes
 %%
 %% ### Working with Reliable Workflows
+%% #### Workflow aware functions
+%% A workflow aware function is a function that schedules its execution when it
+%% is called inside a workflow context. Several functions in this module are
+%% workflow aware e.g. {@link put/5}, {@link delete/3}.
 %%
 %% ### Working with Babel Indices
 %%
@@ -33,6 +37,127 @@
 -include("babel.hrl").
 -include_lib("kernel/include/logger.hrl").
 
+%% TODO
+-define(DEFAULT_OPTS, #{}).
+
+-define(BABEL_OPTS_SPEC, #{
+    connection => #{
+        required => false,
+        datatype => [pid, function]
+    },
+    riak_opts => #{
+        required => false,
+        datatype => map,
+        validator => ?RIAK_OPTS_SPEC
+    }
+}).
+
+-define(RIAK_EC_TYPE, [non_neg_integer , {in, [one, all, quorum, default]}]).
+
+-define(RIAK_OPTS_SPEC, #{
+    n_val => #{
+        alias => <<"n_val">>,
+        key => n_val,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => non_neg_integer
+    },
+    r => #{
+        alias => <<"r">>,
+        key => r,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => ?RIAK_EC_TYPE
+    },
+    w => #{
+        alias => <<"w">>,
+        key => w,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => ?RIAK_EC_TYPE
+    },
+    dw => #{
+        alias => <<"dw">>,
+        key => dw,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => ?RIAK_EC_TYPE
+    },
+    pr => #{
+        alias => <<"pr">>,
+        key => pr,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => ?RIAK_EC_TYPE
+    },
+    pw => #{
+        alias => <<"pw">>,
+        key => pw,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => ?RIAK_EC_TYPE
+    },
+    rw => #{
+        alias => <<"rw">>,
+        key => rw,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => ?RIAK_EC_TYPE
+    },
+    notfound_ok => #{
+        alias => <<"notfound_ok">>,
+        key => notfound_ok,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => boolean
+    },
+    basic_quorum => #{
+        alias => <<"basic_quorum">>,
+        key => basic_quorum,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => boolean
+    },
+    sloppy_quorum => #{
+        alias => <<"sloppy_quorum">>,
+        key => sloppy_quorum,
+        required => false,
+        allow_null => false,
+        allow_undefined => false,
+        datatype => boolean
+    },
+    return_body => #{
+        alias => <<"return_body">>,
+        key => return_body,
+        required => false,
+        datatype => boolean
+    },
+    return_head => #{
+        alias => <<"return_head">>,
+        key => return_head,
+        required => false,
+        datatype => boolean
+    },
+    timeout => #{
+        alias => <<"timeout">>,
+        key => timeout,
+        description => <<
+            "The timeout for a Riak request. The default is 5 secs."
+        >>,
+        required => true,
+        default => ?DEFAULT_REQ_TIMEOUT,
+        datatype => timeout
+    }
+}).
 
 -type datatype()        ::  babel_map:t() | babel_set:t() | babel_counter:t().
 -type type_spec()       ::  babel_map:type_spec()
@@ -40,26 +165,53 @@
                             | babel_counter:type_spec().
 -type riak_op()         ::  riakc_datatype:update(term()).
 
+-type opts()      ::  #{
+    connection => pid() | fun(() -> pid()),
+    riak_opts => riak_opts(),
+    '$validated' => boolean()
+}.
+
+-type riak_opts()   :: #{
+    r => quorum(),
+    pr => quorum(),
+    w => quorum(),
+    dw => quorum(),
+    pw => quorum(),
+    notfound_ok => boolean(),
+    basic_quorum => boolean(),
+    sloppy_quorum => boolean(),
+    timeout => timeout(),
+    return_body => boolean()
+}.
+
 -export_type([datatype/0]).
 -export_type([type_spec/0]).
 -export_type([riak_op/0]).
+-export_type([opts/0]).
+-export_type([riak_opts/0]).
 
 %% API
 -export([delete/3]).
+-export([execute/3]).
 -export([get/4]).
 -export([get_connection/1]).
 -export([module/1]).
+-export([opts_to_riak_opts/1]).
 -export([put/5]).
 -export([type/1]).
--export([validate_riak_opts/1]).
+-export([validate_opts/1]).
+-export([validate_opts/2]).
 
 %% API: WORKFLOW & WORKFLOW AWARE FUNCTIONS
--export([create_collection/2]).
 -export([create_index/2]).
--export([delete_collection/1]).
--export([delete_index/2]).
--export([execute/3]).
--export([rebuild_index/4]).
+-export([create_index/3]).
+-export([drop_index/2]).
+-export([drop_index/3]).
+-export([drop_all_indices/1]).
+-export([drop_all_indices/2]).
+-export([drop_indices/2]).
+-export([drop_indices/3]).
+-export([rebuild_index/3]).
 -export([status/1]).
 -export([status/2]).
 -export([update_all_indices/3]).
@@ -68,6 +220,8 @@
 -export([workflow/2]).
 -export([yield/1]).
 -export([yield/2]).
+
+
 
 %% =============================================================================
 %% API
@@ -143,14 +297,14 @@ module(_) ->
     TypedBucket :: bucket_and_type(),
     Key :: binary(),
     Spec :: type_spec(),
-    Opts :: map()) ->
+    Opts :: opts()) ->
     {ok, Datatype :: datatype()}
     | {error, Reason :: term()}.
 
 get(TypedBucket, Key, Spec, Opts0) ->
-    Opts = validate_riak_opts(Opts0),
+    Opts = validate_opts(Opts0),
     Conn = get_connection(Opts),
-    ReqOpts = babel_utils:opts_to_riak_opts(Opts),
+    ReqOpts = babel:opts_to_riak_opts(Opts),
 
     case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, ReqOpts) of
         {ok, Object} ->
@@ -173,7 +327,7 @@ get(TypedBucket, Key, Spec, Opts0) ->
     Key :: binary(),
     Datatype :: datatype(),
     Spec :: type_spec(),
-    Opts :: map()) ->
+    Opts :: opts()) ->
     ok
     | {ok, Datatype :: datatype()}
     | {ok, Key :: binary(), Datatype :: datatype()}
@@ -195,7 +349,7 @@ put(TypedBucket, Key, Datatype, Spec, Opts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec delete(
-    TypedBucket :: bucket_and_type(), Key :: binary(), Opts :: map()) ->
+    TypedBucket :: bucket_and_type(), Key :: binary(), Opts :: opts()) ->
     ok
     | {scheduled, WorkflowId :: {bucket_and_type(), key()}}
     | {error, Reason :: term()}.
@@ -223,7 +377,7 @@ delete(TypedBucket, Key, Opts) ->
 -spec execute(
     Poolname :: atom(),
     Fun :: fun((RiakConn :: pid()) -> Result :: any()),
-    Opts :: map()) ->
+    Opts :: opts()) ->
     {true, Result :: any()} | {false, Reason :: any()} | no_return().
 
 execute(Poolname, Fun, Opts)  ->
@@ -234,16 +388,44 @@ execute(Poolname, Fun, Opts)  ->
 %% @doc Validates the opts
 %% @end
 %% -----------------------------------------------------------------------------
--spec validate_riak_opts(map()) -> maybe_no_return(map()).
+-spec validate_opts(map()) -> maybe_no_return(map()).
 
--dialyzer({nowarn_function, validate_riak_opts/1}).
+-dialyzer({nowarn_function, validate_opts/1}).
 
-validate_riak_opts(#{'$validated' := true} = Opts) ->
+validate_opts(Opts) ->
+    validate_opts(Opts, strict).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Validates the opts
+%% @end
+%% -----------------------------------------------------------------------------
+-spec validate_opts(map(), strict | relaxed) -> maybe_no_return(map()).
+
+-dialyzer({nowarn_function, validate_opts/1}).
+
+validate_opts(#{'$validated' := true} = Opts, _) ->
     Opts;
 
-validate_riak_opts(Opts) ->
-    Opts1 = maps_utils:validate(Opts, ?RIAK_OPTS_SPEC),
+validate_opts(Opts, Mode) ->
+    Flag = Mode == relaxed orelse false,
+    Opts1 = maps_utils:validate(
+        Opts, ?BABEL_OPTS_SPEC, #{keep_unknown => Flag}
+    ),
     Opts1#{'$validated' => true}.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec opts_to_riak_opts(map()) -> list().
+
+opts_to_riak_opts(#{riak_opts := Opts}) ->
+    maps:to_list(Opts);
+
+opts_to_riak_opts(_) ->
+    [].
 
 
 %% -----------------------------------------------------------------------------
@@ -287,8 +469,7 @@ get_connection(Opts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun :: fun(() -> any())) ->
-    {ok, ResultOfFun :: any()}
-    | {scheduled, WorkRef :: reliable_work_ref:t(), ResultOfFun :: any()}
+    {true | false, reliable:wf_result()}
     | {error, Reason :: any()}
     | no_return().
 
@@ -361,11 +542,15 @@ workflow(Fun) ->
 %%
 %% ?> **Tip** See {@link yield/2} to track progress.
 %%
+%% ?> **Note on Nested workflows**. No final scheduling will be done until the
+%% top level workflow is terminated. So, although a nested worflow returns
+%% `{true, Result}', if the enclosing parent workflow is aborted, the entire
+%% nested workflow is aborted.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec workflow(Fun ::fun(() -> any()), Opts :: babel_workflow:opts()) ->
-    {ok, ResultOfFun :: any()}
-    | {scheduled, WorkRef :: reliable_work_ref:t(), ResultOfFun :: any()}
+    {true | false, reliable:wf_result()}
     | {error, Reason :: any()}
     | no_return().
 
@@ -374,10 +559,10 @@ workflow(Fun, Opts) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Calls {@link status/2}.
 %% @end
 %% -----------------------------------------------------------------------------
--spec status(WorkRef :: reliable_work_ref:t()) ->
+-spec status(WorkRef :: reliable_work_ref:t() | binary()) ->
     {in_progress, Status :: reliable_work:status()}
     | {failed, Status :: reliable_work:status()}
     | {error, not_found | any()}.
@@ -387,10 +572,16 @@ status(WorkerRef) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns the status of a Reliable Work scheduled for execution.
+%%
+%% !> **Important** notice that at the moment completed tasks are deleted, so
+%% the abscense of a task is considered as either successful or failed, this
+%% will change in the near future as we will be retaining tasks that are
+%% discarded or completed.
 %% @end
 %% -----------------------------------------------------------------------------
--spec status(WorkRef :: reliable_work_ref:t(), Timeout :: timeout()) ->
+-spec status(
+    WorkRef :: reliable_work_ref:t() | binary(), Timeout :: timeout()) ->
     {in_progress, Status :: reliable_work:status()}
     | {failed, Status :: reliable_work:status()}
     | {error, not_found | any()}.
@@ -405,10 +596,10 @@ status(WorkerRef, Timeout) ->
 %% until the work is completed or
 %%
 %%
-%% !> **Important** notice The current implementation is not ideal as it
+%% !> **Important** notice the current implementation is not ideal as it
 %% recursively reads the status from the database. So do not abuse it. Also at
-%% the moment complete tasks are deleted, so the abscense of a task is
-%% considered as either succesful or failed, this will also change as we will
+%% the moment completed tasks are deleted, so the abscense of a task is
+%% considered as either successful or failed, this will also change as we will
 %% be retaining tasks that are discarded or completed.
 %% This will be replaced by a pubsub version soon.
 %% @end
@@ -440,103 +631,59 @@ yield(WorkRef, Timeout) ->
     reliable:yield(WorkRef, Timeout).
 
 
+
 %% -----------------------------------------------------------------------------
-%% @doc Schedules the creation of an empty index collection using Reliable.
-%% Fails if the collection already exists.
-%%
-%% The collection will be stored in Riak KV under the bucket type configured
-%% for the application option `index_collection_bucket_type', bucket name
-%% resulting from concatenating the value of `BucketPrefix' to the suffix `/
-%% index_collection' and the key will be the value of `Name'.
-%%
-%% !> **Important**, this function must be called within a workflow
-%% functional object, see {@link workflow/1}.
-%%
+%% @doc Calls {@link create_index/3} passing the default options as third
+%% argument.
 %% @end
 %% -----------------------------------------------------------------------------
--spec create_collection(BucketPrefix :: binary(), Name :: binary()) ->
-    babel_index_collection:t() | no_return().
+-spec create_index(
+    Index :: babel_index:t(), Collection :: babel_index_collection:t()) ->
+    {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
 
-create_collection(BucketPrefix, Name) ->
-    ok = reliable:ensure_in_workflow(),
-
-    Collection = babel_index_collection:new(BucketPrefix, Name),
-    CollectionId = babel_index_collection:id(Collection),
-
-    %% We need to avoid the situation were we create a collection we
-    %% have previously initialised in the workflow graph
-    ok = maybe_already_exists(CollectionId),
-
-    Task = fun() -> babel_index_collection:to_update_task(Collection) end,
-    WorkflowItem = {CollectionId, {update, Task}},
-    ok = reliable:add_workflow_items([WorkflowItem]),
-
-    Collection.
-
-
-%% -----------------------------------------------------------------------------
-%% @doc Schedules the delete of a collection, all its indices and their
-%% partitions.
-%%
-%% @end
-%% -----------------------------------------------------------------------------
--spec delete_collection(Collection :: babel_index_collection:t()) ->
-    ok | no_return().
-
-delete_collection(Collection) ->
-    ok = reliable:ensure_in_workflow(),
-
-    CollectionId = babel_index_collection:id(Collection),
-    Task = fun() -> babel_index_collection:to_delete_task(Collection) end,
-    WorkflowItem = {CollectionId, {delete, Task}},
-
-    reliable:add_workflow_items([WorkflowItem]).
+create_index(Index, Collection) ->
+    create_index(Index, Collection, ?DEFAULT_OPTS).
 
 
 %% -----------------------------------------------------------------------------
 %% @doc Schedules the creation of an index and its partitions according to
 %% `Config' using Reliable.
 %%
-%% !> **Important**, this function must be called within a workflow
-%% functional object, see {@link workflow/1}.
-%%
-%%
-%% Example: Creating an index and adding it to an existing collection
-%%
-%% ```
-%% > babel:workflow(
-%%     fun() ->
-%%          Collection0 = babel_index_collection:fetch(Conn, BucketPrefix, Key),
-%%          Index = babel_index:new(Config),
-%%          ok = babel:create_index(Index, Collection0),
-%%          ok
-%%     end).
-%% > {scheduled, <<"00005mrhDMaWqo4SSFQ9zSScnsS">>, ok}
-%% '''
+%% ?> This function uses a workflow, see {@link workflow/2} for an explanation
+%% of the possible return values.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec create_index(
-    Index :: babel_index:t(), Collection :: babel_index_collection:t()) ->
-    babel_index_collection:t() | no_return().
+    Index :: babel_index:t(),
+    Collection :: babel_index_collection:t(),
+    Opts :: opts()) ->
+    {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
 
-create_index(Index, Collection) ->
-    ok = reliable:ensure_in_workflow(),
+create_index(Index, Collection, Opts0) ->
+    Opts = validate_opts(Opts0),
+    Fun = fun() ->
+        %% It is an error to add and index to a collection scheduled to be
+        %% deleted in a parent workflow
+        ok = ensure_not_deleted(babel_index_collection:id(Collection)),
 
-    %% It is an error add and index to a collection scheduled to be deleted
-    ok = ensure_not_deleted(babel_index_collection:id(Collection)),
-
-    IndexName = babel_index:name(Index),
-
-    try
-        _ = babel_index_collection:index(IndexName, Collection),
-        %% The index already exists so we should not create its partitions
-        %% to protect data already stored
-        throw({already_exists, IndexName})
-    catch
-        error:badindex ->
-            do_create_index(Index, Collection)
-    end.
+        try
+            IndexName = babel_index:name(Index),
+            _ = babel_index_collection:index(IndexName, Collection),
+            %% The index already exists so we should not create its partitions
+            %% to protect data already stored
+            throw({already_exists, IndexName})
+        catch
+            error:badindex ->
+                %% The index does not exist so we create it
+                do_create_index(Index, Collection)
+        end
+    end,
+    workflow(Fun, Opts).
 
 
 
@@ -546,40 +693,44 @@ create_index(Index, Collection) ->
 %% -----------------------------------------------------------------------------
 -spec rebuild_index(
     Index :: babel_index:t(),
-    BucketType :: binary(),
-    Bucket :: binary(),
-    Opts :: riak_opts()) -> ok | no_return().
+    Collection :: babel_index_collection:t(),
+    Opts :: riak_opts()) ->
+    {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
 
-rebuild_index(_Index, _BucketType, _Bucket, _Opts) ->
+rebuild_index(_IndexName, _Collection, _Opts) ->
     %% TODO call the manager
-    ok.
+    {error, not_implemented}.
 
 
 %% -----------------------------------------------------------------------------
 %% @doc Updates all the indices in the collection with the provided Actions and
 %% schedules the update of the relevant index partitions in the database i.e.
 %% persisting the index changes.
+%%
+%% ?> This function uses a workflow, see {@link workflow/2} for an explanation
+%% of the possible return values.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update_indices(
     Actions :: [babel_index:update_action()],
-    IndexNames :: [binary()],
+    IdxNames :: [binary()],
     Collection :: babel_index_collection:t(),
-    Opts :: map()) ->
-    {ok, WorflowItemId :: any()}
-    | {scheduled, WorkRef :: reliable_work_ref:t(), ResultOfFun :: any()}
+    Opts :: opts()) ->
+    {true | false, reliable:wf_result()}
     | {error, Reason :: any()}
     | no_return().
 
-update_indices(Actions, IndexNames, Collection, Opts0) when is_list(Actions) ->
+update_indices(Actions, IdxNames, Collection, Opts0) when is_list(Actions) ->
+    Opts = validate_opts(Opts0),
+
     Fun = fun() ->
         CollectionId = babel_index_collection:id(Collection),
 
         %% We fail if the collection is being deleted as part of a
         %% parent workflow
         ok = ensure_not_deleted(CollectionId),
-
-        Opts = validate_riak_opts(Opts0),
 
         ok = lists:foreach(
             fun(Name) ->
@@ -606,14 +757,14 @@ update_indices(Actions, IndexNames, Collection, Opts0) when is_list(Actions) ->
                     CollectionId, [Id || {Id, _} <- Items]
                 )
             end,
-            IndexNames
+            IdxNames
         ),
 
         %% We return the CollectionId as parent workflows might want to add
         %% precendence relationships in the digraph
         CollectionId
     end,
-    workflow(Fun, Opts0).
+    workflow(Fun, Opts).
 
 
 %% -----------------------------------------------------------------------------
@@ -630,77 +781,175 @@ update_indices(Actions, IndexNames, Collection, Opts0) when is_list(Actions) ->
 %% or set to `false', an index will be affected by an update action only if the
 %% index's distinguished key paths have been updated or removed in the object
 %% `New' (See {@link babel_index:distinguished_key_paths/1})
+%%
+%% ?> This function uses a workflow, see {@link workflow/2} for an explanation
+%% of the possible return values.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update_all_indices(
     Actions :: [babel_index:update_action()],
     Collection :: babel_index_collection:t(),
-    RiakOpts :: map()) ->
-    {ok, WorflowItemId :: any()}
-    | {scheduled, WorkRef :: reliable_work_ref:t(), ResultOfFun :: any()}
+    RiakOpts :: opts()) ->
+   {true | false, reliable:wf_result()}
     | {error, Reason :: any()}
     | no_return().
 
 update_all_indices(Actions, Collection, Opts) ->
-    IndexNames = babel_index_collection:index_names(Collection),
-    update_indices(Actions, IndexNames, Collection, Opts).
+    IdxNames = babel_index_collection:index_names(Collection),
+    update_indices(Actions, IdxNames, Collection, Opts).
 
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-%% @TODO Rename to drop_index to distinguish from
-%% babel_index_collection:delete_index
--spec delete_index(
-    Index :: babel_index:t(), Collection0 :: babel_index_collection:t()) ->
-    babel_index_collection:t().
+-spec drop_index(
+    Index :: binary(), Collection0 :: babel_index_collection:t()) ->
+   {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
 
-delete_index(Index, Collection0) ->
-    ok = reliable:ensure_in_workflow(),
-    IndexName = babel_index:name(Index),
+drop_index(IndexName, Collection) ->
+    drop_index(IndexName, Collection, ?DEFAULT_OPTS).
 
-    try
-        %% We validate the collection has this index
-        Index = babel_index_collection:index(IndexName, Collection0),
-        Collection = babel_index_collection:delete_index(Index, Collection0),
-        CollectionId = babel_index_collection:id(Collection),
-        CollectionItem = {
-            CollectionId,
-            {
-                update,
-                fun() -> babel_index_collection:to_update_task(Collection) end
-            }
-        },
-        PartitionItems = [
-            {
-                {CollectionId, IndexName, X},
-                {
-                    delete,
-                    fun() -> babel_index:to_delete_task(Index, X) end
-                }
-            }
-            || X <- babel_index:partition_identifiers(Index)
-        ],
 
-        ok = reliable:add_workflow_items(
-            [CollectionItem | PartitionItems]
+%% -----------------------------------------------------------------------------
+%% @doc Schedules the removal of the index with name `IndexName' from
+%% collection `Collection' and all its index partitions from Riak KV.
+%% In case the collection is itself being dropped by a parent workflow, the
+%% collection will not be updated in Riak.
+%%
+%% ?> This function uses a workflow, see {@link workflow/2} for an explanation
+%% of the possible return values.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec drop_index(
+    Index :: binary(),
+    Collection :: babel_index_collection:t(),
+    Opts :: opts()) ->
+    {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
+
+drop_index(IndexName, Collection0, Opts0) when is_binary(IndexName) ->
+    Opts = validate_opts(Opts0),
+
+    Fun = fun() ->
+        try
+            CollectionId = babel_index_collection:id(Collection0),
+
+            %% We validate the collection has this index, this will throw a
+            %% badindex exception if it doesn't.
+            Index = babel_index_collection:index(IndexName, Collection0),
+
+            %% We scheduled then delete of all its partitions
+            PartIds = babel_index:partition_identifiers(Index),
+            Items = [
+                begin
+                    PItemId = {CollectionId, IndexName, Id},
+                    Task = fun() -> babel_index:to_delete_task(Index, Id) end,
+                    {PItemId, {delete, Task}}
+                end || Id <- PartIds
+            ],
+            ok = reliable:add_workflow_items(Items),
+
+            Collection1 = babel_index_collection:delete_index(
+                Index, Collection0
+            ),
+            Task = fun() ->
+                babel_index_collection:to_update_task(Collection1)
+            end,
+            CollectionItem = {CollectionId, {update, Task}},
+            reliable:add_workflow_items([CollectionItem]),
+
+            %% In case we are updating the collection we need to do it before
+            %% dropping the index partitions so that thery are no longer
+            %% available to users.
+            _ = [
+                reliable:add_workflow_precedence([CollectionId], X)
+                || {X, _} <- Items
+            ],
+            CollectionId
+        catch
+            error:badindex ->
+                {error, badindex}
+        end
+    end,
+    workflow(Fun, Opts).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Calls {@link drop_indices/3}
+%% @end
+%% -----------------------------------------------------------------------------
+-spec drop_indices(
+    IdxNames :: [binary()],
+    Collection :: babel_index_collection:t()) ->
+    {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
+
+drop_indices(IdxNames, Collection) ->
+    drop_indices(IdxNames, Collection, ?DEFAULT_OPTS).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Schedules the removal from Riak KV of indices with names `IdxNames'
+%% from collection `Collection' and their respective partitions.
+%%
+%% ?> This function uses a workflow, see {@link workflow/2} for an explanation
+%% of the possible return values.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec drop_indices(
+    IdxNames :: [binary()],
+    Collection :: babel_index_collection:t(),
+    Opts :: opts()) ->
+    {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
+
+drop_indices(IdxNames, Collection, Opts0) ->
+    Opts = validate_opts(Opts0),
+    Fun = fun() ->
+        %% We delete all indices.
+        %% drop_index also removes then index definition from the collection.
+        _ = lists:foreach(
+            fun(IdxName) -> drop_index(IdxName, Collection, Opts) end,
+            IdxNames
         ),
+        ok
+    end,
+    workflow(Fun, Opts).
 
-        %% We need to first remove the index from the collection so that no more
-        %% entries are added to the partitions, then we need to remove the partition
-        _ = [
-            reliable:add_workflow_precedence([CollectionId], X)
-            || {X, _} <- PartitionItems
-        ],
 
-        Collection
+%% -----------------------------------------------------------------------------
+%% @doc Calls {@link drop_all_indices/3}
+%% @end
+%% -----------------------------------------------------------------------------
+-spec drop_all_indices(Collection :: babel_index_collection:t()) ->
+    {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
 
-    catch
-        error:badindex ->
-            Collection0
-    end.
+drop_all_indices(Collection) ->
+    drop_all_indices(Collection, ?DEFAULT_OPTS).
 
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Drops all indices in collection by calling {@link drop_indices/3}.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec drop_all_indices(
+    Collection :: babel_index_collection:t(), Opts :: opts()) ->
+    {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
+
+drop_all_indices(Collection, Opts) ->
+    IdxNames = babel_index_collection:index_names(Collection),
+    drop_indices(IdxNames, Collection, Opts).
 
 
 
@@ -712,9 +961,9 @@ delete_index(Index, Collection0) ->
 
 %% @private
 do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
-    Opts = validate_riak_opts(Opts0),
+    Opts = validate_opts(Opts0),
     Conn = get_connection(Opts),
-    RiakOpts = maps:to_list(Opts),
+    RiakOpts = babel:opts_to_riak_opts(Opts),
     Type = type(Datatype),
     Op = datatype_to_op(Type, Datatype, Spec),
 
@@ -744,9 +993,9 @@ schedule_put(TypedBucket, Key, Datatype, Spec, _Opts0) ->
 
 %% @private
 do_delete(TypedBucket, Key, Opts0) ->
-    Opts = validate_riak_opts(Opts0),
+    Opts = validate_opts(Opts0),
     Conn = get_connection(Opts),
-    RiakOpts = babel_utils:opts_to_riak_opts(Opts),
+    RiakOpts = babel:opts_to_riak_opts(Opts),
 
     case riakc_pb_socket:delete(Conn, TypedBucket, Key, RiakOpts) of
         ok ->
@@ -779,19 +1028,19 @@ do_create_index(Index, Collection) ->
         Collection, Index, Partitions, lazy
     ),
 
+    %% We add the index to the collection and schedule the update of the
+    %% collection in the database
     NewCollection = babel_index_collection:add_index(Index, Collection),
     CollTask = fun() ->
         babel_index_collection:to_update_task(NewCollection)
     end,
     CollWorkflowItem = {CollectionId, {update, CollTask}},
-    ok = reliable:add_workflow_items(
-        [CollWorkflowItem | PartitionItems]
-    ),
+    ok = reliable:add_workflow_items([CollWorkflowItem | PartitionItems]),
 
-    %% Index partitions write will be scheduled prior to the collection
-    %% write so that if the index is present in a subsequent read of
+    %% We want the workflow to write partitions in the database prior to the
+    %% collection so that if the index is present in a subsequent read of
     %% the collection, it means its partitions have been already
-    %% written to Riak.
+    %% written to Riak and it is usable.
     ok = reliable:add_workflow_precedence(
         [Id || {Id, _} <- PartitionItems], CollectionId
     ),
@@ -819,16 +1068,25 @@ maybe_already_exists(Id) ->
 %% @end
 %% -----------------------------------------------------------------------------
 ensure_not_deleted(Id) ->
+    true = not is_deleted(Id) orelse throw({scheduled_for_delete, Id}),
+    ok.
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+is_deleted(Id) ->
     case reliable:find_workflow_item(Id) of
         {ok, {Id, {delete, _}}} ->
-            throw({scheduled_for_delete, Id});
-        {ok, {Id, _}} ->
-            ok;
+            true;
         error ->
-            ok
+            false
     end.
 
 
+%% @private
 -spec partition_update_items(
     babel_index_collection:t(),
     babel_index:t(),

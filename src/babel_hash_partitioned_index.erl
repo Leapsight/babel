@@ -121,7 +121,7 @@
     first                       ::  binary() | undefined,
     keys = []                   ::  [binary()],
     partition_identifiers = []  ::  [babel_index:partition_id()],
-    riak_opts                   ::  babel_index:riak_opts(),
+    riak_opts                   ::  babel:riak_opts(),
     done = false                ::  boolean()
 }).
 
@@ -557,7 +557,8 @@ match(Pattern, Partition, Config) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec iterator(babel_index:t(), babel_index:config(), Opts :: riak_opts()) ->
+-spec iterator(
+    babel_index:t(), babel_index:config(), Opts :: babel:riak_opts()) ->
     Iterator :: iterator().
 
 iterator(Index, Config, Opts) ->
