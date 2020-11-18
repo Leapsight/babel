@@ -528,29 +528,45 @@ match(Pattern, Partition, Config) ->
         {error, error} ->
             %% At least an aggregate key is required to match
             error(badpattern);
+
         {_, undefined} ->
             %% This should be imposible, we could not have created an index
             %% with IndexKey = []
             error(invalid_metadata);
+
         {undefined, error} ->
             %% At least an aggregate key is required to match
             error(badpattern);
-        {undefined, IndexKey} ->
+
+        {undefined, IndexKey} when Cardinality =:= one ->
             Data = babel_index_partition:data(Partition),
             babel_key_value:get({IndexKey, register}, Data, nomatch);
+
+        {undefined, IndexKey} when Cardinality =:= many ->
+            Data = babel_index_partition:data(Partition),
+            babel_key_value:get({IndexKey, set}, Data, nomatch);
+
         {AggregateKey, error} ->
             %% The user only provided values for the AggregateBy part
             %% in Pattern, so we return the whole aggregate object
             Data = babel_index_partition:data(Partition),
             babel_key_value:get({AggregateKey, map}, Data, nomatch);
-        {AggregateKey, IndexKey} ->
+
+        {AggregateKey, IndexKey} when Cardinality =:= one ->
             Data = babel_index_partition:data(Partition),
             babel_key_value:get(
                 [{AggregateKey, map}, {IndexKey, register}], Data, nomatch
+            );
+
+        {AggregateKey, IndexKey} when Cardinality =:= many ->
+            Data = babel_index_partition:data(Partition),
+            babel_key_value:get(
+                [{AggregateKey, map}, {IndexKey, set}], Data, nomatch
             )
     end,
-
-    match_output(IndexBy, covered_fields(Config), Cardinality, Result).
+    Covered = covered_fields(Config),
+    IsAggregate = AggregateKey /= undefined,
+    match_output(IsAggregate, IndexBy, Covered, Cardinality, Result).
 
 
 %% -----------------------------------------------------------------------------
@@ -874,15 +890,11 @@ iterator_sort_ordering(#{sort_ordering := Value}, _) ->
 
 
 %% @private
-match_output(_, _, _, nomatch) ->
+match_output(_, _, _, _, nomatch) ->
     [];
 
-match_output(_, CoveredFields, _, Bin) when is_binary(Bin) ->
-    Values = binary:split(Bin, <<$\31>>),
-    [maps:from_list(lists:zip(CoveredFields, Values))];
-
-match_output(IndexBy, CoveredFields, Cardinality, AggregateMap)
-when is_list(AggregateMap) ->
+match_output(true, IndexBy, CoveredFields, Cardinality, Result)
+when is_list(Result) ->
     Fun = fun
         ({Key, register}, Bin, Acc) when Cardinality == one ->
             Map1 = index_by_output(IndexBy, Key),
@@ -900,7 +912,19 @@ when is_list(AggregateMap) ->
                 Set
             )
     end,
-    orddict:fold(Fun, [], AggregateMap).
+    orddict:fold(Fun, [], Result);
+
+match_output(_, _, CoveredFields, one, Bin) when is_binary(Bin) ->
+    [covered_fields_output(CoveredFields, Bin)];
+
+match_output(false, _IndexBy, CoveredFields, many, Result)
+when is_list(Result) ->
+    Fun = fun
+        (Bin, Acc)  ->
+            Map = covered_fields_output(CoveredFields, Bin),
+            [Map| Acc]
+    end,
+    lists:foldl(Fun, [], Result).
 
 
 %% @private

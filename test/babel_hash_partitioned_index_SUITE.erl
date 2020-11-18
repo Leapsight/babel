@@ -16,7 +16,8 @@ all() ->
         index_6_test,
         distinguished_key_paths_1_test,
         huge_index_test,
-        accounts_by_identification_type_and_number_test
+        accounts_by_identification_type_and_number_test,
+        accounts_by_identification_type_and_number_many_test
     ].
 
 
@@ -239,6 +240,7 @@ index_5_test(_) ->
     Pattern = #{
         <<"account_id">> =>  <<"mrn:account:2">>
     },
+
     ?assertEqual(
         [#{<<"id">> => <<"mrn:person:2">>}],
         babel_index:match(Pattern, Index, RiakOpts)
@@ -348,9 +350,9 @@ huge_index_test(_) ->
     Pattern1 = #{
         <<"post_code">> => <<"PC1">>
     },
+
     Res1 = babel_index:match(Pattern1, Index, RiakOpts),
     ?assertEqual(5000, length(Res1)),
-
     Pattern2 = #{
         <<"post_code">> => <<"PC1">>,
         <<"email">> => <<"1@example.com">>
@@ -464,6 +466,7 @@ index_6_test(_) ->
     Pattern = #{
         <<"account_id">> =>  <<"mrn:account:2">>
     },
+
     Result = babel_index:match(Pattern, Index, RiakOpts),
     ?assertEqual(
         2,
@@ -544,6 +547,7 @@ accounts_by_identification_type_and_number_test(_) ->
                 sort_ordering => asc,
                 number_of_partitions => 128,
                 partition_algorithm => jch,
+                cardinality => one,
                 partition_by => [
                     <<"identification_type">>,
                     <<"identification_number">>
@@ -567,13 +571,14 @@ accounts_by_identification_type_and_number_test(_) ->
         Actions = [
             begin
                 ID = integer_to_binary(X),
+                Rand = integer_to_binary(rand:uniform(100)),
                 Obj = #{
-                    <<"identification_type">> => Type,
+                    <<"identification_type">> => <<"DNI">>,
                     <<"identification_number">> => ID,
-                    <<"account_id">> => <<"mrn:account:", ID/binary>>
+                    <<"account_id">> => <<"mrn:account:", Rand/binary>>
                 },
                 {insert, Obj}
-            end || Type <- [<<"DNI">>, <<"CUIL">>], X <- lists:seq(1, 5000)
+            end || X <- [1,1,2,2,3,3]
         ],
 
         Collection = babel_index_collection:fetch(
@@ -595,9 +600,118 @@ accounts_by_identification_type_and_number_test(_) ->
         <<"identification_type">> => <<"DNI">>,
         <<"identification_number">> => <<"1">>
     },
-
     Res = babel_index:match(Pattern, Idx, RiakOpts),
     ?assertEqual(1, length(Res)),
+    ?assertEqual(
+        [<<"account_id">>],
+        maps:keys(hd(Res))
+    ),
+    ok.
+
+
+accounts_by_identification_type_and_number_many_test(_) ->
+    Prefix = <<"babel-test">>,
+    CName = <<"accounts">>,
+    IdxName = <<"accounts_by_identification_type_and_number_many">>,
+
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    pong = riakc_pb_socket:ping(Conn),
+
+    RiakOpts = #{
+        connection => Conn
+    },
+
+    %% Cleanup previous runs
+    Cleanup = fun() ->
+        case babel_index_collection:lookup(Prefix, CName, RiakOpts) of
+            {ok, Collection} ->
+                case babel_index_collection:is_index(IdxName, Collection) of
+                    true ->
+                        _ = babel:drop_index(IdxName, Collection),
+                        ok;
+                    false ->
+                        ok
+                end;
+            _ ->
+                ok
+        end
+    end,
+    case babel:workflow(Cleanup) of
+        {true, #{work_ref := WorkRef1}} ->
+            {ok, _} = babel:yield(WorkRef1, 5000),
+            ok;
+        _ ->
+            ok
+    end,
+
+    Create = fun() ->
+        Conf = #{
+            name => IdxName,
+            bucket_type => <<"index_data">>,
+            bucket_prefix => Prefix,
+            type => babel_hash_partitioned_index,
+            config => #{
+                sort_ordering => asc,
+                number_of_partitions => 128,
+                partition_algorithm => jch,
+                cardinality => many,
+                partition_by => [
+                    <<"identification_type">>,
+                    <<"identification_number">>
+                ],
+                index_by => [
+                    <<"identification_type">>,
+                    <<"identification_number">>
+                ],
+                covered_fields => [<<"account_id">>]
+            }
+        },
+        Index = babel_index:new(Conf),
+        Collection = babel_index_collection:new(Prefix, CName),
+        {true, #{is_nested := true}} = babel:create_index(Index, Collection),
+        ok
+    end,
+    {true, #{work_ref := WorkRef2, result := ok}} = babel:workflow(Create),
+    {ok, _} = babel:yield(WorkRef2, 5000),
+
+    Update = fun() ->
+        Actions = [
+            begin
+                ID = integer_to_binary(X),
+                Rand = integer_to_binary(rand:uniform(100)),
+
+                Obj = #{
+                    <<"identification_type">> => <<"DNI">>,
+                    <<"identification_number">> => ID,
+                    <<"account_id">> => <<"mrn:account:", Rand/binary>>
+                },
+                {insert, Obj}
+            end || X <- [1,1,2,2,3,3]
+        ],
+
+        Collection = babel_index_collection:fetch(
+            Prefix, CName, RiakOpts),
+        _Index = babel_index_collection:index(IdxName, Collection),
+        {true, #{is_nested := true}} = babel:update_all_indices(
+            Actions, Collection, RiakOpts),
+        ok
+    end,
+
+    {true, #{work_ref := WorkRef3, result := ok}} = babel:workflow(
+        Update, #{timeout => 5000})
+    ,
+    {ok, _} = babel:yield(WorkRef3, 15000),
+
+    Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
+    Idx = babel_index_collection:index(IdxName, Collection),
+
+    Pattern = #{
+        <<"identification_type">> => <<"DNI">>,
+        <<"identification_number">> => <<"1">>
+    },
+
+    Res = babel_index:match(Pattern, Idx, RiakOpts),
+    ?assertEqual(2, length(Res)),
     ?assertEqual(
         [<<"account_id">>],
         maps:keys(hd(Res))
