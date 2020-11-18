@@ -33,6 +33,7 @@ all() ->
         patch_2_test,
         patch_3_test,
         undefined_test_1,
+        set_test_1,
         set_undefined_test_1,
         set_undefined_test_2
     ].
@@ -446,6 +447,112 @@ undefined_test_1(_) ->
     TypeSpec = #{<<"a">> => {register, binary}},
     T1 = babel_map:new(#{<<"a">> => undefined}, TypeSpec),
     ?assertEqual([], babel_map:keys(T1)).
+
+set_test_1(_) ->
+    Spec = #{
+        <<"version">> => {register, binary},
+        <<"id">> => {register, binary},
+        <<"name">> => {register, binary},
+        <<"active">> => {register, boolean},
+        <<"account_type">> => {register, binary},
+        <<"operation_mode">> => {register, binary},
+        <<"country_id">> => {register, binary},
+        <<"number">> => {register, binary},
+        <<"identification_type">> => {register, binary},
+        <<"identification_number">> => {register, binary},
+        <<"logo">> => {register, binary},
+        <<"url">> => {register, binary},
+        <<"address">> => {map, #{
+            <<"address_line1">> => {register, binary},
+            <<"address_line2">> => {register, binary},
+            <<"city">> => {register, binary},
+            <<"state">> => {register, binary},
+            <<"country">> => {register, binary},
+            <<"postal_code">> => {register, binary}
+        }},
+        <<"services">> => {map, #{'_' => {map, #{
+            <<"description">> => {register, binary},
+            <<"expiry_date">> => {register, binary},
+            <<"enabled">> => {register, boolean}
+        }}}},
+        <<"terms_and_conditions">> => {map, #{'_' => {map, #{
+            <<"accepted_by">> => {register, binary},
+            <<"acceptance_timestamp">> => {register, integer}
+        }}}},
+        <<"created_by">> => {register, binary},
+        <<"last_modified_by">> => {register, binary},
+        <<"created_timestamp">> => {register, integer},
+        <<"last_modified_timestamp">> => {register, integer}
+    },
+    Key = <<"terms_and_conditions">>,
+    TCs = babel_map:new(#{
+        <<"accepted_by">> => <<"user@foo.com">>,
+        <<"acceptance_timestamp">> => erlang:system_time(millisecond)
+    }),
+    Version = <<"20201118">>,
+    Map0 = {babel_map,#{
+        <<"account_type">> => <<"business">>,<<"active">> => true,
+        <<"address">> =>
+            {babel_map,#{<<"address_line1">> => <<"523">>,
+                        <<"city">> => <<"La Plata">>,
+                        <<"country">> => <<"Argentina">>,
+                        <<"postal_code">> => <<"1900">>,
+                        <<"state">> => <<"Buenos Aires">>},
+                    [],[],undefined},
+        <<"country_id">> => <<"AR">>,
+        <<"created_by">> => <<"testaccount@test.com.ar">>,
+        <<"created_timestamp">> => 1605695133613,
+        <<"id">> =>
+            <<"mrn:account:business:22ea8fbe-f5a6-48e7-b439-20cfef4bc979">>,
+        <<"identification_number">> => <<"33333333">>,
+        <<"identification_type">> => <<"DNI">>,
+        <<"last_modified_by">> => <<"testaccount@test.com.ar">>,
+        <<"last_modified_timestamp">> => 1605695133613,
+        <<"name">> => <<"My Account Ale Sin Phones and Emails">>,
+        <<"number">> => <<"AB1234567">>,
+        <<"operation_mode">> => <<"normal">>,
+        <<"services">> =>
+            {babel_map,#{<<"mrn:service:fleet">> =>
+                            {babel_map,#{<<"description">> => <<"Plan fleet habilitado">>,
+                                        <<"enabled">> => true,
+                                        <<"expiry_date">> => <<"2017-05-12T00:00:00+00:00">>},
+                                        [],[],undefined}},
+                    [],[],undefined},
+        <<"version">> => <<"1.0">>},
+        [],[],
+        <<>>
+    },
+    Map1 = babel_map:set([Key, Version], TCs, Map0),
+    ?assertEqual(
+        babel_map:value(TCs),
+        babel_map:value(babel_map:get([Key, Version], Map1))
+    ),
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    ?assertEqual(pong, riakc_pb_socket:ping(Conn)),
+
+    ok = babel:put(
+        {<<"index_data">>, <<"test">>},
+        <<"set_test_1">>,
+        %% We revert context to undefine so that Riak does not fail
+        babel_map:set_context(undefined, Map1),
+        Spec,
+        #{connection => Conn}
+    ),
+
+    %% {true, ok} = babel:execute(
+    %%     default,
+    %%     fun(Pid) ->
+    %%         babel:put(
+    %%             {<<"index_data">>, <<"test">>},
+    %%             <<"set_test_1">>,
+    %%             Map1,
+    %%             Spec,
+    %%             #{connection => Pid}
+    %%         )
+    %%     end,
+    %%     #{timeout => 3000}
+    %% ),
+    ok.
 
 
 set_undefined_test_1(_) ->

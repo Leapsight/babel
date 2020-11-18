@@ -329,10 +329,9 @@ get(TypedBucket, Key, Spec, Opts0) ->
     Spec :: type_spec(),
     Opts :: opts()) ->
     ok
-    | {ok, Datatype :: datatype()}
-    | {ok, Key :: binary(), Datatype :: datatype()}
-    | {scheduled, WorkflowId :: {bucket_and_type(), key()}}
-    | {error, Reason :: term()}.
+    | {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
 
 put(TypedBucket, Key, Datatype, Spec, Opts) ->
     case reliable:is_in_workflow() of
@@ -351,8 +350,9 @@ put(TypedBucket, Key, Datatype, Spec, Opts) ->
 -spec delete(
     TypedBucket :: bucket_and_type(), Key :: binary(), Opts :: opts()) ->
     ok
-    | {scheduled, WorkflowId :: {bucket_and_type(), key()}}
-    | {error, Reason :: term()}.
+    | {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
 
 delete(TypedBucket, Key, Opts) ->
     case reliable:is_in_workflow() of
@@ -654,6 +654,9 @@ create_index(Index, Collection) ->
 %% @doc Schedules the creation of an index and its partitions according to
 %% `Config' using Reliable.
 %%
+%% The updated collection is returned under the key `result' of the
+%% `reliable:wf_result()'.
+%%
 %% ?> This function uses a workflow, see {@link workflow/2} for an explanation
 %% of the possible return values.
 %%
@@ -712,6 +715,9 @@ rebuild_index(_IndexName, _Collection, _Opts) ->
 %% schedules the update of the relevant index partitions in the database i.e.
 %% persisting the index changes.
 %%
+%% The names of the updated indices is returned under the key `result' of the
+%% `reliable:wf_result()'.
+%%
 %% ?> This function uses a workflow, see {@link workflow/2} for an explanation
 %% of the possible return values.
 %% @end
@@ -763,9 +769,8 @@ update_indices(Actions, IdxNames, Collection, Opts0) when is_list(Actions) ->
             IdxNames
         ),
 
-        %% We return the CollectionId as parent workflows might want to add
-        %% precendence relationships in the digraph
-        CollectionId
+        %% We return the index names that have been updated.
+        IdxNames
     end,
     workflow(Fun, Opts).
 
