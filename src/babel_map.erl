@@ -160,7 +160,7 @@
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Creates a new empty map.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec new() -> t().
@@ -170,14 +170,42 @@ new()->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Creates a new Babel Map from the erlang map `Data', previously
+%% @doc Creates a new map from the erlang map `Data', previously
 %% filtering out all keys assigned to the `undefined'.
+%% This function converts the erlang types `map()', `list()' and `boolean()' to
+%% their corresponding Babel Datatypes `babel_map:t()', `babel_map:set()' and
+%% `babel_map:flag()'. Any other value will be assumed to be a register. Also,
+%% there is not type validation or coersion when creating a `babel_set:t()' out
+%% of a list.
+%%
+%% !> **Important**. Notice that using this function might result in
+%% incompatible types when later using a type specification e.g. {@link
+%% to_riak_op/2}. We strongly suggest not using this function and using {@link
+%% new/2} instead.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec new(Data :: map()) -> t().
-%% TODO this function should be banned, we need to always use a spec
+
 new(Data) when is_map(Data) ->
-    Valid = maps:filter(fun(_, V) -> V /= undefined end, Data),
+    Valid = maps:fold(
+        fun
+            (K, undefined, Acc) when is_binary(K) ->
+                maps:remove(K, Acc);
+            (K, V, Acc) when is_binary(K) andalso is_map(V) ->
+                maps:update(K, new(V), Acc);
+            (K, V, Acc) when is_binary(K) andalso is_list(V) ->
+                maps:update(K, babel_set:new(V), Acc);
+            (K, V, Acc) when is_binary(K) andalso is_boolean(V) ->
+                maps:update(K, babel_flag:new(V), Acc);
+            (K, _, Acc) when is_binary(K) ->
+                Acc;
+            (K, _, _) ->
+                error({badkey, K})
+        end,
+        Data,
+        Data
+    ),
     #babel_map{
         values = Valid,
         updates = ordsets:from_list(maps:keys(Valid))
