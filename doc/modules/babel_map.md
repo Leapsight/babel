@@ -490,6 +490,8 @@ new() -&gt; <a href="#type-t">t()</a>
 </code></pre>
 <br />
 
+Creates a new empty map.
+
 <a name="new-1"></a>
 
 ### new/1 ###
@@ -499,8 +501,16 @@ new(Data::map()) -&gt; <a href="#type-t">t()</a>
 </code></pre>
 <br />
 
-Creates a new Babel Map from the erlang map `Data`, previously
+Creates a new map from the erlang map `Data`, previously
 filtering out all keys assigned to the `undefined`.
+This function converts the erlang types `map()`, `list()` and `boolean()` to
+their corresponding Babel Datatypes `babel_map:t()`, `babel_map:set()` and
+`babel_map:flag()`. Any other value will be assumed to be a register. Also,
+there is not type validation or coersion when creating a `babel_set:t()` out
+of a list.
+
+!> **Important**. Notice that using this function might result in
+incompatible types when later using a type specification e.g. [`to_riak_op/2`](#to_riak_op-2). We strongly suggest not using this function and using [`new/2`](#new-2) instead.
 
 <a name="new-2"></a>
 

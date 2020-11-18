@@ -373,11 +373,17 @@ of the possible return values.
 ### validate_opts/1 ###
 
 <pre><code>
-validate_opts(Opts::map()) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>(map())
+validate_opts(Opts::<a href="#type-opts">opts()</a>) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-opts">opts()</a>)
 </code></pre>
 <br />
 
+`Opts`: an erlang map containing valid option keys<br />
+
+Equivalent to [`validate_opts(Opts, strict)`](#validate_opts-2).
+
 Validates the opts
+
+__See also:__ [validate_opts/2](#validate_opts-2).
 
 <a name="validate_opts-2"></a>
 
