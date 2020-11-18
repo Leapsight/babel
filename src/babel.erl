@@ -386,9 +386,12 @@ execute(Poolname, Fun, Opts)  ->
 
 %% -----------------------------------------------------------------------------
 %% @doc Validates the opts
+%% @param Opts an erlang map containing valid option keys
+%% @equiv validate_opts(Opts, strict)
+%% @see validate_opts/2
 %% @end
 %% -----------------------------------------------------------------------------
--spec validate_opts(map()) -> maybe_no_return(map()).
+-spec validate_opts(opts()) -> maybe_no_return(opts()).
 
 -dialyzer({nowarn_function, validate_opts/1}).
 
