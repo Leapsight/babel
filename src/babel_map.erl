@@ -133,7 +133,6 @@
 -export([increment/3]).
 -export([is_type/1]).
 -export([keys/1]).
--export([merge/2]).
 -export([new/0]).
 -export([new/1]).
 -export([new/2]).
@@ -1010,49 +1009,6 @@ decrement(Key, Value, Map) ->
 
 
 
-%% -----------------------------------------------------------------------------
-%% @deprecated
-%% @doc Merges two maps into a single map `Map3'.
-%% The function implements a deep merge.
-%% This function implements minimal type checking so merging two maps that use
-%% different type specs can potentially result in an exception being thrown or
-%% in an invalid map at time of storing.
-%%
-%% The call fails with a {badmap,Map} exception if `T1' or `T2' is not a map.
-%% @end
-%% -----------------------------------------------------------------------------
--spec merge(T1 :: t(), T2 :: t() | map()) -> Map3 :: t().
-
-merge(#babel_map{} = T1, #babel_map{values = V2}) ->
-    Fun = fun
-        (Key, #babel_map{} = T2i, #babel_map{values = AccValues} = Acc) ->
-            case maps:find(Key, AccValues) of
-                {ok, #babel_map{} = T1i} ->
-                    Acc#babel_map{
-                        values = maps:put(Key, merge(T1i, T2i), AccValues),
-                        updates = ordsets:add_element(
-                            Key, Acc#babel_map.updates
-                        )
-                    };
-                {ok, Term} ->
-                    %% Not a babel map
-                    badtype(map, Term);
-                error ->
-                    Acc#babel_map{
-                        values = maps:put(Key, set(Key, T2i, Acc), AccValues),
-                        updates = ordsets:add_element(
-                            Key, Acc#babel_map.updates
-                        )
-                    }
-            end;
-
-        (Key, Term, Acc) ->
-            maybe_merge(Key, Term, Acc)
-    end,
-    maps:fold(Fun, T1, V2).
-
-
-
 %% =============================================================================
 %% PRIVATE
 %% =============================================================================
@@ -1535,39 +1491,6 @@ do_remove(Key, #babel_map{}) when not is_binary(Key) ->
 
 do_remove(_, Term) ->
     badtype(map, Term).
-
-
-%% @private
-maybe_merge(Key, Term2, Acc) ->
-    Type = babel:type(Term2),
-
-    case find(Key, Acc) of
-        {ok, Term1} ->
-            Type == babel:type(Term1) orelse badtype(Type, Key),
-            merge(Key, Term2, Acc, Type);
-        error ->
-            merge(Key, Term2, Acc, Type)
-    end.
-
-
-%% @private
-merge(Key, Value, Acc, register) ->
-    set(Key, Value, Acc);
-
-merge(Key, Set, Acc, set) ->
-    add_elements(Key, babel_set:value(Set), Acc);
-
-merge(Key, Set, Acc, flag) ->
-    case babel_flag:value(Set) of
-        true ->
-            enable(Key, Acc);
-        false ->
-            disable(Key, Acc)
-    end;
-
-merge(Key, Counter, Acc, counter) ->
-    Value = babel_counter:value(Counter),
-    increment(Key, Value, Acc).
 
 
 %% @private

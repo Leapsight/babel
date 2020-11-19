@@ -15,13 +15,6 @@ all() ->
         to_riak_op_test,
         babel_put_test,
         babel_get_test,
-        merge_1_test,
-        merge_2_test,
-        merge_3_test,
-        merge_4_test,
-        merge_5_test,
-        merge_6_test,
-        merge_7_test,
         update_1_test,
         update_2_test,
         update_3_test,
@@ -129,92 +122,6 @@ modify_test(_) ->
         undefined,
         babel_map:to_riak_op(M1, Spec)
     ).
-
-
-merge_1_test(_) ->
-    T1 = babel_map:set(<<"a">>, 1, babel_map:new()),
-    T2 = babel_map:set(<<"a">>, foo, babel_map:new()),
-    T3 = babel_map:merge(T1, T2),
-    Expected = {babel_map, #{<<"a">> => foo}, [<<"a">>], [], undefined},
-    ?assertEqual(Expected, T3).
-
-
-merge_2_test(_) ->
-    T1 = babel_map:set(<<"a">>, 1, babel_map:new()),
-    T2 = babel_map:set(
-        <<"a">>,
-        babel_map:set(<<"foo">>, 1, babel_map:new()),
-        babel_map:new()
-    ),
-    ?assertError({badmap, 1}, babel_map:merge(T1, T2)),
-    ?assertError({badregister, <<"a">>}, babel_map:merge(T2, T1)).
-
-
-merge_3_test(_) ->
-    T1 = babel_map:set([<<"foo">>, <<"a">>, <<"x">>], 1, babel_map:new()),
-    T2 = babel_map:set([<<"foo">>, <<"a">>, <<"y">>], 1, babel_map:new()),
-    T3 = {babel_map,
-        #{<<"foo">> =>
-            {babel_map,
-                #{<<"a">> =>
-                        {babel_map,
-                            #{<<"x">> => 1,<<"y">> => 1},
-                            [<<"x">>,<<"y">>],
-                            [],
-                            undefined
-                        }
-                },
-                [<<"a">>],
-                [],
-                undefined
-            }
-        },
-        [<<"foo">>],
-        [],
-        undefined
-    },
-    ?assertEqual(T3, babel_map:merge(T1, T2)),
-
-    T4 = babel_map:set([<<"foo">>, <<"b">>], 1, babel_map:new()),
-    T5 = {babel_map,
-        #{<<"foo">> =>
-            {babel_map,
-                #{<<"a">> =>
-                        {babel_map,
-                            #{<<"x">> => 1,<<"y">> => 1},
-                            [<<"x">>,<<"y">>],
-                            [],
-                            undefined
-                        },
-                    <<"b">> => 1
-                },
-                [<<"a">>,<<"b">>],
-                [],
-                undefined
-            }
-        },
-        [<<"foo">>],
-        [],
-        undefined
-    },
-    ?assertEqual(T5, babel_map:merge(T3, T4)).
-
-
-merge_4_test(_) ->
-    ok.
-
-
-merge_5_test(_) ->
-    ok.
-
-
-merge_6_test(_) ->
-    ok.
-
-
-merge_7_test(_) ->
-    ok.
-
 
 
 
