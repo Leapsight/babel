@@ -1089,7 +1089,7 @@ is_deleted(Id) ->
     case reliable:find_workflow_item(Id) of
         {ok, {Id, {delete, _}}} ->
             true;
-        error ->
+        _ ->
             false
     end.
 
