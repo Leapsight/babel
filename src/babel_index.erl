@@ -484,6 +484,9 @@ distinguished_key_paths(Index) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc
+%% Throws `{badaction, update_action()}' in case of the action wants to delete
+%% a modified map.
+%% @throws {badaction, Action}
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update(
@@ -602,47 +605,93 @@ match(Pattern, Index, Opts) ->
 prepare_actions([{update, undefined, Data} | T], Index, Opts, Acc) ->
     prepare_actions([{insert, Data} | T], Index, Opts, Acc);
 
-prepare_actions([{update, Old, New} | T], Index, Opts, Acc) ->
+prepare_actions([H|T], Index, Opts, Acc) ->
+    Data = case H of
+        {update, _, Value} -> Value;
+        {insert, Value} -> Value;
+        {delete, Value} -> Value
+    end,
+
     %% We use this call so that we cache the distinguished_key_paths
     %% result in Opts
     {Keys, Opts1} = distinguished_key_paths(Index, Opts),
+    Summary = change_summary(Keys, Data, Opts1),
 
-    case change_status(Keys, New, Opts1) of
-        none ->
-            %% We do not need to update the index as no distinsguished key has
-            %% changed
-            prepare_actions(T, Index, Opts1, Acc);
-        removed ->
-            %% Distinguished key have been removed so ww just need to delete
-            %% the entry in this index
-            prepare_actions([{delete, Old} | T], Index, Opts1, Acc);
-        Status when Status == updated; Status == both ->
-            %% updated or both
-            Mod = type(Index),
-            Config = config(Index),
-            P1 = Mod:partition_identifier(Old, Config),
-            P2 = Mod:partition_identifier(New, Config),
-            NewAcc = [{P1, {delete, Old}}, {P2, {insert, New}} | Acc],
-            prepare_actions(T, Index, Opts1, NewAcc)
-    end;
-
-prepare_actions([{_, Data} = Action | T], Index, Opts, Acc) ->
-    Mod = type(Index),
-    Config = config(Index),
-    P = Mod:partition_identifier(Data, Config),
-    NewAcc = [{P, Action} | Acc],
-    prepare_actions(T, Index, Opts, NewAcc);
+    NewAcc = prepare_action(H, Index, Opts1, Acc, Summary),
+    prepare_actions(T, Index, Opts1, NewAcc);
 
 prepare_actions([], _, _, Acc) ->
     lists:reverse(Acc).
 
 
 %% @private
-change_status(_, _, #{force := true}) ->
+prepare_action({update, undefined, Data}, Index, Opts, Acc, Summary) ->
+    prepare_action({insert, Data}, Index, Opts, Acc, Summary);
+
+prepare_action({update, _, _}, _, _, Acc, none) ->
+    %% We do not need to update the index as no distinguished key has
+    %% changed
+    Acc;
+
+prepare_action({update, Old, _}, Index, _, Acc, removed) ->
+    %% One or more distinguished keys have been removed so we just need
+    %% to delete the entry in this index for Old
+    add_action({delete, Old}, Index, Acc);
+
+prepare_action({update, Old, New}, Index, _, Acc0, Summary) when
+Summary == undefined orelse
+Summary == both orelse
+Summary == updated ->
+    Acc1 = add_action({delete, Old}, Index, Acc0),
+    add_action({insert, New}, Index, Acc1);
+
+prepare_action({_, _} = Action, Index, _, Acc, undefined) ->
+    %% Data is not a babel map, so we cannot be smart about changes we
+    %% just perform the action
+    add_action(Action, Index, Acc);
+
+prepare_action({delete, _} = Action, Index, _, Acc, none) ->
+    add_action(Action, Index, Acc);
+
+prepare_action({delete, _} = Action, _, _, _, _) ->
+    %% We cannot delete because the object has been modified and thus
+    %% we might not have the data to call the indices. We cannot just
+    %% ignore those indices either, so we fail. The user should not be
+    %% calling a delete with an updated datatype.
+    error({badaction, Action});
+
+prepare_action({insert, _}, _, _, Acc, none) ->
+    %% We do not need to update the index as no distinguished key has
+    %% changed
+    Acc;
+
+prepare_action({insert, _} = Action, Index, _, Acc, _) ->
+    %% One or more distinguished keys have been removed so we just need
+    %% to delete the entry in this index
+    add_action(Action, Index, Acc).
+
+
+
+%% @private
+add_action({Op, Data} = Action, Index, Acc)
+when Op == insert orelse Op == delete ->
+    Mod = type(Index),
+    Config = config(Index),
+    P = Mod:partition_identifier(Data, Config),
+    [{P, Action} | Acc].
+
+
+
+%% @private
+-spec change_summary([babel_key_value:path()], babel_key_value:t(), map()) ->
+    undefined | none | updated | removed | both.
+
+change_summary(_, _, #{force := true}) ->
     both;
 
-change_status(Keys, Map, _) ->
+change_summary(Keys, Map, _) ->
     try
+        babel_map:is_type(Map) orelse throw(undefined),
         Fold = fun(X, Acc) ->
             case babel_map:change_status(X, Map) of
                 both ->
@@ -655,15 +704,18 @@ change_status(Keys, Map, _) ->
         end,
         lists:foldl(Fold, none, Keys)
     catch
+        throw:undefined ->
+            undefined;
         throw:both ->
             both
     end.
 
 
 %% @private
-%% So that we lazily cache the distinguished_key_paths
-distinguished_key_paths(_, #{distinguished_key_paths := Val}) ->
-    Val;
+%% So that we lazily cache the distinguished_key_paths during the iteration in
+%% prepare_actions/4
+distinguished_key_paths(_, #{distinguished_key_paths := Keys} = Opts) ->
+    {Keys, Opts};
 
 distinguished_key_paths(Index, Opts0) ->
     Keys = distinguished_key_paths(Index),

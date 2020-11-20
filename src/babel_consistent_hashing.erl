@@ -61,7 +61,14 @@ bucket(_, 1, _) ->
 
 bucket(Key, Buckets, jch)
 when is_integer(Key) andalso is_integer(Buckets) andalso Buckets > 1 ->
-    State = rand:seed_s(exs1024s, {Key, Key, Key}),
+    State = case get(?MODULE) of
+        undefined ->
+            Val = rand:seed_s(exs1024s, {Key, Key, Key}),
+            _ = put(?MODULE, Val),
+            Val;
+        Val ->
+            Val
+    end,
     jch(-1, 0, Buckets, State);
 
 bucket(Key, Buckets, Algo) ->
