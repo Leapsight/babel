@@ -61,15 +61,7 @@ bucket(_, 1, _) ->
 
 bucket(Key, Buckets, jch)
 when is_integer(Key) andalso is_integer(Buckets) andalso Buckets > 1 ->
-    State = case get(?MODULE) of
-        undefined ->
-            Val = rand:seed_s(exs1024s, {Key, Key, Key}),
-            _ = put(?MODULE, Val),
-            Val;
-        Val ->
-            Val
-    end,
-    jch(-1, 0, Buckets, State);
+    jump_consistent_hash(Key, Buckets);
 
 bucket(Key, Buckets, Algo) ->
     bucket(erlang:phash2(Key), Buckets, Algo).
@@ -82,11 +74,59 @@ bucket(Key, Buckets, Algo) ->
 
 
 
-%% @private
-jch(Bucket, Jump, Buckets, _) when Jump >= Buckets ->
-    Bucket;
+jump_consistent_hash(Key, N) ->
+    jump_consistent_hash(Key, N, -1, 0).
 
-jch(_, Jump, Buckets, State0) ->
-    {Random, State1} = rand:uniform_s(State0),
-    NewJump = trunc((Jump + 1) / Random),
-    jch(Jump, NewJump, Buckets, State1).
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc
+%% The following is the C++ implementation in
+%% A Fast, Minimal Memory, Consistent Hash Algorithm
+%% https://arxiv.org/pdf/1406.2294.pdf
+%%
+%% static int32_t jump_consistent_hash(uint64_t key, int32_t num_buckets) {
+%%   int64_t b = -1, j = 0;
+%%   while (j < num_buckets) {
+%%     b = j;
+%%     key = key * 2862933555777941757ULL + 1;
+%%     j = (b + 1) * ((double)(1LL << 31) / (double)((key >> 33) + 1));
+%%   }
+%%   return (int32_t)b;
+%% }
+%% @end
+%% -----------------------------------------------------------------------------
+
+jump_consistent_hash(Key, N, _, J0) when J0 < N ->
+    B1 = J0,
+    NewKey = (Key * ?MAGIC + 1) band ?MASK,
+    J1 = trunc((B1 + 1) * ((1 bsl 31) / ((NewKey bsr 33) + 1)) ),
+    jump_consistent_hash(NewKey, N, B1, J1);
+
+jump_consistent_hash(_, _, B, _) ->
+    B.
+
+
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+jch_test_() ->
+    Cases =
+        %% {Expect, Key, Buckets}
+        [
+            {0, 0, 1},
+            {0, 3, 1},
+            {0, 0, 2},
+            {1, 4, 2},
+            {0, 7, 2},
+            {55, 1, 128},
+            {120, 129, 128},
+            {0, 0, 100000000},
+            {38172097, 128, 100000000},
+            {1644467860, 128, 2147483648},
+            {92, 18446744073709551615, 128}
+        ],
+    [?_assertEqual(Expect, bucket(K, B, jch)) || {Expect, K, B} <- Cases].
+
+-endif.
