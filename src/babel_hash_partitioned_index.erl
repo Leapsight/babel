@@ -453,7 +453,7 @@ partition_identifiers(Order, Config) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec distinguished_key_paths(Config :: t()) -> [babel_key_value:path()].
+-spec distinguished_key_paths(Config :: t()) -> [babel_key_value:key()].
 
 distinguished_key_paths(Config) ->
     ordsets:to_list(
