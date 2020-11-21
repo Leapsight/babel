@@ -400,10 +400,21 @@ changed_key_paths(Term) ->
 %% can be one of `updated', `removed', `both' or `none'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec change_status(KeyPath :: babel_key_value:path(), Map :: t()) ->
+-spec change_status(KeyOrPath :: key_path(), Map :: t()) ->
     none | both | removed | updated.
 
-change_status([Key], #babel_map{updates = U, removes = R}) ->
+change_status([Key|[]], Map) ->
+    change_status(Key, Map);
+
+change_status([H|T], #babel_map{values = V} = Map) ->
+    case maps:find(H, V) of
+        {ok, Child} ->
+            change_status(T, Child);
+        error ->
+            change_status([H], Map)
+    end;
+
+change_status(Key, #babel_map{updates = U, removes = R}) ->
     IsU = ordsets:is_element(Key, U),
     IsR = ordsets:is_element(Key, R),
     case {IsU, IsR} of
@@ -411,13 +422,6 @@ change_status([Key], #babel_map{updates = U, removes = R}) ->
         {true, false} -> updated;
         {false, true} -> removed;
         _ -> none
-    end;
-
-change_status([H|T], #babel_map{values = V} = Map) ->
-    case maps:find(H, V) of
-        {ok, Child} -> change_status(T, Child);
-        error ->
-            change_status([H], Map)
     end.
 
 
