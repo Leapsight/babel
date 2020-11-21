@@ -406,15 +406,18 @@ changed_key_paths(Term) ->
 change_status([Key|[]], Map) ->
     change_status(Key, Map);
 
-change_status([H|T], #babel_map{values = V} = Map) ->
+change_status([H|T], #babel_map{values = V} ) ->
     case maps:find(H, V) of
-        {ok, Child} ->
+        {ok, #babel_map{} = Child} ->
             change_status(T, Child);
+        {ok, _} ->
+            error({badkey, T});
         error ->
-            change_status([H], Map)
+            error({badkey, H})
     end;
 
-change_status(Key, #babel_map{updates = U, removes = R}) ->
+change_status(Key, #babel_map{values = V, updates = U, removes = R}) ->
+    maps:is_key(Key, V) orelse error({badkey, Key}),
     IsU = ordsets:is_element(Key, U),
     IsR = ordsets:is_element(Key, R),
     case {IsU, IsR} of
