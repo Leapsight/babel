@@ -1092,8 +1092,8 @@ from_term(Term, _, register, integer) when is_integer(Term) ->
 from_term(Term, _, register, Fun) when is_function(Fun, 2) ->
     Term;
 
-from_term(Term, _, register, Type) ->
-    error({badkeytype, Term, Type}).
+from_term(Term, _, Datatype, Type) ->
+    error({badkeytype, Term, {Datatype, Type}}).
 
 
 %% @private
@@ -1517,9 +1517,15 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {map, Spec}) ->
             %% We update the inner map recursively and replace
             set(Key, update(Value, Inner, Spec), Acc);
         _ ->
-            %% The existing value was not found or is not a map, but it should
-            %% be according to spec, so we replace by a new map
-            set(Key, babel_map:new(Value, Spec), Acc)
+            case is_type(Value) of
+                true ->
+                    set(Key, set_context(Value, Acc#babel_map.context), Acc);
+                false ->
+                    %% The existing value was not found or is not a map, but it
+                    %% should be according to spec, so we replace by a new map
+                    New = babel_map:new(Value, Spec, Acc#babel_map.context),
+                    set(Key, New, Acc)
+            end
     end;
 
 do_update(Key, Value, Acc, {set, _}) when is_list(Value) ->
@@ -1545,7 +1551,12 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}) ->
             end;
         _ ->
             %% The existing value was not found so create a new one
-            set(Key, babel_counter:new(Value), Acc)
+            case babel_counter:is_type(Value) of
+                true ->
+                    set(Key, Value, Acc);
+                false ->
+                    set(Key, babel_counter:new(Value), Acc)
+            end
     end;
 
 do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
@@ -1571,7 +1582,12 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
             end;
         _ ->
             %% The existing value was not found so create a new one
-            set(Key, babel_flag:new(Value, Ctxt), Acc)
+            case babel_flag:is_type(Value) of
+                true ->
+                    set(Key, babel_flag:set_context(Value, Ctxt), Acc);
+                false ->
+                    set(Key, babel_flag:new(Value, Ctxt), Acc)
+            end
     end.
 
 

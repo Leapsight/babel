@@ -202,7 +202,7 @@ update_5_test(_) ->
         }
     },
     ?assertError(
-        {badkeytype, 100, binary},
+        {badkeytype, 100, {register, binary}},
         babel_map:update(Data, babel_map:new(), Spec)
     ).
 
