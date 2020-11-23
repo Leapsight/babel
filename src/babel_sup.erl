@@ -91,6 +91,7 @@ init([]) ->
     TTL = babel_config:get(cache_ttl_secs, 60),
 
     Children = [
+        %% CACHES
         ?WORKER(
             babel_index_collection,
             cache,
@@ -105,6 +106,7 @@ init([]) ->
             permanent,
             5000
         ),
+        %% EMBEDDED RELIABLE
         ?SUPERVISOR(
             reliable_sup,
             reliable_sup,
