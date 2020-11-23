@@ -52,6 +52,7 @@
 -export([get/2]).
 -export([get/3]).
 -export([set/3]).
+-export([put/3]).
 -export([fold/3]).
 
 -compile({no_auto_import, [get/1]}).
@@ -183,6 +184,17 @@ collect([Key], KVTerm, Default) ->
 
 collect(Keys, KVTerm, Default) when is_list(Keys) ->
     collect(Keys, KVTerm, Default, []).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @equiv set/3
+%% @end
+%% -----------------------------------------------------------------------------
+-spec put(Key :: key(), Value :: any(), KVTerm :: t()) -> t().
+
+put(Key, Value, KVTerm) ->
+    set(Key, Value, KVTerm).
 
 
 %% -----------------------------------------------------------------------------
