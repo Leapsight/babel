@@ -709,6 +709,13 @@ collect(Keys, Map) ->
 %%         <<"b">> => {babel_counter,0,2}}}
 %% ]]></pre>
 %%
+%% !> The function is not clever in terms of optimisations, so judgment is
+%% required when used. For example if
+%% `Keys = [ [A, B, X], [A, B, Y], [A, B, Z] ]', it will iterate 3 times
+%% traversing the whole path from A to X, Y and Z i.e. reading A then B three
+%% times. In the future we might want to change this so that [A, B] is read
+%% once.
+%%
 %% @throws badkey
 %% @end
 %% -----------------------------------------------------------------------------
@@ -817,6 +824,13 @@ collect_values(Keys, Map) ->
 %% ).
 %% #{<<"x">> => #{<<"a">> => 1, <<"b">> => 2}}
 %% ]]></pre>
+%%
+%% !> The function is not clever in terms of optimisations, so judgment is
+%% required when used. For example if
+%% `Keys = [ [A, B, X], [A, B, Y], [A, B, Z] ]', it will iterate 3 times
+%% traversing the whole path from A to X, Y and Z i.e. reading A then B three
+%% times. In the future we might want to change this so that [A, B] is read
+%% once.
 %%
 %% @throws badkey
 %% @end

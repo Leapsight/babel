@@ -347,6 +347,12 @@ lists would not. Default value: `list`.
           <<"b">> => {babel_counter,0,2}}}
 ```
 
+!> The function is not clever in terms of optimisations, so judgment is
+required when used. For example if
+`Keys = [ [A, B, X], [A, B, Y], [A, B, Z] ]`, it will iterate 3 times
+traversing the whole path from A to X, Y and Z i.e. reading A then B three
+times. In the future we might want to change this so that [A, B] is read
+once.
 
 <a name="collect_values-2"></a>
 
@@ -462,6 +468,12 @@ lists would not. Default value: `list`.
   #{<<"x">> => #{<<"a">> => 1, <<"b">> => 2}}
 ```
 
+!> The function is not clever in terms of optimisations, so judgment is
+required when used. For example if
+`Keys = [ [A, B, X], [A, B, Y], [A, B, Z] ]`, it will iterate 3 times
+traversing the whole path from A to X, Y and Z i.e. reading A then B three
+times. In the future we might want to change this so that [A, B] is read
+once.
 
 <a name="context-1"></a>
 
