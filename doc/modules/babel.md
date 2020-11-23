@@ -112,6 +112,9 @@ create_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collect
 Schedules the creation of an index and its partitions according to
 `Config` using Reliable.
 
+The updated collection is returned under the key `result` of the
+`reliable:wf_result()`.
+
 ?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
 of the possible return values.
 
@@ -120,7 +123,7 @@ of the possible return values.
 ### delete/3 ###
 
 <pre><code>
-delete(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Opts::<a href="#type-opts">opts()</a>) -&gt; ok | {scheduled, WorkflowId::{<a href="#type-bucket_and_type">bucket_and_type()</a>, <a href="#type-key">key()</a>}} | {error, Reason::term()}
+delete(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Opts::<a href="#type-opts">opts()</a>) -&gt; ok | {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -273,7 +276,7 @@ opts_to_riak_opts(X1::map()) -&gt; list()
 ### put/5 ###
 
 <pre><code>
-put(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>, Spec::<a href="#type-type_spec">type_spec()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; ok | {ok, Datatype::<a href="#type-datatype">datatype()</a>} | {ok, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>} | {scheduled, WorkflowId::{<a href="#type-bucket_and_type">bucket_and_type()</a>, <a href="#type-key">key()</a>}} | {error, Reason::term()}
+put(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>, Spec::<a href="#type-type_spec">type_spec()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; ok | {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -364,6 +367,9 @@ update_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index
 Updates all the indices in the collection with the provided Actions and
 schedules the update of the relevant index partitions in the database i.e.
 persisting the index changes.
+
+The names of the updated indices is returned under the key `result` of the
+`reliable:wf_result()`.
 
 ?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
 of the possible return values.

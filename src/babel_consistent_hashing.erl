@@ -78,9 +78,6 @@ jump_consistent_hash(Key, N) ->
     jump_consistent_hash(Key, N, -1, 0).
 
 
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc
 %% The following is the C++ implementation in
 %% A Fast, Minimal Memory, Consistent Hash Algorithm
 %% https://arxiv.org/pdf/1406.2294.pdf
@@ -94,9 +91,6 @@ jump_consistent_hash(Key, N) ->
 %%   }
 %%   return (int32_t)b;
 %% }
-%% @end
-%% -----------------------------------------------------------------------------
-
 jump_consistent_hash(Key, N, _, J0) when J0 < N ->
     %% B1 = J0,
     NewKey = (Key * ?MAGIC + 1) band ?MASK,

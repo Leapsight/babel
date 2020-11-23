@@ -408,3 +408,8 @@ update(Actions::[<a href="#type-update_action">update_action()</a>], Index::<a h
 </code></pre>
 <br />
 
+throws `{badaction, Action}`
+
+Throws `{badaction, update_action()}` in case of the action wants to delete
+a modified map.
+

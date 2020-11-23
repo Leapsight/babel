@@ -638,8 +638,6 @@ collect(Keys, Map) ->
 %% and `map'. Notice that naturally Erlang maps will deduplicate keys whereas
 %% lists would not. Default value: `list'.
 %%
-%% @throws badkey
-%%
 %% **Examples**:
 %%
 %% <pre lang="erlang"><![CDATA[
@@ -710,6 +708,8 @@ collect(Keys, Map) ->
 %%       #{<<"a">> => {babel_counter,0,1},
 %%         <<"b">> => {babel_counter,0,2}}}
 %% ]]></pre>
+%%
+%% @throws badkey
 %% @end
 %% -----------------------------------------------------------------------------
 -spec collect(Keys :: [key_path()], Map :: t(), Opts :: collect_opts()) ->
@@ -756,8 +756,6 @@ collect_values(Keys, Map) ->
 %% * `return` - the Erlang return type of the function. Valid values are `list'
 %% and `map'. Notice that naturally Erlang maps will deduplicate keys whereas
 %% lists would not. Default value: `list'.
-%%
-%% @throws badkey
 %%
 %% **Examples**:
 %%
@@ -820,6 +818,8 @@ collect_values(Keys, Map) ->
 %% #{<<"x">> => #{<<"a">> => 1, <<"b">> => 2}}
 %% ]]></pre>
 %%
+%% @throws badkey
+%% @end
 %% -----------------------------------------------------------------------------
 -spec collect_values([key_path()], Map :: t(), Opts :: collect_opts()) ->
     [any()] | #{binary() => any()}.

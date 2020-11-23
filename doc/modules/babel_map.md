@@ -74,6 +74,17 @@ action() = map()
 </code></pre>
 
 
+<a name="collect_opts()"></a>
+
+
+### collect_opts() ###
+
+
+<pre><code>
+collect_opts() = #{default =&gt; any(), badkey =&gt; skip | error, return =&gt; map | list}
+</code></pre>
+
+
 <a name="erl_type()"></a>
 
 
@@ -193,7 +204,7 @@ is not of type binary.
 ### change_status/2 ###
 
 <pre><code>
-change_status(KeyPath::<a href="babel_key_value.md#type-path">babel_key_value:path()</a>, Map::<a href="#type-t">t()</a>) -&gt; none | both | removed | updated
+change_status(KeyOrPath::<a href="#type-key_path">key_path()</a>, Map::<a href="#type-t">t()</a>) -&gt; none | both | removed | updated
 </code></pre>
 <br />
 
@@ -225,28 +236,124 @@ collect(Keys::[<a href="#type-key_path">key_path()</a>], Map::<a href="#type-t">
 </code></pre>
 <br />
 
-Returns a list of values associated with the keys `Keys`.
-Fails with a `{badkey, K}` exeception if any key `K` in `Keys` is not
-present in the map.
+Calls [`collect/3`](#collect-3) with the default options.
 
 <a name="collect-3"></a>
 
 ### collect/3 ###
 
 <pre><code>
-collect(Keys::[<a href="#type-key_path">key_path()</a>], Map::<a href="#type-t">t()</a>, Default::any()) -&gt; [any()]
+collect(Keys::[<a href="#type-key_path">key_path()</a>], Map::<a href="#type-t">t()</a>, Opts::<a href="#type-collect_opts">collect_opts()</a>) -&gt; [any()] | #{binary() =&gt; any()}
 </code></pre>
 <br />
 
-Returns a list of values associated with the keys `Keys`. If any key
-`K` in `Keys` is not present in the map the value `Default` is returned.
+throws `badkey`
 
-<a name="collect_map-2"></a>
+Returns a list of values associated with the keys `Keys`.
 
-### collect_map/2 ###
+?> The value returned by this function are not raw values, but Babel
+datatype values. If you want to get the raw values use
+[`collect_values/3`](#collect_values-3) instead.
+
+The return depends on the following options:
+
+* `default` - the value to use as default when a key in `Keys` is not
+present in the map `Map`. The presence of a default value disables the
+option `on_badkey`.
+* `on_badkey` - what happens when a key is not present in the map and there
+was no default value provided. Valid values are `skip`, or `error`. When
+using `skip` the function simply ignores the missing key and returns all
+found keys. Using `error` will fail with a `badkey` exception.
+* `return` - the Erlang return type of the function. Valid values are `list`
+and `map`. Notice that naturally Erlang maps will deduplicate keys whereas
+lists would not. Default value: `list`.
+
+**Examples**:
+
+```erlang
+
+  Map = babel_map:new(
+      #{
+          <<"x">> => #{
+              <<"a">> => 1,
+              <<"b">> => 2
+          }
+      },
+      #{
+          <<"x">> => {map, #{
+              <<"a">> => {counter, integer},
+              <<"b">> => {counter, integer}
+          }}
+      }
+  ).
+```
+
+```erlang
+
+  babel_map:collect([<<"x">>], Map).
+  [{babel_map,#{<<"a">> => {babel_counter,0,1},
+                <<"b">> => {babel_counter,0,2}},
+              [<<"a">>,<<"b">>],
+              [],undefined}]
+```
+
+```erlang
+
+  babel_map:collect([<<"y">>], Map).
+  ** exception error: badkey
+```
+
+```erlang
+
+  babel_map:collect([<<"y">>], Map, #{on_badkey => skip}).
+  []
+```
+
+```erlang
+
+  babel_map:collect([<<"y">>], Map, #{default => undefined}).
+  [undefined]
+```
+
+```erlang
+
+  babel_map:collect([<<"x">>], Map, #{return => map}).
+  #{<<"x">> =>
+        {babel_map,#{<<"a">> => {babel_counter,0,1},
+                     <<"b">> => {babel_counter,0,2}},
+                   [<<"a">>,<<"b">>],
+                   [],undefined}}
+```
+
+```erlang
+
+  babel_map:collect(
+      [ [<<"x">>, <<"a">>], [<<"x">>, <<"b">>]  ],
+      Map,
+      #{return => list}
+  ).
+  [{babel_counter, 0, 1},{babel_counter, 0, 2}]
+```
+
+```erlang
+
+  babel_map:collect(
+      [ [<<"x">>, <<"a">>], [<<"x">>, <<"b">>]  ],
+      Map,
+      #{return => map}
+  ).
+  #{<<"x">> =>
+        #{<<"a">> => {babel_counter,0,1},
+          <<"b">> => {babel_counter,0,2}}}
+```
+
+
+<a name="collect_values-2"></a>
+
+### collect_values/2 ###
 
 <pre><code>
-collect_map(Keys::[<a href="#type-key_path">key_path()</a>], Map::<a href="#type-t">t()</a>) -&gt; map()
+collect_values(Keys::[<a href="#type-key_path">key_path()</a>], Map::<a href="#type-t">t()</a>) -&gt; [any()]
 </code></pre>
 <br />
 
@@ -254,17 +361,107 @@ Returns a list of values associated with the keys `Keys`.
 Fails with a `{badkey, K}` exeception if any key `K` in `Keys` is not
 present in the map.
 
-<a name="collect_map-3"></a>
+<a name="collect_values-3"></a>
 
-### collect_map/3 ###
+### collect_values/3 ###
 
 <pre><code>
-collect_map(Keys::[<a href="#type-key_path">key_path()</a>], Map::<a href="#type-t">t()</a>, Default::any()) -&gt; map()
+collect_values(Keys::[<a href="#type-key_path">key_path()</a>], Map::<a href="#type-t">t()</a>, Opts::<a href="#type-collect_opts">collect_opts()</a>) -&gt; [any()] | #{binary() =&gt; any()}
 </code></pre>
 <br />
 
-Returns a list of values associated with the keys `Keys`. If any key
-`K` in `Keys` is not present in the map the value `Default` is returned.
+throws `badkey`
+
+Returns a list of values associated with the keys `Keys`.
+
+?> The value returned by this function are the raw values e.g. equivalent to
+calling [`get_value/2`](#get_value-2) on a Babel datatype. If you want to get the
+container datatype values use [`collect/3`](#collect-3) instead.
+
+The return depends on the following options:
+
+* `default` - the value to use as default when a key in `Keys` is not
+present in the map `Map`. The presence of a default value disables the
+option `on_badkey`.
+* `on_badkey` - what happens when a key is not present in the map and there
+was no default value provided. Valid values are `skip`, or `error`. When
+using `skip` the function simply ignores the missing key and returns all
+found keys. Using `error` will fail with a `badkey` exception.
+* `return` - the Erlang return type of the function. Valid values are `list`
+and `map`. Notice that naturally Erlang maps will deduplicate keys whereas
+lists would not. Default value: `list`.
+
+**Examples**:
+
+```erlang
+
+  Map = babel_map:new(
+      #{
+          <<"x">> => #{
+              <<"a">> => 1,
+              <<"b">> => 2
+          }
+      },
+      #{
+          <<"x">> => {map, #{
+              <<"a">> => {counter, integer},
+              <<"b">> => {counter, integer}
+          }}
+      }
+  ).
+```
+
+```erlang
+
+  babel_map:collect_values([<<"x">>], Map).
+  [#{<<"a">> => 1, <<"b">> => 2}]
+```
+
+```erlang
+
+  babel_map:collect_values([<<"y">>], Map).
+  ** exception error: badkey
+```
+
+```erlang
+
+  babel_map:collect_values([<<"y">>], Map, #{on_badkey => skip}).
+  []
+```
+
+```erlang
+
+  babel_map:collect_values([<<"y">>], Map, #{default => undefined}).
+  [undefined]
+```
+
+```erlang
+
+  babel_map:collect_values([<<"x">>], Map, #{return => map}).
+  #{<<"x">> => #{<<"a">> => 1, <<"b">> => 2}}.
+```
+
+```erlang
+
+  babel_map:collect_values(
+      [ [<<"x">>, <<"a">>], [<<"x">>, <<"b">>]  ],
+      Map,
+      #{return => list}
+  ).
+  [1,2]
+```
+
+
+```erlang
+
+  babel_map:collect_values(
+      [ [<<"x">>, <<"a">>], [<<"x">>, <<"b">>]  ],
+      Map,
+      #{return => map}
+  ).
+  #{<<"x">> => #{<<"a">> => 1, <<"b">> => 2}}
+```
+
 
 <a name="context-1"></a>
 
@@ -463,23 +660,6 @@ keys(T::<a href="#type-t">t()</a>) -&gt; [binary()] | no_return()
 Returns a complete list of keys, in any order, which resides within map
 `T`.
 The call fails with a `{badmap, T}` exception if `T` is not a map.
-
-<a name="merge-2"></a>
-
-### merge/2 ###
-
-<pre><code>
-merge(T1::<a href="#type-t">t()</a>, T2::<a href="#type-t">t()</a> | map()) -&gt; Map3::<a href="#type-t">t()</a>
-</code></pre>
-<br />
-
-Merges two maps into a single map `Map3`.
-The function implements a deep merge.
-This function implements minimal type checking so merging two maps that use
-different type specs can potentially result in an exception being thrown or
-in an invalid map at time of storing.
-
-The call fails with a {badmap,Map} exception if `T1` or `T2` is not a map.
 
 <a name="new-0"></a>
 

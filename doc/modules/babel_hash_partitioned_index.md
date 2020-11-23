@@ -90,7 +90,7 @@ covered_fields(X1::<a href="#type-t">t()</a>) -&gt; [binary()]
 ### distinguished_key_paths/1 ###
 
 <pre><code>
-distinguished_key_paths(Config::<a href="#type-t">t()</a>) -&gt; [<a href="babel_key_value.md#type-path">babel_key_value:path()</a>]
+distinguished_key_paths(Config::<a href="#type-t">t()</a>) -&gt; [<a href="babel_key_value.md#type-key">babel_key_value:key()</a>]
 </code></pre>
 <br />
 

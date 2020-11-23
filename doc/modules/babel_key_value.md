@@ -117,6 +117,17 @@ get(Key::<a href="#type-key">key()</a>, KVTerm::<a href="#type-t">t()</a>, Defau
 </code></pre>
 <br />
 
+<a name="put-3"></a>
+
+### put/3 ###
+
+<pre><code>
+put(Key::<a href="#type-key">key()</a>, Value::any(), KVTerm::<a href="#type-t">t()</a>) -&gt; <a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+Equivalent to `set / 3`.
+
 <a name="set-3"></a>
 
 ### set/3 ###
