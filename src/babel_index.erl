@@ -698,7 +698,7 @@ change_summary(Keys, Map, _) ->
                     throw(both);
                 Status when Acc /= none andalso Acc /= Status ->
                     throw(both);
-                Status when Acc == none ->
+                Status ->
                     Status
             end
         end,
