@@ -1519,7 +1519,7 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {map, Spec}) ->
         _ ->
             case is_type(Value) of
                 true ->
-                    set(Key, set_context(Value, Acc#babel_map.context), Acc);
+                    set(Key, set_context(Acc#babel_map.context, Value), Acc);
                 false ->
                     %% The existing value was not found or is not a map, but it
                     %% should be according to spec, so we replace by a new map
@@ -1584,7 +1584,7 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
             %% The existing value was not found so create a new one
             case babel_flag:is_type(Value) of
                 true ->
-                    set(Key, babel_flag:set_context(Value, Ctxt), Acc);
+                    set(Key, babel_flag:set_context(Ctxt, Value), Acc);
                 false ->
                     set(Key, babel_flag:new(Value, Ctxt), Acc)
             end
