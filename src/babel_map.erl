@@ -71,6 +71,13 @@
 -include("babel.hrl").
 
 -define(BADKEY, '$error_badkey').
+-define(COLLECT_VALUES, '$collect_values').
+-define(DEFAULT_COLLECT_OPTS, #{
+    '$collect_values' => false,
+    default => ?BADKEY,
+    on_badkey => default,
+    return => list
+}).
 
 -record(babel_map, {
     values = #{}            ::  #{key() => value()},
@@ -102,6 +109,11 @@
 -type key_path()            ::  binary() | [binary()].
 -type value()               ::  any().
 -type action()              ::  map().
+-type collect_opts()        ::  #{
+                                    default => any(),
+                                    badkey => skip | error,
+                                    return => map | list
+                                }.
 
 -export_type([t/0]).
 -export_type([type_spec/0]).
@@ -115,8 +127,8 @@
 -export([changed_key_paths/1]).
 -export([collect/2]).
 -export([collect/3]).
--export([collect_map/2]).
--export([collect_map/3]).
+-export([collect_values/2]).
+-export([collect_values/3]).
 -export([context/1]).
 -export([decrement/2]).
 -export([decrement/3]).
@@ -597,35 +609,120 @@ get(_, Term, _) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns a list of values associated with the keys `Keys'.
-%% Fails with a `{badkey, K}` exeception if any key `K' in `Keys' is not
-%% present in the map.
+%% @doc Calls {@link collect/3} with the default options.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec collect([key_path()], Map :: t()) -> [any()].
 
 collect(Keys, Map) ->
-    collect(Keys, Map, ?BADKEY).
+    collect(Keys, Map, ?DEFAULT_COLLECT_OPTS).
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns a list of values associated with the keys `Keys'. If any key
-%% `K' in `Keys' is not present in the map the value `Default' is returned.
+%% @doc Returns a list of values associated with the keys `Keys'.
+%%
+%% ?> The value returned by this function are not raw values, but Babel
+%% datatype values. If you want to get the raw values use
+%% {@link collect_values/3} instead.
+%%
+%% The return depends on the following options:
+%%
+%% * `default' - the value to use as default when a key in `Keys' is not
+%% present in the map `Map'. The presence of a default value disables the
+%% option `on_badkey'.
+%% * `on_badkey' - what happens when a key is not present in the map and there
+%% was no default value provided. Valid values are `skip', or `error'. When
+%% using `skip' the function simply ignores the missing key and returns all
+%% found keys. Using `error' will fail with a `badkey' exception.
+%% * `return` - the Erlang return type of the function. Valid values are `list'
+%% and `map'. Notice that naturally Erlang maps will deduplicate keys whereas
+%% lists would not. Default value: `list'.
+%%
+%% @throws badkey
+%%
+%% **Examples**:
+%%
+%% <pre lang="erlang"><![CDATA[
+%% Map = babel_map:new(
+%%     #{
+%%         <<"x">> => #{
+%%             <<"a">> => 1,
+%%             <<"b">> => 2
+%%         }
+%%     },
+%%     #{
+%%         <<"x">> => {map, #{
+%%             <<"a">> => {counter, integer},
+%%             <<"b">> => {counter, integer}
+%%         }}
+%%     }
+%% ).
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect([<<"x">>], Map).
+%% [{babel_map,#{<<"a">> => {babel_counter,0,1},
+%%               <<"b">> => {babel_counter,0,2}},
+%%             [<<"a">>,<<"b">>],
+%%             [],undefined}]
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect([<<"y">>], Map).
+%% ** exception error: badkey
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect([<<"y">>], Map, #{on_badkey => skip}).
+%% []
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect([<<"y">>], Map, #{default => undefined}).
+%% [undefined]
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect([<<"x">>], Map, #{return => map}).
+%% #{<<"x">> =>
+%%       {babel_map,#{<<"a">> => {babel_counter,0,1},
+%%                    <<"b">> => {babel_counter,0,2}},
+%%                  [<<"a">>,<<"b">>],
+%%                  [],undefined}}
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect(
+%%     [ [<<"x">>, <<"a">>], [<<"x">>, <<"b">>]  ],
+%%     Map,
+%%     #{return => list}
+%% ).
+%% [{babel_counter, 0, 1},{babel_counter, 0, 2}]
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect(
+%%     [ [<<"x">>, <<"a">>], [<<"x">>, <<"b">>]  ],
+%%     Map,
+%%     #{return => map}
+%% ).
+%% #{<<"x">> =>
+%%       #{<<"a">> => {babel_counter,0,1},
+%%         <<"b">> => {babel_counter,0,2}}}
+%% ]]></pre>
 %% @end
 %% -----------------------------------------------------------------------------
--spec collect(Keys :: [key_path()], Map :: t(), Default :: any()) -> [any()].
+-spec collect(Keys :: [key_path()], Map :: t(), Opts :: collect_opts()) ->
+    [any()] | #{binary() => any()}.
 
-collect([Key], Map, Default) ->
-    try
-        [get_value(Key, Map, Default)]
-    catch
-        error:badkey ->
-            error({badkey, Key})
-    end;
-
-collect(Keys, Map, Default) when is_list(Keys) ->
-    collect(Keys, Map, Default, []).
-
+collect(Keys, Map, Opts0) when is_list(Keys) andalso is_map(Opts0) ->
+    Opts1 = maps:merge(?DEFAULT_COLLECT_OPTS, Opts0),
+    Opts = maps:put(?COLLECT_VALUES, false, Opts1),
+    Acc = case maps:get(return, Opts) of
+        list -> [];
+        map -> maps:new()
+    end,
+    do_collect(Keys, Map, Opts, Acc).
 
 
 %% -----------------------------------------------------------------------------
@@ -634,40 +731,109 @@ collect(Keys, Map, Default) when is_list(Keys) ->
 %% present in the map.
 %% @end
 %% -----------------------------------------------------------------------------
--spec collect_map([key_path()], Map :: t()) -> map().
+-spec collect_values([key_path()], Map :: t()) -> [any()].
 
-collect_map(Keys, Map) ->
-    collect_map(Keys, Map, ?BADKEY).
+collect_values(Keys, Map) ->
+    collect_values(Keys, Map, ?DEFAULT_COLLECT_OPTS).
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns a list of values associated with the keys `Keys'. If any key
-%% `K' in `Keys' is not present in the map the value `Default' is returned.
-%% @end
+%% @doc Returns a list of values associated with the keys `Keys'.
+%%
+%% ?> The value returned by this function are the raw values e.g. equivalent to
+%% calling {@link get_value/2} on a Babel datatype. If you want to get the
+%% container datatype values use {@link collect/3} instead.
+%%
+%% The return depends on the following options:
+%%
+%% * `default' - the value to use as default when a key in `Keys' is not
+%% present in the map `Map'. The presence of a default value disables the
+%% option `on_badkey'.
+%% * `on_badkey' - what happens when a key is not present in the map and there
+%% was no default value provided. Valid values are `skip', or `error'. When
+%% using `skip' the function simply ignores the missing key and returns all
+%% found keys. Using `error' will fail with a `badkey' exception.
+%% * `return` - the Erlang return type of the function. Valid values are `list'
+%% and `map'. Notice that naturally Erlang maps will deduplicate keys whereas
+%% lists would not. Default value: `list'.
+%%
+%% @throws badkey
+%%
+%% **Examples**:
+%%
+%% <pre lang="erlang"><![CDATA[
+%% Map = babel_map:new(
+%%     #{
+%%         <<"x">> => #{
+%%             <<"a">> => 1,
+%%             <<"b">> => 2
+%%         }
+%%     },
+%%     #{
+%%         <<"x">> => {map, #{
+%%             <<"a">> => {counter, integer},
+%%             <<"b">> => {counter, integer}
+%%         }}
+%%     }
+%% ).
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect_values([<<"x">>], Map).
+%% [#{<<"a">> => 1, <<"b">> => 2}]
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect_values([<<"y">>], Map).
+%% ** exception error: badkey
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect_values([<<"y">>], Map, #{on_badkey => skip}).
+%% []
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect_values([<<"y">>], Map, #{default => undefined}).
+%% [undefined]
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect_values([<<"x">>], Map, #{return => map}).
+%% #{<<"x">> => #{<<"a">> => 1, <<"b">> => 2}}.
+%% ]]></pre>
+%%
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect_values(
+%%     [ [<<"x">>, <<"a">>], [<<"x">>, <<"b">>]  ],
+%%     Map,
+%%     #{return => list}
+%% ).
+%% [1,2]
+%% ]]></pre>
+%% <pre lang="erlang"><![CDATA[
+%% babel_map:collect_values(
+%%     [ [<<"x">>, <<"a">>], [<<"x">>, <<"b">>]  ],
+%%     Map,
+%%     #{return => map}
+%% ).
+%% #{<<"x">> => #{<<"a">> => 1, <<"b">> => 2}}
+%% ]]></pre>
+%%
 %% -----------------------------------------------------------------------------
--spec collect_map(Keys :: [key_path()], Map :: t(), Default :: any()) ->
-    map().
+-spec collect_values([key_path()], Map :: t(), Opts :: collect_opts()) ->
+    [any()] | #{binary() => any()}.
 
-collect_map([KeyPath], Map, Default) ->
-    try
-        Value = get_value(KeyPath, Map, Default),
-        [H|T] = lists:reverse(KeyPath),
-        collect_map_acc(T, #{H => Value})
-    catch
-        error:badkey ->
-            error({badkey, KeyPath})
-    end;
-
-collect_map(Keys, Map, Default) when is_list(Keys) ->
-    collect_map(Keys, Map, Default, #{}).
-
-
-%% @private
-collect_map_acc([H|T], Value) ->
-    collect_map_acc(T, maps:put(H, Value, maps:new()));
-
-collect_map_acc([], Value) ->
-    Value.
+collect_values(Keys, Map, Opts0) ->
+    %% We remove the posibility of a user forcinf this function to behave like
+    %% collect_values/3 to maintain the semantics of the API.
+    Opts1 = maps:merge(?DEFAULT_COLLECT_OPTS, Opts0),
+    Opts = maps:put(?COLLECT_VALUES, true, Opts1),
+    Acc = case maps:get(return, Opts) of
+        list -> [];
+        map -> maps:new()
+    end,
+    do_collect(Keys, Map, Opts, Acc).
 
 
 %% -----------------------------------------------------------------------------
@@ -1445,29 +1611,43 @@ maybe_set_context(Ctxt, Term) ->
 
 
 %% @private
-collect([H|T], Map, Default, Acc) ->
+do_collect([H|T], Map, Opts, Acc0) ->
+    Strategy = maps:get(on_badkey, Opts),
+
     try
-        collect(T, Map, Default, [get(H, Map, Default)|Acc])
+        Default = maps:get(default, Opts),
+        %% We get the value for key or path H
+        Value = get(H, Map, Default),
+        Acc1 = collect_acc(H, Value, Opts, Acc0),
+        do_collect(T, Map, Opts, Acc1)
     catch
-        error:badkey ->
+        error:badkey when Strategy == skip ->
+            do_collect(T, Map, Opts, Acc0);
+        error:badkey when Strategy == error ->
             error({badkey, H})
     end;
 
-collect([], _, _, Acc) ->
+do_collect([], _, _, Acc) when is_map(Acc) ->
+    Acc;
+
+do_collect([], _, _, Acc) when is_list(Acc) ->
     lists:reverse(Acc).
 
 
 %% @private
-collect_map([H|T], Map, Default, Acc) ->
-    try
-        collect_map(T, Map, Default, maps:put(H, get(H, Map, Default), Acc))
-    catch
-        error:badkey ->
-            error({badkey, H})
-    end;
+collect_acc(Key, Value, #{?COLLECT_VALUES := true}, Acc) ->
+    collect_acc(Key, type_value(Value), Acc);
 
-collect_map([], _, _, Acc) ->
-    Acc.
+collect_acc(Key, Value, _, Acc) ->
+    collect_acc(Key, Value, Acc).
+
+
+%% @private
+collect_acc(Key, Value, Acc) when is_map(Acc) ->
+    babel_key_value:put(Key, Value, Acc);
+
+collect_acc(_, Value, Acc) when is_list(Acc) ->
+    [Value | Acc].
 
 
 %% @private
