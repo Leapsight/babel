@@ -29,12 +29,14 @@
     id                      ::  binary(),
     created_ts              ::  non_neg_integer(),
     last_updated_ts         ::  non_neg_integer(),
-    object                  ::  riak_object()
+    object                  ::  riak_object(),
+    type                    ::  map | set
 }).
 
 -type t()                   ::  #babel_index_partition{}.
 -type riak_object()         ::  riakc_map:crdt_map().
--type data()                ::  riakc_map:crdt_map().
+-type data()                ::  riakc_map:crdt_map() | riakc_set:riakc_set().
+-type opts()                ::  #{type => map | set}.
 
 -export_type([t/0]).
 -export_type([riak_object/0]).
@@ -50,8 +52,10 @@
 -export([lookup/3]).
 -export([lookup/4]).
 -export([new/1]).
+-export([new/2]).
 -export([size/1]).
 -export([store/5]).
+-export([type/1]).
 -export([to_riak_object/1]).
 -export([update_data/2]).
 
@@ -70,16 +74,40 @@
 -spec new(Id :: binary()) -> t().
 
 new(Id) ->
+    new(Id, #{type => map}).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec new(Id :: binary(), Opts :: opts()) -> t().
+
+new(Id, Opts) ->
     Ts = erlang:system_time(millisecond),
-    Object = riakc_map:update(
-        {<<"data">>, map}, fun(Data) -> Data end, riakc_map:new()
-    ),
+    Type = maps:get(type, Opts, map),
+
+    Object = case Type of
+        map ->
+            riakc_map:update(
+                {<<"data">>, map},
+                fun(_) -> riakc_map:new() end,
+                riakc_map:new()
+            );
+        set ->
+            riakc_map:update(
+                {<<"data">>, set},
+                fun(_) -> riakc_set:new() end,
+                riakc_map:new()
+            )
+    end,
 
     #babel_index_partition{
         id = Id,
         created_ts = Ts,
         last_updated_ts = Ts,
-        object = Object
+        object = Object,
+        type = Type
     }.
 
 
@@ -100,12 +128,17 @@ from_riak_object(Object) ->
     LastUpdated = babel_crdt:register_to_integer(
         riakc_map:fetch({<<"last_updated_ts">>, register}, Object)
     ),
+    Type =  case riakc_map:find({<<"type">>, register}, Object) of
+        {ok, Value} -> babel_crdt:register_to_existing_atom(Value, utf8);
+        error -> map
+    end,
 
     #babel_index_partition{
         id = Id,
         created_ts = Created,
         last_updated_ts = LastUpdated,
-        object = Object
+        object = Object,
+        type = Type
     }.
 
 
@@ -120,15 +153,16 @@ to_riak_object(#babel_index_partition{} = Partition) ->
         id = Id,
         created_ts = Created,
         last_updated_ts = LastUpdated,
-        object = Object
+        object = Object,
+        type = Type
     } = Partition,
 
     Values = [
         {{<<"id">>, register}, Id},
         {{<<"created_ts">>, register}, integer_to_binary(Created)},
-        {{<<"last_updated_ts">>, register}, integer_to_binary(LastUpdated)}
+        {{<<"last_updated_ts">>, register}, integer_to_binary(LastUpdated)},
+        {{<<"type">>, register}, atom_to_binary(Type, utf8)}
     ],
-
 
     lists:foldl(
         fun({K, V}, Acc) -> babel_key_value:set(K, V, Acc) end,
@@ -136,6 +170,14 @@ to_riak_object(#babel_index_partition{} = Partition) ->
         Values
     ).
 
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec type(Partition :: t()) -> map | set.
+
+type(#babel_index_partition{type = Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -153,8 +195,11 @@ id(#babel_index_partition{id = Value}) -> Value.
 %% -----------------------------------------------------------------------------
 -spec size(Partition :: t()) -> non_neg_integer().
 
-size(Partition) ->
-    riakc_map:size(data(Partition)).
+size(#babel_index_partition{type = map} = Partition) ->
+    riakc_map:size(data(Partition));
+
+size(#babel_index_partition{type = set} = Partition) ->
+    riakc_set:size(data(Partition)).
 
 
 %% -----------------------------------------------------------------------------
@@ -181,8 +226,8 @@ last_updated_ts(#babel_index_partition{last_updated_ts = Value}) -> Value.
 %% -----------------------------------------------------------------------------
 -spec data(Partition :: t()) -> data().
 
-data(#babel_index_partition{object = Object}) ->
-    case riakc_map:find({<<"data">>, map}, Object) of
+data(#babel_index_partition{type = Type, object = Object}) ->
+    case riakc_map:find({<<"data">>, Type}, Object) of
         {ok, Value} -> Value;
         error -> []
     end.
@@ -194,16 +239,52 @@ data(#babel_index_partition{object = Object}) ->
 %% -----------------------------------------------------------------------------
 -spec update_data(riakc_map:update_fun(), t()) -> t().
 
-update_data(Fun, #babel_index_partition{} = Partition) ->
+update_data(Fun, #babel_index_partition{type = Type} = Partition) ->
     Ts = erlang:system_time(millisecond),
     Object = riakc_map:update(
-        {<<"data">>, map}, Fun, Partition#babel_index_partition.object
+        {<<"data">>, Type}, Fun, Partition#babel_index_partition.object
     ),
 
     Partition#babel_index_partition{
         last_updated_ts = Ts,
         object = Object
     }.
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc !> For internal use. Use {@link store/5} instead.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec store(
+    TypedBucket :: typed_bucket(),
+    Key :: binary(),
+    Partition :: t(),
+    Opts :: babel:opts()) ->
+    ok | {error, any()}.
+
+store(TypedBucket, Key, Partition, Opts0) ->
+    Opts1 = babel:validate_opts(Opts0),
+    Opts = Opts1#{
+        riak_opts =>#{
+            w => quorum,
+            pw => quorum,
+            notfound_ok => false,
+            basic_quorum => true
+        }
+    },
+
+    Conn = babel:get_connection(Opts),
+    RiakOpts = babel:opts_to_riak_opts(Opts),
+    Op = riakc_map:to_op(to_riak_object(Partition)),
+
+    case riakc_pb_socket:update_type(Conn, TypedBucket, Key, Op, RiakOpts) of
+        {error, _} = Error ->
+            Error;
+        _ ->
+            ok = on_update(TypedBucket, Key),
+            ok
+    end.
 
 
 %% -----------------------------------------------------------------------------
@@ -219,28 +300,8 @@ update_data(Fun, #babel_index_partition{} = Partition) ->
     ok | {error, any()}.
 
 store(BucketType, BucketPrefix, Key, Partition, Opts0) ->
-    Opts1 = babel:validate_opts(Opts0),
-    Opts = Opts1#{
-        riak_opts =>#{
-            w => quorum,
-            pw => quorum,
-            notfound_ok => false,
-            basic_quorum => true
-        }
-    },
-
-    Conn = babel:get_connection(Opts),
-    RiakOpts = babel:opts_to_riak_opts(Opts),
     TypedBucket = typed_bucket(BucketType, BucketPrefix),
-    Op = riakc_map:to_op(to_riak_object(Partition)),
-
-    case riakc_pb_socket:update_type(Conn, TypedBucket, Key, Op, RiakOpts) of
-        {error, _} = Error ->
-            Error;
-        _ ->
-            ok = on_update(TypedBucket, Key),
-            ok
-    end.
+    store(TypedBucket, Key, Partition, Opts0).
 
 
 %% -----------------------------------------------------------------------------

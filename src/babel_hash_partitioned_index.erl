@@ -42,7 +42,7 @@
 
 -define(SPEC, #{
     sort_ordering => #{
-        required => false,
+        required => true,
         allow_null => false,
         allow_undefined => false,
         default => asc,
@@ -145,6 +145,7 @@
 -export([from_riak_dict/1]).
 -export([init/2]).
 -export([init_partitions/1]).
+-export([init_partition/2]).
 -export([iterator/3]).
 -export([iterator_done/1]).
 -export([iterator_key/1]).
@@ -407,6 +408,18 @@ init_partitions(#{partition_identifiers := Identifiers}) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+-spec init_partition(PartitionId :: binary(), ConfigData :: t()) ->
+    {ok, babel_index_partition:t()}
+    | {error, any()}.
+
+init_partition(_, _) ->
+    {error, unsupported}.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
 -spec number_of_partitions(t()) -> pos_integer().
 
 number_of_partitions(#{number_of_partitions := Value}) -> Value.
@@ -435,6 +448,7 @@ partition_identifier(KeyValue, Config) ->
         error:{badkey, Key} ->
             error({missing_pattern_key, Key})
     end.
+
 
 
 %% -----------------------------------------------------------------------------

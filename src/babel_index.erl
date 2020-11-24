@@ -55,8 +55,8 @@ end).
     },
     bucket_type => #{
         description => <<
-            "The bucket type used to store the babel_index_partition:t() objects. "
-            "This bucket type should have a datatype of `map`."
+            "The bucket type used to store the babel_index_partition:t() "
+            " objects. This bucket type should have a datatype of `map`."
         >>,
         required => true,
         datatype => [binary, atom],
@@ -193,15 +193,15 @@ end).
     {ok, Config :: map()}
     | {error, any()}.
 
--callback init_partitions(map()) ->
-    {ok, [babel_index_partition:t()]}
+-callback init_partition(PartitionId :: binary(), ConfigData :: map()) ->
+    {ok, babel_index_partition:t()}
     | {error, any()}.
 
 -callback from_riak_dict(Dict :: orddict:orddict()) -> Config :: map().
 
 -callback to_riak_object(Config :: map()) -> Object :: riak_object().
 
--callback number_of_partitions(map()) -> pos_integer().
+-callback number_of_partitions(map()) -> pos_integer() | undefined.
 
 -callback partition_identifier(key_value(), map()) -> partition_id().
 
@@ -503,14 +503,19 @@ update(Actions, Index, Opts0) when is_list(Actions) ->
     Mod = type(Index),
     Config = config(Index),
     TypeBucket = typed_bucket(Index),
-
     GroupedActions = actions_by_partition_id(Actions, Index, Opts),
 
+    ROpts = babel_key_value:put([riak_opts, not_found_ok], false, Opts),
+
     Fun = fun({PartitionId, PActions}, Acc) ->
-        Part0 = babel_index_partition:fetch(TypeBucket, PartitionId, Opts),
+        Result = babel_index_partition:lookup(TypeBucket, PartitionId, ROpts),
+
+        Part0 = case Result of
+            {ok, Value} -> Value;
+            {error, not_found} -> maybe_init_partition(Mod, PartitionId, Config)
+        end,
 
         %% The actual update is performed by the index subtype
-
         Part1 = Mod:update_partition(PActions, Part0, Config),
         [Part1 | Acc]
     end,
@@ -582,9 +587,14 @@ foreach(_Fun, _Index) ->
 match(Pattern, Index, Opts) ->
     Mod = type(Index),
     Config = config(Index),
-    PartitionId = Mod:partition_identifier(Pattern, Config),
+    PartitionId = partition_identifier(Pattern, Index),
     TypeBucket = typed_bucket(Index),
-    Partition = babel_index_partition:fetch(TypeBucket, PartitionId, Opts),
+    ROpts = babel_key_value:put([riak_opts, notfound_ok], false, Opts),
+    Result = babel_index_partition:lookup(TypeBucket, PartitionId, ROpts),
+    Partition = case Result of
+        {ok, Value} -> Value;
+        {error, not_found} -> maybe_init_partition(Mod, PartitionId, Config)
+    end,
 
     %% The actual match is performed by the index subtype
     Mod:match(Pattern, Partition, Config).
@@ -596,6 +606,19 @@ match(Pattern, Index, Opts) ->
 %% =============================================================================
 
 
+
+%% @private
+maybe_init_partition(Mod, PartitionId, Config) ->
+    case Mod:number_of_partitions(Config) of
+        undefined ->
+            %% Dynamically create partitions
+            case Mod:init_partition(PartitionId, Config) of
+                {ok, Partition} -> Partition;
+                {error, Reason} -> error(Reason)
+            end;
+        _ ->
+            error({partition_not_found, PartitionId})
+    end.
 
 %% -----------------------------------------------------------------------------
 %% @private

@@ -38,6 +38,8 @@
 -export([register_to_atom/2]).
 -export([register_to_existing_atom/2]).
 
+-export([type/1]).
+
 -compile({no_auto_import, [get/1]}).
 
 
@@ -223,3 +225,28 @@ map_entry(map, Field, Values) when is_list(Values) ->
     {{Field, map}, riakc_map:new(Values, undefined)}.
 
 
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec type(riakc_dataatype:datatype()) -> atom().
+
+type(Object) ->
+    type_for_module(riakc_datatype:module_for_term(Object)).
+
+
+
+
+%% =============================================================================
+%% PRUVATE
+%% =============================================================================
+
+
+%% @private
+type_for_module(riakc_set)      -> set;
+type_for_module(riakc_hll)      -> hll;
+type_for_module(riakc_gset)     -> set;
+type_for_module(riakc_counter)  -> counter;
+type_for_module(riakc_flag)     -> flag;
+type_for_module(riakc_register) -> register;
+type_for_module(riakc_map)      -> map.
