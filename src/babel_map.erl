@@ -111,7 +111,7 @@
 -type action()              ::  map().
 -type collect_opts()        ::  #{
                                     default => any(),
-                                    badkey => skip | error,
+                                    on_badkey => skip | error,
                                     return => map | list
                                 }.
 
