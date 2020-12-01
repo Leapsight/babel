@@ -377,7 +377,7 @@ delete(TypedBucket, Key, Opts) ->
 -spec execute(
     Poolname :: atom(),
     Fun :: fun((RiakConn :: pid()) -> Result :: any()),
-    Opts :: opts()) ->
+    Opts :: riak_pool:opts()) ->
     {true, Result :: any()} | {false, Reason :: any()} | no_return().
 
 execute(Poolname, Fun, Opts)  ->
