@@ -246,14 +246,6 @@ new(Data, Spec) ->
 new(Data, Spec, Ctxt) ->
     from_map(Data, Spec, Ctxt).
 
-%% new(Data, Spec) when is_map(Data) andalso is_map(Spec) ->
-%%     MissingKeys = lists:subtract(maps:keys(Spec), maps:keys(Data)),
-%%     Values = init_values(maps:with(MissingKeys, Spec), Data),
-%%     #babel_map{
-%%         values = Values,
-%%         updates = ordsets:from_list(maps:keys(Values))
-%%     };
-
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns a new map by applying the type specification `Spec' to the Riak
@@ -1225,12 +1217,13 @@ from_map(Map, Spec0, Ctxt) when is_map(Spec0) ->
     Values0 = maps:fold(ConvertType, maps:new(), Map),
 
     %% Initialise values for Spec keys not present in Map
-    %% Keys = maps:keys(Map),
-    %% MissingKeys = lists:subtract(maps:keys(Spec), Keys),
-    %% Values = init_values(maps:with(MissingKeys, Spec), Values0),
+    Keys = maps:keys(Map),
+    MissingKeys = lists:subtract(maps:keys(Spec), Keys),
+    Values = init_values(maps:with(MissingKeys, Spec), Values0),
+
     #babel_map{
-        values = Values0,
-        updates = ordsets:from_list(maps:keys(Values0)),
+        values = Values,
+        updates = ordsets:from_list(maps:keys(Values)),
         context = Ctxt
     }.
 
@@ -1297,11 +1290,32 @@ from_orddict(RMap, Context, Spec0) when is_map(Spec0) ->
     Values0 = orddict:fold(Convert, maps:new(), RMap),
 
     %% Initialise values for Spec keys not present in RMap
-    %% Keys = [Key || {Key, _} <- orddict:fetch_keys(RMap)],
-    %% MissingKeys = lists:subtract(maps:keys(Spec), Keys),
-    %% Values1 = init_values(maps:with(MissingKeys, Spec), Values0),
+    Keys = [Key || {Key, _} <- orddict:fetch_keys(RMap)],
+    MissingKeys = lists:subtract(maps:keys(Spec), Keys),
+    Values = init_values(maps:with(MissingKeys, Spec), Values0),
 
-    #babel_map{values = Values0, context = Context}.
+    #babel_map{values = Values, context = Context}.
+
+
+%% @private
+init_values(Spec, Acc0) ->
+    %% We only set the missing container values
+    Fun = fun
+        ('$validated', _, Acc) ->
+            Acc;
+
+        (_, {register, _}, Acc) ->
+            Acc;
+
+        (Key, {map, KeySpec}, Acc) when is_map(KeySpec) ->
+            maps:put(Key, new(#{}, KeySpec), Acc);
+
+        (Key, {Type, _}, Acc) ->
+            Mod = type_to_mod(Type),
+            Mod /= undefined andalso Mod /= error orelse error({badtype, Type}),
+            maps:put(Key, Mod:new(), Acc)
+    end,
+    maps:fold(Fun, Acc0, Spec).
 
 
 %% @private
@@ -1318,28 +1332,6 @@ to_key(Key) when is_binary(Key) ->
 
 to_key(Term) ->
     error({badkey, Term}).
-
-
-
-%% init_values(Spec, Acc0) ->
-%%     %% We only set the missing container values
-%%     Fun = fun
-%%         (Key, {map, KeySpec}, Acc) when is_map(KeySpec) ->
-%%             maps:put(Key, babel_map:new(), Acc);
-
-%%         (Key, {set, _}, Acc) ->
-%%             maps:put(Key, babel_set:new(), Acc);
-
-%%         (_, {register, _}, Acc) ->
-%%             Acc;
-
-%%         (Key, {flag, _}, Acc) ->
-%%             maps:put(Key, babel_flag:new(), Acc);
-
-%%         (_, {counter, _KeySpec}, _) ->
-%%             error(not_implemented)
-%%     end,
-%%     maps:fold(Fun, Acc0, Spec).
 
 
 %% @private
@@ -1509,9 +1501,6 @@ prepare_update_ops(T, Spec) ->
             Bin = to_binary(Value, Type),
             [{update, RKey, {assign, Bin}} | Acc];
 
-        ToOp({_, register}, undefined, Acc) ->
-            Acc;
-
         ToOp({{_, flag} = RKey, Type}, Flag, Acc) ->
             case babel_flag:to_riak_op(Flag, Type) of
                 undefined -> Acc;
@@ -1523,6 +1512,9 @@ prepare_update_ops(T, Spec) ->
                 undefined -> Acc;
                 {_, Op, _} -> [{update, RKey, Op} | Acc]
             end;
+
+        ToOp({_, register}, undefined, Acc) ->
+            Acc;
 
         ToOp(Key, Value, Acc) ->
             {Datatype, SpecOrType} = maps:get(Key, Spec),
@@ -1695,6 +1687,8 @@ do_remove(_, Term) ->
 
 
 %% @private
+%% TODO this clause is wrong or we need to have copied the root context to the
+%% internal maps to avoid being here
 do_update(_, undefined, #babel_map{context = undefined} = Acc, _) ->
     Acc;
 

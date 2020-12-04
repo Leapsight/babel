@@ -92,3 +92,5 @@ set(_) ->
     ?assertEqual({babel_flag, true, disable, <<>>}, C2),
     ?assertEqual(false, babel_flag:value(C2)),
     ?assertEqual(true, babel_flag:original_value(C2)).
+
+
