@@ -208,7 +208,7 @@ of the possible return values.
 ### execute/3 ###
 
 <pre><code>
-execute(Poolname::atom(), Fun::fun((RiakConn::pid()) -&gt; Result::any()), Opts::<a href="#type-opts">opts()</a>) -&gt; {true, Result::any()} | {false, Reason::any()} | no_return()
+execute(Poolname::atom(), Fun::fun((RiakConn::pid()) -&gt; Result::any()), Opts::<a href="riak_pool.md#type-opts">riak_pool:opts()</a>) -&gt; {true, Result::any()} | {false, Reason::any()} | no_return()
 </code></pre>
 <br />
 

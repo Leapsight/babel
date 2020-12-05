@@ -1,29 +1,18 @@
 
 
-# Module babel_hash_partitioned_index #
+# Module babel_simple_index #
 * [Description](#description)
 * [Data Types](#types)
 * [Function Index](#index)
 * [Function Details](#functions)
 
-A hash-partitioned index is an index whose contents (index entries)
-have been partitioned amongst a fixed number of parts (called partitions)
-using a hashing algorithm to determine in which partition and entry should be
-located.
+This object is immutable.
 
 __Behaviours:__ [`babel_index`](babel_index.md).
 
 <a name="description"></a>
 
 ## Description ##
-
-By partitioning an index into multiple physical parts, you are accessing much
-smaller objects which makes it faster and more reliable.
-
-With hash partitioning, an index entry is placed into a partition based
-on the result of passing the partitioning key into a hashing algorithm.
-
-This object is immutable.
 
 <a name="types"></a>
 
@@ -48,7 +37,7 @@ fields() = [<a href="babel_key_value.md#type-key">babel_key_value:key()</a>]
 
 
 <pre><code>
-iterator() = #babel_hash_partitioned_index_iter{partition = <a href="babel_index_partition.md#type-t">babel_index_partition:t()</a> | undefined, sort_ordering = asc | desc, key = binary() | undefined, values = map() | undefined, typed_bucket = {binary(), binary()}, first = binary() | undefined, keys = [binary()], partition_identifiers = [<a href="babel_index.md#type-partition_id">babel_index:partition_id()</a>], riak_opts = <a href="babel.md#type-riak_opts">babel:riak_opts()</a>, done = boolean()}
+iterator() = term()
 </code></pre>
 
 
@@ -59,22 +48,13 @@ iterator() = #babel_hash_partitioned_index_iter{partition = <a href="babel_index
 
 
 <pre><code>
-t() = #{sort_ordering =&gt; asc | desc, number_of_partitions =&gt; integer(), partition_algorithm =&gt; atom(), partition_identifier_prefix =&gt; binary(), partition_identifiers =&gt; [binary()], partition_by =&gt; <a href="#type-fields">fields()</a>, index_by =&gt; <a href="#type-fields">fields()</a>, aggregate_by =&gt; <a href="#type-fields">fields()</a>, covered_fields =&gt; <a href="#type-fields">fields()</a>, cardinality =&gt; one | many}
+t() = #{sort_ordering =&gt; asc | desc, partition_identifier_prefix =&gt; binary(), index_by =&gt; <a href="#type-fields">fields()</a>, covered_fields =&gt; <a href="#type-fields">fields()</a>}
 </code></pre>
 
 
 <a name="functions"></a>
 
 ## Function Details ##
-
-<a name="aggregate_by-1"></a>
-
-### aggregate_by/1 ###
-
-<pre><code>
-aggregate_by(X1::<a href="#type-t">t()</a>) -&gt; [binary()]
-</code></pre>
-<br />
 
 <a name="covered_fields-1"></a>
 
@@ -144,7 +124,7 @@ init_partitions(X1::<a href="#type-t">t()</a>) -&gt; {ok, [<a href="babel_index_
 ### iterator/3 ###
 
 <pre><code>
-iterator(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Config::<a href="babel_index.md#type-config">babel_index:config()</a>, Opts::<a href="babel.md#type-riak_opts">babel:riak_opts()</a>) -&gt; Iterator::<a href="#type-iterator">iterator()</a>
+iterator(X1::<a href="babel_index.md#type-t">babel_index:t()</a>, X2::<a href="babel_index.md#type-config">babel_index:config()</a>, Opts::<a href="babel.md#type-riak_opts">babel:riak_opts()</a>) -&gt; Iterator::<a href="#type-iterator">iterator()</a>
 </code></pre>
 <br />
 
@@ -195,27 +175,16 @@ iterator_values(Iterator::any()) -&gt; Key::<a href="babel_index.md#type-index_v
 ### number_of_partitions/1 ###
 
 <pre><code>
-number_of_partitions(X1::<a href="#type-t">t()</a>) -&gt; pos_integer()
+number_of_partitions(X1::<a href="#type-t">t()</a>) -&gt; pos_integer() | undefined
 </code></pre>
 <br />
 
-<a name="partition_algorithm-1"></a>
+<a name="partition-3"></a>
 
-### partition_algorithm/1 ###
-
-<pre><code>
-partition_algorithm(X1::<a href="#type-t">t()</a>) -&gt; atom()
-</code></pre>
-<br />
-
-Returns the partition algorithm name configured for this index.
-
-<a name="partition_by-1"></a>
-
-### partition_by/1 ###
+### partition/3 ###
 
 <pre><code>
-partition_by(X1::<a href="#type-t">t()</a>) -&gt; [binary()]
+partition(Pattern::<a href="babel_index.md#type-key_value">babel_index:key_value()</a>, Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; <a href="babel_index.md#type-partition_id">babel_index:partition_id()</a> | no_return()
 </code></pre>
 <br />
 
@@ -242,7 +211,7 @@ partition_identifier_prefix(X1::<a href="#type-t">t()</a>) -&gt; binary()
 ### partition_identifiers/2 ###
 
 <pre><code>
-partition_identifiers(Order::asc | desc, Config::<a href="#type-t">t()</a>) -&gt; [<a href="babel_index.md#type-partition_id">babel_index:partition_id()</a>]
+partition_identifiers(X1::asc | desc, X2::<a href="#type-t">t()</a>) -&gt; [<a href="babel_index.md#type-partition_id">babel_index:partition_id()</a>]
 </code></pre>
 <br />
 

@@ -81,7 +81,7 @@ action() = map()
 
 
 <pre><code>
-collect_opts() = #{default =&gt; any(), badkey =&gt; skip | error, return =&gt; map | list}
+collect_opts() = #{default =&gt; any(), on_badkey =&gt; skip | error, return =&gt; map | list}
 </code></pre>
 
 
@@ -204,7 +204,19 @@ is not of type binary.
 ### change_status/2 ###
 
 <pre><code>
-change_status(KeyOrPath::<a href="#type-key_path">key_path()</a>, Map::<a href="#type-t">t()</a>) -&gt; none | both | removed | updated
+change_status(KeyOrPath::<a href="#type-key_path">key_path()</a>, Map::<a href="#type-t">t()</a>) -&gt; none | both | removed | updated | any()
+</code></pre>
+<br />
+
+Returns the status of a key path `KeyPath` in map `Map`, where status
+can be one of `updated`, `removed`, `both` or `none`.
+
+<a name="change_status-3"></a>
+
+### change_status/3 ###
+
+<pre><code>
+change_status(KeyOrPath::<a href="#type-key_path">key_path()</a>, Map::<a href="#type-t">t()</a>, Default::any()) -&gt; none | both | removed | updated | any() | no_return()
 </code></pre>
 <br />
 
@@ -712,6 +724,8 @@ incompatible types when later using a type specification e.g. [`to_riak_op/2`](#
 new(Data::map(), Spec::<a href="#type-type_spec">type_spec()</a>) -&gt; <a href="#type-t">t()</a>
 </code></pre>
 <br />
+
+Equivalent to [`new(Data, Spec, undefined)`](#new-3).
 
 <a name="new-3"></a>
 

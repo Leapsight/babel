@@ -4,4 +4,4 @@
           babel_crdt,babel_flag,babel_hash_partitioned_index,babel_index,
           babel_index_collection,babel_index_partition,babel_key_value,
           babel_manager,babel_map,babel_range_partitioned_index,babel_set,
-          babel_sup,babel_utils]}.
+          babel_simple_index,babel_sup,babel_utils]}.

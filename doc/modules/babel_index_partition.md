@@ -17,7 +17,18 @@
 
 
 <pre><code>
-data() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
+data() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a> | <a href="riakc_set.md#type-riakc_set">riakc_set:riakc_set()</a>
+</code></pre>
+
+
+<a name="opts()"></a>
+
+
+### opts() ###
+
+
+<pre><code>
+opts() = #{type =&gt; map | set}
 </code></pre>
 
 
@@ -39,7 +50,7 @@ riak_object() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 
 
 <pre><code>
-t() = #babel_index_partition{id = binary(), created_ts = non_neg_integer(), last_updated_ts = non_neg_integer(), object = <a href="#type-riak_object">riak_object()</a>}
+t() = #babel_index_partition{id = binary(), created_ts = non_neg_integer(), last_updated_ts = non_neg_integer(), object = <a href="#type-riak_object">riak_object()</a>, type = map | set}
 </code></pre>
 
 
@@ -146,6 +157,15 @@ new(Id::binary()) -&gt; <a href="#type-t">t()</a>
 </code></pre>
 <br />
 
+<a name="new-2"></a>
+
+### new/2 ###
+
+<pre><code>
+new(Id::binary(), Opts::<a href="#type-opts">opts()</a>) -&gt; <a href="#type-t">t()</a>
+</code></pre>
+<br />
+
 <a name="size-1"></a>
 
 ### size/1 ###
@@ -170,6 +190,15 @@ store(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Partition::<a
 
 <pre><code>
 to_riak_object(Index::<a href="#type-t">t()</a>) -&gt; IndexCRDT::<a href="#type-riak_object">riak_object()</a>
+</code></pre>
+<br />
+
+<a name="type-1"></a>
+
+### type/1 ###
+
+<pre><code>
+type(Partition::<a href="#type-t">t()</a>) -&gt; map | set
 </code></pre>
 <br />
 

@@ -11,7 +11,7 @@ maintained index in Riak KV and the location
 `({bucket_type(), bucket()}, key()})` of its partitions
 [`babel_index_partition`](babel_index_partition.md) in Riak KV.
 
-__This module defines the `babel_index` behaviour.__<br /> Required callback functions: `init/2`, `init_partitions/1`, `from_riak_dict/1`, `to_riak_object/1`, `number_of_partitions/1`, `partition_identifier/2`, `partition_identifiers/2`, `update_partition/3`, `distinguished_key_paths/1`, `match/3`, `iterator/3`, `iterator_move/3`, `iterator_done/1`, `iterator_key/1`, `iterator_values/1`.
+__This module defines the `babel_index` behaviour.__<br /> Required callback functions: `init/2`, `init_partition/2`, `from_riak_dict/1`, `to_riak_object/1`, `number_of_partitions/1`, `partition_identifier/2`, `partition_identifiers/2`, `update_partition/3`, `distinguished_key_paths/1`, `match/3`, `iterator/3`, `iterator_move/3`, `iterator_done/1`, `iterator_key/1`, `iterator_values/1`.
 
 <a name="description"></a>
 

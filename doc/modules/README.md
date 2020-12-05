@@ -23,6 +23,7 @@
 <tr><td><a href="babel_map.md" class="module">babel_map</a></td></tr>
 <tr><td><a href="babel_range_partitioned_index.md" class="module">babel_range_partitioned_index</a></td></tr>
 <tr><td><a href="babel_set.md" class="module">babel_set</a></td></tr>
+<tr><td><a href="babel_simple_index.md" class="module">babel_simple_index</a></td></tr>
 <tr><td><a href="babel_sup.md" class="module">babel_sup</a></td></tr>
 <tr><td><a href="babel_utils.md" class="module">babel_utils</a></td></tr></table>
 

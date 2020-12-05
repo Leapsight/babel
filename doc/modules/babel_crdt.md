@@ -105,3 +105,12 @@ to_integer(Unwrapped::binary() | <a href="riakc_register.md#type-register">riakc
 </code></pre>
 <br />
 
+<a name="type-1"></a>
+
+### type/1 ###
+
+<pre><code>
+type(Object::<a href="riakc_dataatype.md#type-datatype">riakc_dataatype:datatype()</a>) -&gt; atom()
+</code></pre>
+<br />
+
