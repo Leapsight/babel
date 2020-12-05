@@ -648,6 +648,11 @@ prepare_actions([], _, _, Acc) ->
 
 
 %% @private
+prepare_action(_, _, _, Acc, nomatch) ->
+    %% We do not need to update the index as one or more distinguished keys are
+    %% not present in the map
+    Acc;
+
 prepare_action({update, undefined, Data}, Index, Opts, Acc, Summary) ->
     prepare_action({insert, Data}, Index, Opts, Acc, Summary);
 
@@ -707,7 +712,7 @@ when Op == insert orelse Op == delete ->
 
 %% @private
 -spec change_summary([babel_key_value:path()], babel_key_value:t(), map()) ->
-    undefined | none | updated | removed | both.
+    nomatch | undefined | none | updated | removed | both.
 
 change_summary(_, _, #{force := true}) ->
     both;
@@ -716,21 +721,25 @@ change_summary(Keys, Map, _) ->
     try
         babel_map:is_type(Map) orelse throw(undefined),
         Fold = fun(X, Acc) ->
-            case babel_map:change_status(X, Map) of
+            try babel_map:change_status(X, Map, nomatch) of
+                nomatch ->
+                    %% A distinguished key was missing from Map
+                    throw(nomatch);
                 both ->
                     throw(both);
                 Status when Acc /= none andalso Acc /= Status ->
                     throw(both);
                 Status ->
                     Status
+            catch
+                error:{badkey, _} ->
+                    throw(undefined)
             end
         end,
         lists:foldl(Fold, none, Keys)
     catch
-        throw:undefined ->
-            undefined;
-        throw:both ->
-            both
+        throw:Result ->
+            Result
     end.
 
 

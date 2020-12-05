@@ -113,5 +113,5 @@ to_binary(Value, list) when is_list(Value) ->
 to_binary(Value, Fun) when is_function(Fun, 2) ->
     Fun(encode, Value);
 
-to_binary(_, Type) ->
-    error({badtype, Type}).
+to_binary(Term, Type) ->
+    error({badtype, {Term, Type}}).

@@ -29,7 +29,7 @@ end_per_suite(Config) ->
 
 new(_) ->
     ?assertEqual({babel_counter, 0, undefined}, babel_counter:new()),
-    ?assertEqual({babel_counter, 0, 1}, babel_counter:new(1)).
+    ?assertEqual({babel_counter, 1, undefined}, babel_counter:new(1)).
 
 
 from_riak_counter(_) ->

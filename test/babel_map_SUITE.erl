@@ -356,6 +356,10 @@ undefined_test_1(_) ->
     ?assertEqual([], babel_map:keys(T1)).
 
 set_test_1(_) ->
+    TCSpec = #{
+        <<"accepted_by">> => {register, binary},
+        <<"acceptance_timestamp">> => {register, integer}
+    },
     Spec = #{
         <<"version">> => {register, binary},
         <<"id">> => {register, binary},
@@ -382,20 +386,20 @@ set_test_1(_) ->
             <<"expiry_date">> => {register, binary},
             <<"enabled">> => {register, boolean}
         }}}},
-        <<"terms_and_conditions">> => {map, #{'_' => {map, #{
-            <<"accepted_by">> => {register, binary},
-            <<"acceptance_timestamp">> => {register, integer}
-        }}}},
+        <<"terms_and_conditions">> => {map, #{'_' => {map, TCSpec}}},
         <<"created_by">> => {register, binary},
         <<"last_modified_by">> => {register, binary},
         <<"created_timestamp">> => {register, integer},
         <<"last_modified_timestamp">> => {register, integer}
     },
     Key = <<"terms_and_conditions">>,
-    TCs = babel_map:new(#{
-        <<"accepted_by">> => <<"user@foo.com">>,
-        <<"acceptance_timestamp">> => erlang:system_time(millisecond)
-    }),
+    TCs = babel_map:new(
+        #{
+            <<"accepted_by">> => <<"user@foo.com">>,
+            <<"acceptance_timestamp">> => erlang:system_time(millisecond)
+        },
+        TCSpec
+    ),
     Version = <<"20201118">>,
     Map0 = {babel_map,#{
         <<"account_type">> => <<"business">>,<<"active">> => true,
@@ -445,20 +449,6 @@ set_test_1(_) ->
         Spec,
         #{connection => Conn}
     ),
-
-    %% {true, ok} = babel:execute(
-    %%     default,
-    %%     fun(Pid) ->
-    %%         babel:put(
-    %%             {<<"index_data">>, <<"test">>},
-    %%             <<"set_test_1">>,
-    %%             Map1,
-    %%             Spec,
-    %%             #{connection => Pid}
-    %%         )
-    %%     end,
-    %%     #{timeout => 3000}
-    %% ),
     ok.
 
 

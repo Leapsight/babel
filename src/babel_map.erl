@@ -124,6 +124,7 @@
 -export([add_element/3]).
 -export([add_elements/3]).
 -export([change_status/2]).
+-export([change_status/3]).
 -export([changed_key_paths/1]).
 -export([collect/2]).
 -export([collect/3]).
@@ -209,6 +210,8 @@ new(Data) when is_map(Data) ->
                 maps:update(K, babel_set:new(V), Acc);
             (K, V, Acc) when is_binary(K) andalso is_boolean(V) ->
                 maps:update(K, babel_flag:new(V), Acc);
+            (K, V, Acc) when is_binary(K) andalso is_integer(V) ->
+                maps:update(K, babel_counter:new(V), Acc);
             (K, _, Acc) when is_binary(K) ->
                 Acc;
             (K, _, _) ->
@@ -225,6 +228,7 @@ new(Data) when is_map(Data) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc
+%% @equiv new(Data, Spec, undefined)
 %% @end
 %% -----------------------------------------------------------------------------
 -spec new(Data :: map(), Spec :: type_spec()) -> t().
@@ -405,30 +409,50 @@ changed_key_paths(Term) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec change_status(KeyOrPath :: key_path(), Map :: t()) ->
-    none | both | removed | updated.
+    none | both | removed | updated | any().
 
-change_status([Key|[]], Map) ->
-    change_status(Key, Map);
+change_status(KeyOrPath, Map) ->
+    change_status(KeyOrPath, Map, ?BADKEY).
 
-change_status([H|T], #babel_map{values = V} ) ->
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the status of a key path `KeyPath' in map `Map', where status
+%% can be one of `updated', `removed', `both' or `none'.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec change_status(KeyOrPath :: key_path(), Map :: t(), Default :: any()) ->
+    none | both | removed | updated | any() | no_return().
+
+change_status([Key|[]], Map, Default) ->
+    change_status(Key, Map, Default);
+
+change_status([H|T], #babel_map{values = V}, Default) ->
     case maps:find(H, V) of
         {ok, #babel_map{} = Child} ->
-            change_status(T, Child);
+            change_status(T, Child, Default);
         {ok, _} ->
             error({badkey, T});
+        error when Default == ?BADKEY ->
+            error({badkey, H});
         error ->
-            error({badkey, H})
+            Default
     end;
 
-change_status(Key, #babel_map{values = V, updates = U, removes = R}) ->
-    maps:is_key(Key, V) orelse error({badkey, Key}),
-    IsU = ordsets:is_element(Key, U),
-    IsR = ordsets:is_element(Key, R),
-    case {IsU, IsR} of
-        {true, true} -> both;
-        {true, false} -> updated;
-        {false, true} -> removed;
-        _ -> none
+change_status(Key, #babel_map{values = V, updates = U, removes = R}, Default) ->
+    case maps:is_key(Key, V) of
+        true ->
+            IsU = ordsets:is_element(Key, U),
+            IsR = ordsets:is_element(Key, R),
+            case {IsU, IsR} of
+                {true, true} -> both;
+                {true, false} -> updated;
+                {false, true} -> removed;
+                _ -> none
+            end;
+        false when Default == ?BADKEY ->
+            error({badkey, Key});
+        false ->
+            Default
     end.
 
 

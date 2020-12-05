@@ -130,7 +130,7 @@ get([{_, _} = H|T], KVTerm, Default) ->
 
 get(Path, KVTerm, Default) when is_list(Path) ->
     babel_map:is_type(KVTerm) orelse error(badarg),
-    babel_map:get(Path, KVTerm, Default);
+    babel_map:get_value(Path, KVTerm, Default);
 
 get(Key, KVTerm, Default) when is_map(KVTerm) ->
     maybe_badkey(maps:get(Key, KVTerm, Default));
@@ -155,7 +155,7 @@ get({_, _} = Key, KVTerm, Default) ->
 
 get(Key, KVTerm, Default) ->
     babel_map:is_type(KVTerm) orelse error(badarg),
-    babel_map:get(Key, KVTerm, Default).
+    babel_map:get_value(Key, KVTerm, Default).
 
 
 %% -----------------------------------------------------------------------------
