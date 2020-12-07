@@ -1238,12 +1238,12 @@ from_map(Map, Spec0, Ctxt) when is_map(Spec0) ->
                     error({missing_spec, Key})
             end
     end,
-    Values0 = maps:fold(ConvertType, maps:new(), Map),
+    Values = maps:fold(ConvertType, maps:new(), Map),
 
     %% Initialise values for Spec keys not present in Map
-    Keys = maps:keys(Map),
-    MissingKeys = lists:subtract(maps:keys(Spec), Keys),
-    Values = init_values(maps:with(MissingKeys, Spec), Values0),
+    %% Keys = maps:keys(Map),
+    %% MissingKeys = lists:subtract(maps:keys(Spec), Keys),
+    %% Values = init_values(maps:with(MissingKeys, Spec), Values0),
 
     #babel_map{
         values = Values,
@@ -1311,35 +1311,35 @@ from_orddict(RMap, Context, Spec0) when is_map(Spec0) ->
                 error({missing_spec, RKey})
         end
     end,
-    Values0 = orddict:fold(Convert, maps:new(), RMap),
+    Values = orddict:fold(Convert, maps:new(), RMap),
 
     %% Initialise values for Spec keys not present in RMap
-    Keys = [Key || {Key, _} <- orddict:fetch_keys(RMap)],
-    MissingKeys = lists:subtract(maps:keys(Spec), Keys),
-    Values = init_values(maps:with(MissingKeys, Spec), Values0),
+    %% Keys = [Key || {Key, _} <- orddict:fetch_keys(RMap)],
+    %% MissingKeys = lists:subtract(maps:keys(Spec), Keys),
+    %% Values = init_values(maps:with(MissingKeys, Spec), Values0),
 
     #babel_map{values = Values, context = Context}.
 
 
 %% @private
-init_values(Spec, Acc0) ->
-    %% We only set the missing container values
-    Fun = fun
-        ('$validated', _, Acc) ->
-            Acc;
+%% init_values(Spec, Acc0) ->
+%%     %% We only set the missing container values
+%%     Fun = fun
+%%         ('$validated', _, Acc) ->
+%%             Acc;
 
-        (_, {register, _}, Acc) ->
-            Acc;
+%%         (_, {register, _}, Acc) ->
+%%             Acc;
 
-        (Key, {map, KeySpec}, Acc) when is_map(KeySpec) ->
-            maps:put(Key, new(#{}, KeySpec), Acc);
+%%         (Key, {map, KeySpec}, Acc) when is_map(KeySpec) ->
+%%             maps:put(Key, new(#{}, KeySpec), Acc);
 
-        (Key, {Type, _}, Acc) ->
-            Mod = type_to_mod(Type),
-            Mod /= undefined andalso Mod /= error orelse error({badtype, Type}),
-            maps:put(Key, Mod:new(), Acc)
-    end,
-    maps:fold(Fun, Acc0, Spec).
+%%         (Key, {Type, _}, Acc) ->
+%%             Mod = type_to_mod(Type),
+%%             Mod /= undefined andalso Mod /= error orelse error({badtype, Type}),
+%%             maps:put(Key, Mod:new(), Acc)
+%%     end,
+%%     maps:fold(Fun, Acc0, Spec).
 
 
 %% @private
