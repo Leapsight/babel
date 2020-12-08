@@ -28,8 +28,26 @@ end_per_suite(Config) ->
 
 
 new(_) ->
-    ?assertEqual({babel_counter, 0, undefined}, babel_counter:new()),
-    ?assertEqual({babel_counter, 1, undefined}, babel_counter:new(1)).
+    C0 = babel_counter:new(),
+    ?assertEqual( {babel_counter, 0, undefined}, C0),
+    ?assertEqual(0, babel_counter:value(C0)),
+    ?assertEqual(undefined, babel_counter:to_riak_op(C0, integer)),
+
+    C1 = babel_counter:new(1),
+    ?assertEqual( {babel_counter, 0, 1}, C1),
+    ?assertEqual(1, babel_counter:value(C1)),
+    ?assertEqual(
+        {counter, {increment, 1}, undefined},
+        babel_counter:to_riak_op(C1, integer)
+    ),
+
+    C2 = babel_counter:new(-5),
+    ?assertEqual( {babel_counter, 0, -5}, C2),
+    ?assertEqual(-5, babel_counter:value(C2)),
+    ?assertEqual(
+        {counter, {increment, -5}, undefined},
+        babel_counter:to_riak_op(C2, integer)
+    ).
 
 
 from_riak_counter(_) ->

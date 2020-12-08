@@ -79,7 +79,7 @@ new() ->
 -spec new(Value :: integer()) -> t().
 
 new(Value) when is_integer(Value) ->
-    #babel_counter{value = Value}.
+    set(Value, new()).
 
 
 %% -----------------------------------------------------------------------------
