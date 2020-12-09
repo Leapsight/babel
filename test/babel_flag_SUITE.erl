@@ -28,7 +28,8 @@ end_per_suite(Config) ->
 
 
 new(_) ->
-    ?assertEqual({babel_flag, false, undefined, undefined}, babel_flag:new()),
+    ?assertEqual({babel_flag, false, disable, undefined}, babel_flag:new()),
+    ?assertEqual(babel_flag:new(), babel_flag:new(false)),
     ?assertEqual({babel_flag, false, enable, undefined}, babel_flag:new(true)).
 
 

@@ -30,7 +30,9 @@
 
 -record(babel_flag, {
     value = false       ::  boolean(),
-    op                  ::  enable | disable | undefined,
+    %% RiakC uses undefined but this causes Riak to never record a flag
+    %% initilised with 'false'.
+    op = disable        ::  enable | disable | undefined,
     context             ::  riakc_datatype:context() | undefined
 }).
 
@@ -93,8 +95,11 @@ new(false) ->
 %% -----------------------------------------------------------------------------
 -spec new(Value :: boolean(), Ctxt :: riakc_datatype:context()) -> t().
 
+new(Value, undefined) when is_boolean(Value) ->
+    new(Value);
+
 new(Value, Ctxt) when is_boolean(Value) ->
-    #babel_flag{value = Value, context = Ctxt}.
+    #babel_flag{value = Value, op = undefined, context = Ctxt}.
 
 
 %% -----------------------------------------------------------------------------
@@ -108,7 +113,7 @@ new(Value, Ctxt) when is_boolean(Value) ->
     maybe_no_return(t()).
 
 from_riak_flag(Value, Ctxt, boolean) when is_boolean(Value) ->
-    #babel_flag{value = Value, context = Ctxt};
+    new(Value, Ctxt);
 
 from_riak_flag(RiakFlag, Ctxt, boolean) ->
     from_riak_flag(riakc_flag:value(RiakFlag), Ctxt, boolean).
