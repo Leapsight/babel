@@ -309,6 +309,9 @@ collect([], _, _, Acc) ->
 riak_update_fun(map, Value) ->
     fun(_) -> Value end;
 
+riak_update_fun(set, Value) ->
+    fun(_) -> Value end;
+
 riak_update_fun(register, Value) ->
     fun(Object) -> riakc_register:set(Value, Object) end;
 
@@ -316,7 +319,17 @@ riak_update_fun(flag, true) ->
     fun(Object) -> riakc_flag:enable(Object) end;
 
 riak_update_fun(flag, false) ->
-    fun(Object) -> riakc_flag:disable(Object) end;
+    fun(Object) ->
+        try
+            riakc_flag:disable(Object)
+        catch
+            throw:context_required ->
+                case riakc_flag:value(Object) of
+                    true -> throw(context_required);
+                    false -> Object
+                end
+        end
+    end;
 
 riak_update_fun(counter, N) ->
     fun(Object) ->
