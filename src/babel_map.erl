@@ -259,16 +259,28 @@ new(Data, Spec, Ctxt) ->
 -spec from_riak_map(
     RMap :: riakc_map:crdt_map() | list(), Spec :: type_spec()) -> t().
 
-from_riak_map(RMap, #{'_' := Spec}) ->
-    from_riak_map(RMap, expand_spec(orddict:fetch_keys(RMap), Spec));
+from_riak_map(RMap, Spec) ->
+    from_riak_map(RMap, Spec, #{missing_specs => error}).
 
-from_riak_map(RMap, Spec) when is_tuple(RMap) ->
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns a new map by applying the type specification `Spec' to the Riak
+%% Map `RMap'.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec from_riak_map(
+    RMap :: riakc_map:crdt_map() | list(), Spec :: type_spec(), Opts :: map()) -> t().
+
+from_riak_map(RMap, #{'_' := Spec}, Opts) ->
+    from_riak_map(RMap, expand_spec(orddict:fetch_keys(RMap), Spec), Opts);
+
+from_riak_map(RMap, Spec, Opts) when is_tuple(RMap) ->
     Context = element(5, RMap),
     Values = riakc_map:value(RMap),
-    from_orddict(Values, Context, Spec);
+    from_orddict(Values, Context, Spec, Opts);
 
-from_riak_map(Values, Spec) when is_list(Values) ->
-    from_orddict(Values, undefined, Spec).
+from_riak_map(Values, Spec, Opts) when is_list(Values) ->
+    from_orddict(Values, undefined, Spec, Opts).
 
 
 %% -----------------------------------------------------------------------------
@@ -1294,11 +1306,14 @@ from_term(Term, _, Datatype, Type) ->
 
 
 %% @private
--spec from_orddict(orddict:orddict(), riakc_datatype:context(), type_spec()) ->
+-spec from_orddict(
+    orddict:orddict(), riakc_datatype:context(), type_spec(), Opts :: map()) ->
     maybe_no_return(t()).
 
-from_orddict(RMap, Context, Spec0) when is_map(Spec0) ->
+from_orddict(RMap, Context, Spec0, Opts) when is_map(Spec0) ->
     Spec = validate_type_spec(Spec0),
+    Strategy = maps:get(missing_spec, Opts, error),
+
     %% Convert values in RMap
     Convert = fun({Key, Datatype} = RKey, RValue, Acc) ->
         case maps:find(Key, Spec) of
@@ -1307,7 +1322,11 @@ from_orddict(RMap, Context, Spec0) when is_map(Spec0) ->
                 maps:put(Key, Value, Acc);
             {ok, {X, _SpecOrType}} ->
                 error({datatype_mismatch, X, Datatype});
-            error ->
+            error when Strategy == ignore ->
+                Acc;
+            error when Strategy == error ->
+                %% TODO we should take a 4th arg with options to deal with this
+                %% situation
                 error({missing_spec, RKey})
         end
     end,
