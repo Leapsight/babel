@@ -138,6 +138,7 @@
 -export([enable/2]).
 -export([find/2]).
 -export([from_riak_map/2]).
+-export([from_riak_map/3]).
 -export([get/2]).
 -export([get/3]).
 -export([get_value/2]).
@@ -266,6 +267,13 @@ from_riak_map(RMap, Spec) ->
 %% -----------------------------------------------------------------------------
 %% @doc Returns a new map by applying the type specification `Spec' to the Riak
 %% Map `RMap'.
+%%
+%% `Options' is a map containing th following options:
+%% * missing_spec -- the strategy to deal with a field found in the Riak Map
+%% that does not have a mapping in the type specificiation `Spec'. It accepts
+%% the values `error` or `ignore`. In the case of `error` a
+%% `{missing_spec, Key}' exception will be raised; in the case or `ignore' it
+%% will simply be ignored. The default is `error'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec from_riak_map(
@@ -1340,7 +1348,7 @@ from_orddict(RMap, Context, Spec0, Opts) when is_map(Spec0) ->
     #babel_map{values = Values, context = Context}.
 
 
-%% @private
+
 %% init_values(Spec, Acc0) ->
 %%     %% We only set the missing container values
 %%     Fun = fun

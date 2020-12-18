@@ -48,7 +48,7 @@ fields() = [<a href="babel_key_value.md#type-key">babel_key_value:key()</a>]
 
 
 <pre><code>
-iterator() = #babel_hash_partitioned_index_iter{partition = <a href="babel_index_partition.md#type-t">babel_index_partition:t()</a> | undefined, sort_ordering = asc | desc, key = binary() | undefined, values = map() | undefined, typed_bucket = {binary(), binary()}, first = binary() | undefined, keys = [binary()], partition_identifiers = [<a href="babel_index.md#type-partition_id">babel_index:partition_id()</a>], riak_opts = <a href="babel.md#type-riak_opts">babel:riak_opts()</a>, done = boolean()}
+iterator() = #babel_hash_partitioned_index_iter{partition = <a href="babel_index_partition.md#type-t">babel_index_partition:t()</a> | undefined, case_sensitive = boolean(), sort_ordering = asc | desc, key = binary() | undefined, values = map() | undefined, typed_bucket = {binary(), binary()}, first = binary() | undefined, keys = [binary()], partition_identifiers = [<a href="babel_index.md#type-partition_id">babel_index:partition_id()</a>], riak_opts = <a href="babel.md#type-riak_opts">babel:riak_opts()</a>, done = boolean()}
 </code></pre>
 
 
@@ -59,7 +59,7 @@ iterator() = #babel_hash_partitioned_index_iter{partition = <a href="babel_index
 
 
 <pre><code>
-t() = #{sort_ordering =&gt; asc | desc, number_of_partitions =&gt; integer(), partition_algorithm =&gt; atom(), partition_identifier_prefix =&gt; binary(), partition_identifiers =&gt; [binary()], partition_by =&gt; <a href="#type-fields">fields()</a>, index_by =&gt; <a href="#type-fields">fields()</a>, aggregate_by =&gt; <a href="#type-fields">fields()</a>, covered_fields =&gt; <a href="#type-fields">fields()</a>, cardinality =&gt; one | many}
+t() = #{case_sensitive =&gt; boolean(), sort_ordering =&gt; asc | desc, number_of_partitions =&gt; integer(), partition_algorithm =&gt; atom(), partition_identifier_prefix =&gt; binary(), partition_identifiers =&gt; [binary()], partition_by =&gt; <a href="#type-fields">fields()</a>, index_by =&gt; <a href="#type-fields">fields()</a>, aggregate_by =&gt; <a href="#type-fields">fields()</a>, covered_fields =&gt; <a href="#type-fields">fields()</a>, cardinality =&gt; one | many}
 </code></pre>
 
 
@@ -75,6 +75,17 @@ t() = #{sort_ordering =&gt; asc | desc, number_of_partitions =&gt; integer(), pa
 aggregate_by(X1::<a href="#type-t">t()</a>) -&gt; [binary()]
 </code></pre>
 <br />
+
+<a name="case_sensitive-1"></a>
+
+### case_sensitive/1 ###
+
+<pre><code>
+case_sensitive(X1::<a href="#type-t">t()</a>) -&gt; boolean()
+</code></pre>
+<br />
+
+Returns true if the index is case sensitivity.
 
 <a name="covered_fields-1"></a>
 

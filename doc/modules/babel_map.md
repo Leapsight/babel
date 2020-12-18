@@ -585,6 +585,25 @@ from_riak_map(RMap::<a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a
 Returns a new map by applying the type specification `Spec` to the Riak
 Map `RMap`.
 
+<a name="from_riak_map-3"></a>
+
+### from_riak_map/3 ###
+
+<pre><code>
+from_riak_map(RMap::<a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a> | list(), Spec::<a href="#type-type_spec">type_spec()</a>, Opts::map()) -&gt; <a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+Returns a new map by applying the type specification `Spec` to the Riak
+Map `RMap`.
+
+`Options` is a map containing th following options:
+* missing_spec -- the strategy to deal with a field found in the Riak Map
+that does not have a mapping in the type specificiation `Spec`. It accepts
+the values `error` or `ignore`. In the case of `error` a
+`{missing_spec, Key}` exception will be raised; in the case or `ignore` it
+will simply be ignored. The default is `error`.
+
 <a name="get-2"></a>
 
 ### get/2 ###
