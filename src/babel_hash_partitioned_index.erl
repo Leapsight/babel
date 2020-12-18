@@ -41,6 +41,13 @@
 -define(KEYPATH_LIST_SPEC, {list, [binary, tuple, {list, [binary, tuple]}]}).
 
 -define(SPEC, #{
+    case_sensitive => #{
+        required => true,
+        allow_null => false,
+        allow_undefined => false,
+        default => false,
+        datatype => boolean
+    },
     sort_ordering => #{
         required => true,
         allow_null => false,
@@ -100,6 +107,7 @@
 }).
 
 -type t()           ::  #{
+    case_sensitive := boolean(),
     sort_ordering := asc | desc,
     number_of_partitions := integer(),
     partition_algorithm := atom(),
@@ -114,6 +122,7 @@
 
 -record(babel_hash_partitioned_index_iter, {
     partition                   ::  babel_index_partition:t() | undefined,
+    case_sensitive              ::  boolean(),
     sort_ordering               ::  asc | desc,
     key                         ::  binary() | undefined,
     values                      ::  map() | undefined,
@@ -139,6 +148,7 @@
 -export([partition_by/1]).
 -export([partition_identifier_prefix/1]).
 -export([sort_ordering/1]).
+-export([case_sensitive/1]).
 
 
 %% BEHAVIOUR CALLBACKS
@@ -164,6 +174,15 @@
 %% API
 %% =============================================================================
 
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns true if the index is case sensitivity.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec case_sensitive(t()) -> boolean().
+
+case_sensitive(#{case_sensitive := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -331,10 +350,16 @@ from_riak_dict(Dict) ->
         error -> one
     end,
 
+    CaseSensitive = case orddict:find({<<"case_sensitive">>, flag}, Dict) of
+        {ok, Value} -> Value;
+        error -> false
+    end,
+
     %% As this object is read-only and embeded in an Index Collection we turn it
     %% into an Erlang map as soon as we read it from the collection for enhanced
     %% performance. So loosing its CRDT context it not an issue.
     #{
+        case_sensitive => CaseSensitive,
         sort_ordering => Sort,
         number_of_partitions => N,
         partition_algorithm => Algo,
@@ -357,6 +382,7 @@ from_riak_dict(Dict) ->
 
 to_riak_object(Config) ->
     #{
+        case_sensitive := CaseSensitive,
         sort_ordering := Sort,
         number_of_partitions := N,
         partition_algorithm := Algo,
@@ -371,6 +397,7 @@ to_riak_object(Config) ->
 
 
     Values = [
+        {{<<"case_sensitive">>, flag}, CaseSensitive},
         {{<<"sort_ordering">>, register}, atom_to_binary(Sort, utf8)},
         {{<<"number_of_partitions">>, register}, integer_to_binary(N)},
         {{<<"partition_algorithm">>, register}, atom_to_binary(Algo, utf8)},
@@ -439,7 +466,7 @@ partition_identifier(KeyValue, Config) ->
 
     %% We collect the partition keys from the key value object and build a
     %% binary key that we then use to hash to the partition.
-    try gen_key(Keys, KeyValue) of
+    try gen_key(Keys, KeyValue, Config) of
         PKey ->
             Bucket = babel_consistent_hashing:bucket(PKey, N, Algo),
             %% Bucket is zero-based
@@ -498,14 +525,14 @@ update_partition([], Partition, _) ->
 
 update_partition({delete, Data}, Partition, Config) ->
     Cardinality = cardinality(Config),
-    IndexKey = gen_key(index_by(Config), Data),
-    Value = gen_key(covered_fields(Config), Data),
+    IndexKey = gen_key(index_by(Config), Data, Config),
+    Value = gen_key(covered_fields(Config), Data, Config),
 
     case aggregate_by(Config) of
         [] ->
             delete_data(IndexKey, Value, Cardinality, Partition);
         Fields ->
-            AggregateKey = gen_key(Fields, Data),
+            AggregateKey = gen_key(Fields, Data, Config),
             delete_data({AggregateKey, IndexKey}, Value, Cardinality, Partition)
     end;
 
@@ -514,8 +541,8 @@ update_partition({insert, Data}, Partition, Config) ->
     AggregateBy = aggregate_by(Config),
     IndexBy = index_by(Config),
 
-    IndexKey = gen_key(IndexBy, Data),
-    Value = gen_key(covered_fields(Config), Data),
+    IndexKey = gen_key(IndexBy, Data, Config),
+    Value = gen_key(covered_fields(Config), Data, Config),
 
     case AggregateBy of
         [] ->
@@ -523,7 +550,7 @@ update_partition({insert, Data}, Partition, Config) ->
         IndexBy ->
             update_data({IndexKey, IndexKey}, Value, Cardinality, Partition);
         AggregateBy ->
-            AggregateKey = gen_key(AggregateBy, Data),
+            AggregateKey = gen_key(AggregateBy, Data, Config),
             update_data({AggregateKey, IndexKey}, Value, Cardinality, Partition)
     end.
 
@@ -535,8 +562,8 @@ update_partition({insert, Data}, Partition, Config) ->
 match(Pattern, Partition, Config) ->
     Cardinality = cardinality(Config),
     IndexBy = index_by(Config),
-    IndexKey = safe_gen_key(IndexBy, Pattern),
-    AggregateKey = safe_gen_key(aggregate_by(Config), Pattern),
+    IndexKey = safe_gen_key(IndexBy, Pattern, Config),
+    AggregateKey = safe_gen_key(aggregate_by(Config), Pattern, Config),
 
     Result = case {AggregateKey, IndexKey} of
         {error, error} ->
@@ -691,8 +718,14 @@ gen_identifier(Prefix, N) ->
 %% We do this as Riak does not support list and sets are ordered.
 %% @end
 %% -----------------------------------------------------------------------------
-gen_key(Keys, Data) ->
-    binary_utils:join(babel_key_value:collect(Keys, Data)).
+gen_key(Keys, Data, #{case_sensitive := true} = Config) ->
+    binary_utils:join(babel_key_value:collect(Keys, Data));
+
+gen_key(Keys, Data, #{case_sensitive := false} = Config) ->
+    L = [
+        string:lowercase(X) || X <- babel_key_value:collect(Keys, Data)
+    ],
+    binary_utils:join(L).
 
 
 %% -----------------------------------------------------------------------------
@@ -704,12 +737,12 @@ gen_key(Keys, Data) ->
 %% exceptions and returns a value.
 %% @end
 %% -----------------------------------------------------------------------------
-safe_gen_key([], _) ->
+safe_gen_key([], _, _) ->
     undefined;
 
-safe_gen_key(Keys, Data) ->
+safe_gen_key(Keys, Data, Config) ->
     try
-        binary_utils:join(babel_key_value:collect(Keys, Data))
+        gen_key(Keys, Data, Config)
     catch
         error:{badkey, _} ->
             error
