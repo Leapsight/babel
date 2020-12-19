@@ -54,7 +54,6 @@
 -export([del_elements/2]).
 -export([fold/3]).
 -export([from_riak_set/2]).
--export([from_riak_set/3]).
 -export([is_element/2]).
 -export([is_original_element/2]).
 -export([is_type/1]).
@@ -70,8 +69,6 @@
 -export([type/0]).
 -export([value/1]).
 
-
--dialyzer({nowarn_function, from_riak_set/2}).
 
 
 
@@ -89,17 +86,21 @@
 -spec new() -> t().
 
 new() ->
-    new([]).
+    #babel_set{}.
 
 
 %% -----------------------------------------------------------------------------
 %% @doc
+%% !> **Important**. Notice that using this function might result in
+%% incompatible types when later using a type specification e.g. {@link
+%% to_riak_op/2}. We strongly suggest not using this function and using {@link
+%% new/2} instead.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec new(Data :: ordsets:ordset(any())) -> t().
 
 new(Data) when is_list(Data) ->
-    new(Data, undefined).
+    #babel_set{adds = Data, size = ordsets:size(Data)}.
 
 
 %% -----------------------------------------------------------------------------
@@ -108,25 +109,11 @@ new(Data) when is_list(Data) ->
 %% -----------------------------------------------------------------------------
 -spec new(
     Data :: ordsets:ordset(any()),
-    Ctxt :: riakc_datatype:context())  -> t().
-
-new(Data, Ctxt) when is_list(Data) ->
-    Adds = ordsets:from_list(Data),
-    #babel_set{adds = Adds, size = ordsets:size(Adds), context = Ctxt}.
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec new(
-    Data :: ordsets:ordset(any()),
-    Ctxt :: riakc_datatype:context(),
     Type :: type_spec())  -> t().
 
-new(Data, Ctxt, Type) when is_list(Data) ->
-    Values = [from_binary(E, Type) || E <- Data],
-    new(Values, Ctxt).
+new(Data, Type) when is_list(Data) ->
+    Adds = ordsets:from_list([from_term(E, Type) || E <- Data]),
+    #babel_set{adds = Adds, size = ordsets:size(Adds)}.
 
 
 %% -----------------------------------------------------------------------------
@@ -141,29 +128,13 @@ new(Data, Ctxt, Type) when is_list(Data) ->
 
 
 from_riak_set(Ordset, Type) when is_list(Ordset) ->
-    from_riak_set(Ordset, undefined, Type);
+    Values = ordsets:from_list([from_binary(E, Type) || E <- Ordset]),
+    #babel_set{values = Values, size = ordsets:size(Values)};
 
 from_riak_set(RiakSet, Type) ->
+    Set = from_riak_set(riakc_set:value(RiakSet), Type),
     Ctxt = element(5, RiakSet),
-    new(riakc_set:value(RiakSet), Ctxt, Type).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc Overrides context
-%% @throws {badindex, term()}
-%% @end
-%% -----------------------------------------------------------------------------
--spec from_riak_set(
-    RiakSet :: riakc_set:riakc_set() | ordsets:ordset(),
-    Ctxt :: riakc_datatype:context(),
-    Type :: type_spec()) ->
-    maybe_no_return(t()).
-
-from_riak_set(Values, Ctxt, Type) when is_list(Values) ->
-    new(Values, Ctxt, Type);
-
-from_riak_set(RiakSet, Ctxt, Type) ->
-    from_riak_set(riakc_set:value(RiakSet), Ctxt, Type).
+    set_context(Ctxt, Set).
 
 
 %% -----------------------------------------------------------------------------
@@ -367,11 +338,19 @@ del_elements(Elements, #babel_set{removes = R0, size = S0} = T) ->
 %% -----------------------------------------------------------------------------
 -spec set_elements(Elements :: [any()], T :: t()) -> NewT :: t().
 
-set_elements(Elements, #babel_set{} = T0) ->
-    Value = value(T0),
+set_elements(Elements, #babel_set{values = Value} = T) ->
+    %% We add all elements not already in Value
     NewValue = ordsets:from_list(Elements),
-    T1 = del_elements(ordsets:subtract(Value, NewValue), T0),
-    add_elements(ordsets:subtract(NewValue, Value), T1).
+    Adds = ordsets:subtract(NewValue, Value),
+    Removes = ordsets:subtract(Value, NewValue),
+
+    S1 = ordsets:size(Value) + ordsets:size(Adds) - ordsets:size(Removes),
+
+    T#babel_set{
+        adds = Adds,
+        removes = Removes,
+        size = S1
+    }.
 
 
 %% -----------------------------------------------------------------------------
@@ -420,6 +399,43 @@ from_binary(Value, Fun) when is_function(Fun, 2) ->
 
 from_binary(Value, Type) ->
     babel_utils:from_binary(Value, Type).
+
+
+%% @private
+from_term(Term, atom) ->
+    is_atom(Term) orelse error({badarg, Term}),
+    Term;
+
+from_term(Term, existing_atom) ->
+    is_atom(Term) orelse error({badarg, Term}),
+    Term;
+
+from_term(Term, boolean) ->
+    is_boolean(Term) orelse error({badarg, Term}),
+    Term;
+
+from_term(Term, integer) ->
+    is_integer(Term) orelse error({badarg, Term}),
+    Term;
+
+from_term(Term, float) ->
+    is_float(Term) orelse error({badarg, Term}),
+    Term;
+
+from_term(Term, binary) ->
+    is_binary(Term) orelse error({badarg, Term}),
+    Term;
+
+from_term(Term, list) ->
+    is_list(Term) orelse error({badarg, Term}),
+    Term;
+
+from_term(Term, Fun) when is_function(Fun) ->
+    is_function(Fun, 1) orelse is_function(Fun, 2) orelse error({badarg, Term}),
+    Term;
+
+from_term(_, Type) ->
+    error({badtype, Type}).
 
 
 %% @private

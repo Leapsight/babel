@@ -28,7 +28,9 @@ all() ->
         undefined_test_1,
         set_test_1,
         set_undefined_test_1,
-        set_undefined_test_2
+        set_undefined_test_2,
+        update_counter_value_roundtrip,
+        update_set_value_roundtrip
     ].
 
 
@@ -624,3 +626,53 @@ spec() ->
         <<"counter_prop">> => {counter, integer},
         <<"flag_prop">> => {flag, boolean}
     }.
+
+update_counter_value_roundtrip(_) ->
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    pong = riakc_pb_socket:ping(Conn),
+    GetOpts = #{connection => Conn},
+    PutOpts = GetOpts#{riak_opts => #{return_body => true}},
+
+    TypedBucket = {<<"index_data">>, <<"test">>},
+    Key = <<"update_counter_value_roundtrip">>,
+    Spec = #{<<"c">> => {counter, integer}},
+
+    {ok, Map0} = case babel:get(TypedBucket, Key, Spec, GetOpts) of
+        {ok, Map} ->
+            {ok, Map};
+        {error, not_found} ->
+            Map = babel_map:new(#{<<"c">> => 100}, Spec),
+            babel:put(TypedBucket, Key, Map, Spec, PutOpts)
+    end,
+    Value = babel_map:get_value(<<"c">>, Map0) + 50,
+
+    Map1 = babel_map:update(#{<<"c">> => Value}, Map0, Spec),
+    {ok, Map2} = babel:put(TypedBucket, Key, Map1, Spec, PutOpts),
+    ?assertEqual(Value, babel_map:get_value(<<"c">>, Map2)).
+
+
+update_set_value_roundtrip(_) ->
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    pong = riakc_pb_socket:ping(Conn),
+    GetOpts = #{connection => Conn},
+    PutOpts = GetOpts#{riak_opts => #{return_body => true}},
+
+    TypedBucket = {<<"index_data">>, <<"test">>},
+    Key = <<"update_set_value_roundtrip">>,
+    Spec = #{<<"s">> => {set, integer}},
+
+    {ok, Map0} = case babel:get(TypedBucket, Key, Spec, GetOpts) of
+        {ok, Map} ->
+            {ok, Map};
+        {error, not_found} ->
+            Map = babel_map:new(#{<<"s">> => [1, 2, 3]}, Spec),
+            babel:put(TypedBucket, Key, Map, Spec, PutOpts)
+    end,
+    Value = [hd(babel_map:get_value(<<"s">>, Map0)) + 1],
+
+    Map1 = babel_map:update(#{<<"s">> => Value}, Map0, Spec),
+    {ok, Map2} = babel:put(TypedBucket, Key, Map1, Spec, PutOpts),
+    ?assertEqual(Value, babel_map:get_value(<<"s">>, Map2)).
+
+
+% S = {babel_set, [], [1,2,3], [1,3], 5,<<131,108,0,0,0,1,104,2,109,0,0,0,12,55,106,25,171,64,247,210,174,0,0,0,19,97,1,106>>}.

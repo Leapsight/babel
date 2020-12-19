@@ -970,7 +970,7 @@ add_elements(Key, Values, Map) ->
                     badtype(set, Term)
             end;
         (error) ->
-            babel_set:new(Values, Map#babel_map.context)
+            babel_set:set_context(Map#babel_map.context, babel_set:new(Values))
     end,
     mutate(Key, Fun, Map).
 
@@ -1005,7 +1005,7 @@ del_element(Key, Value, Map) ->
                     badtype(set, Term)
             end;
         (error) ->
-            babel_set:new(Value, Map#babel_map.context)
+            babel_set:set_context(Map#babel_map.context, babel_set:new(Value))
     end,
     mutate(Key, Fun, Map).
 
@@ -1040,7 +1040,7 @@ set_elements(Key, Values, Map) ->
                     badtype(set, Term)
             end;
         (error) ->
-            babel_set:new(Values, Map#babel_map.context)
+            babel_set:set_context(Map#babel_map.context, babel_set:new(Values))
     end,
     mutate(Key, Fun, Map).
 
@@ -1277,7 +1277,7 @@ from_term(Term, Ctxt, map, Spec) when is_map(Term) ->
     new(Term, Spec, Ctxt);
 
 from_term(Term, Ctxt, set, _) when is_list(Term) ->
-    babel_set:new(Term, Ctxt);
+    babel_set:set_context(Ctxt, babel_set:new(Term));
 
 from_term(Term, _, counter, integer) when is_integer(Term) ->
     babel_counter:new(Term);
@@ -1393,7 +1393,8 @@ from_datatype({_, register}, Value, _, Type) ->
     babel_utils:from_binary(Value, Type);
 
 from_datatype({_, set}, Value, Ctxt, Type) ->
-    babel_set:from_riak_set(Value, Ctxt, Type);
+    Set = babel_set:from_riak_set(Value, Type),
+    babel_set:set_context(Ctxt, Set);
 
 from_datatype({_, map}, Value, _Ctxt, Spec) ->
     from_riak_map(Value, Spec);
@@ -1773,7 +1774,10 @@ do_update(Key, Value, Acc, {set, _}) when is_list(Value) ->
     catch
         throw:context_required ->
             %% We have a brand new set (not in Riak yet) so we just replace it
-            set(Key, babel_set:new(Value, Acc#babel_map.context), Acc)
+            Set = babel_set:set_context(
+                Acc#babel_map.context, babel_set:new(Value)
+            ),
+            set(Key, Set, Acc)
     end;
 
 do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}) ->

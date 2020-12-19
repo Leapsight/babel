@@ -233,8 +233,8 @@ decrement(Amount, #babel_counter{} = T) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Increments or decrements the counter so that its resulting value would
-%% be equal to `Amount'.
+%% @doc Increments or decrements the counter so that the result of calling
+%% {@link value/1} would be equal to amount `Amount'.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec set(integer(), t()) -> t().
@@ -247,6 +247,3 @@ set(Amount, #babel_counter{value = Value} = T) when Value < Amount ->
 
 set(Amount, #babel_counter{value = Value} = T) when Value > Amount ->
     T#babel_counter{increment = - abs(Amount - Value)}.
-
-
-

@@ -12,7 +12,8 @@ all() ->
         from_riak_counter,
         incr,
         decr,
-        set
+        set_1,
+        set_2
     ].
 
 
@@ -98,11 +99,14 @@ decr(_) ->
     ?assertEqual(99, babel_counter:value(C3)).
 
 
-set(_) ->
+set_1(_) ->
+
     C0 = babel_counter:from_riak_counter(
         riakc_counter:new(100, undefined),
         integer
     ),
+    ?assertEqual({babel_counter, 100, undefined}, C0),
+
     C1 = babel_counter:set(50, C0),
     ?assertEqual({babel_counter, 100, -50}, C1),
     ?assertEqual(50, babel_counter:value(C1)),
@@ -114,3 +118,48 @@ set(_) ->
     C3 = babel_counter:set(-50, C2),
     ?assertEqual({babel_counter, 100, -150}, C3),
     ?assertEqual(-50, babel_counter:value(C3)).
+
+set_2(_) ->
+    ?assertEqual(
+        {babel_counter, 0, 100},
+        babel_counter:set(100, {babel_counter, 0, undefined})
+    ),
+    ?assertEqual(
+        {babel_counter, 0, 100},
+        babel_counter:set(100, {babel_counter, 0, 100})
+    ),
+    ?assertEqual(
+        {babel_counter, 0, 200},
+        babel_counter:set(200, {babel_counter, 0, 100})
+    ),
+    ?assertEqual(
+        {babel_counter, 0, -100},
+        babel_counter:set(-100, {babel_counter, 0, 100})
+    ),
+    ?assertEqual(
+        {babel_counter, 100, undefined},
+        babel_counter:set(100, {babel_counter, 100, undefined})
+    ),
+    ?assertEqual(
+        {babel_counter, 100, 100},
+        babel_counter:set(200, {babel_counter, 100, undefined})
+    ),
+    ?assertEqual(
+        {babel_counter, 100, -200},
+        babel_counter:set(-100, {babel_counter, 100, undefined})
+    ),
+    ?assertEqual(
+        {babel_counter, -100, 200},
+        babel_counter:set(100, {babel_counter, -100, undefined})
+    ),
+    ?assertEqual(
+        {babel_counter, -100, 200},
+        babel_counter:set(100, {babel_counter, -100, undefined})
+    ),
+    ?assertEqual(
+        {babel_counter, -100, -100},
+        babel_counter:set(-200, {babel_counter, -100, undefined})
+    ).
+
+
+
