@@ -30,7 +30,8 @@ all() ->
         set_undefined_test_1,
         set_undefined_test_2,
         update_counter_value_roundtrip,
-        update_set_value_roundtrip
+        update_set_value_roundtrip,
+        concurrent_set_update
     ].
 
 
@@ -674,5 +675,58 @@ update_set_value_roundtrip(_) ->
     {ok, Map2} = babel:put(TypedBucket, Key, Map1, Spec, PutOpts),
     ?assertEqual(Value, babel_map:get_value(<<"s">>, Map2)).
 
+
+concurrent_set_update(_) ->
+    {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
+    pong = riakc_pb_socket:ping(Conn),
+    GetOpts = #{connection => Conn},
+    PutOpts = GetOpts#{riak_opts => #{return_body => true}},
+
+    TypedBucket = {<<"index_data">>, <<"test">>},
+    Key = <<"concurrent_set_update">>,
+    Spec = #{<<"s">> => {set, integer}},
+
+    {ok, Map0} = case babel:get(TypedBucket, Key, Spec, GetOpts) of
+        {ok, Map} ->
+            {ok, Map};
+        {error, not_found} ->
+            Map = babel_map:new(#{<<"s">> => [1, 2, 3]}, Spec),
+            babel:put(TypedBucket, Key, Map, Spec, PutOpts)
+    end,
+    ValueA = [lists:last(babel_map:get_value(<<"s">>, Map0)) + 1],
+    ValueB = [hd(ValueA) + 1],
+
+    Map1A = babel_map:update(#{<<"s">> => ValueA}, Map0, Spec),
+    {ok, Map2} = babel:put(TypedBucket, Key, Map1A, Spec, PutOpts),
+    ?assertEqual(ValueA, babel_map:get_value(<<"s">>, Map2)),
+
+    Map1B = babel_map:update(#{<<"s">> => ValueB}, Map0, Spec),
+    {ok, Map3} = babel:put(TypedBucket, Key, Map1B, Spec, PutOpts),
+
+    %% Two concurrent updates should converge
+    ?assertEqual(
+        lists:append(ValueA, ValueB),
+        babel_map:get_value(<<"s">>, Map3)
+    ),
+
+    %% We remove the set concurrently
+    Map1C = babel_map:update(#{<<"s">> => undefined}, Map0, Spec),
+    {ok, Map4} = babel:put(TypedBucket, Key, Map1C, Spec, PutOpts),
+
+    %% Two concurrent updates and a concurrent remove should converge and the %% adds should win as we are using an ORSWOT
+    ?assertEqual(
+        lists:append(ValueA, ValueB),
+        babel_map:get_value(<<"s">>, Map4)
+    ),
+
+    %% We now remove the set from a more recent update (Map2)
+    Map2C = babel_map:update(#{<<"s">> => undefined}, Map2, Spec),
+    {ok, Map5} = babel:put(TypedBucket, Key, Map2C, Spec, PutOpts),
+
+    %% Adds should still win
+    ?assertEqual(
+        ValueB,
+        babel_map:get_value(<<"s">>, Map5)
+    ).
 
 % S = {babel_set, [], [1,2,3], [1,3], 5,<<131,108,0,0,0,1,104,2,109,0,0,0,12,55,106,25,171,64,247,210,174,0,0,0,19,97,1,106>>}.
