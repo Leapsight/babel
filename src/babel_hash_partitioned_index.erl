@@ -718,10 +718,10 @@ gen_identifier(Prefix, N) ->
 %% We do this as Riak does not support list and sets are ordered.
 %% @end
 %% -----------------------------------------------------------------------------
-gen_key(Keys, Data, #{case_sensitive := true} = Config) ->
+gen_key(Keys, Data, #{case_sensitive := true}) ->
     binary_utils:join(babel_key_value:collect(Keys, Data));
 
-gen_key(Keys, Data, #{case_sensitive := false} = Config) ->
+gen_key(Keys, Data, #{case_sensitive := false}) ->
     L = [
         string:lowercase(X) || X <- babel_key_value:collect(Keys, Data)
     ],
