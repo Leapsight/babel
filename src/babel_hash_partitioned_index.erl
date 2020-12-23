@@ -751,9 +751,9 @@ safe_gen_key(Keys, Data, Config) ->
 
 %% @private
 update_data({AggregateKey, IndexKey}, Value, one, Partition) ->
-    %% - data
-    %%    - AggregateKey
-    %%        - IndexKey -> Value
+    %% - data :: map
+    %%    - AggregateKey :: map
+    %%        - IndexKey :: register -> Value
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -772,9 +772,9 @@ update_data({AggregateKey, IndexKey}, Value, one, Partition) ->
     );
 
 update_data({AggregateKey, IndexKey}, Value, many, Partition) ->
-    %% - data
-    %%    - AggregateKey
-    %%        - IndexKey ->  [ Value ]
+    %% - data :: map
+    %%    - AggregateKey :: map
+    %%        - IndexKey :: set ->  [ Values ]
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -835,19 +835,44 @@ delete_data({AggregateKey, IndexKey}, _, one, Partition) ->
     );
 
 delete_data({AggregateKey, IndexKey}, Value, many, Partition) ->
+    AKey = {AggregateKey, map},
+    IKey = {IndexKey, set},
+    %% - data :: map
+    %%    - AggregateKey :: map
+    %%        - IndexKey :: set ->  [ Values ]
     babel_index_partition:update_data(
         fun(Data) ->
-            riakc_map:update(
-                {AggregateKey, map},
-                fun(AggregateMap) ->
-                    riakc_map:update(
-                        {IndexKey, set},
-                        fun(Set) -> riakc_set:del_element(Value, Set) end,
-                        AggregateMap
-                    )
-                end,
-                Data
-            )
+            try
+                riakc_map:update(
+                    AKey,
+                    fun(Map) ->
+                        try
+                            riakc_map:update(
+                                IKey,
+                                fun(Set) ->
+                                    ok = erase_check(Value, Set, IKey, Map),
+                                    riakc_set:del_element(Value, Set)
+                                end,
+                                Map
+                            )
+                        catch
+                            throw:erase_index_key ->
+                                %% We need to remove the whole key as we would
+                                %% otherwise leave the key with an empty set
+                                %% This is safe to do even in the case of
+                                %% concurrent updates as we are using an ORSWOT
+                                %% in which adds win
+                                riakc_map:erase(IKey, Map)
+                        end
+                    end,
+                    Data
+                )
+            catch
+                throw:erase_aggregate_key ->
+                    %% We need to remove the whole aggregate map as it would
+                    %% otherwise leave an agreggate key with an empty set value
+                    riakc_map:erase(AKey, Data)
+            end
         end,
         Partition
     );
@@ -859,17 +884,31 @@ delete_data(IndexKey, _, one, Partition) ->
     );
 
 delete_data(IndexKey, Value, many, Partition) ->
+    IKey = {IndexKey, set},
+
     babel_index_partition:update_data(
         fun(Data) ->
-            riakc_map:update(
-                {IndexKey, set},
-                fun(Set) -> riakc_set:del_element(Value, Set) end,
-                Data
-            )
+            try
+                riakc_map:update(
+                    IKey,
+                    fun(Set) ->
+                        ok = erase_check(Value, Set),
+                        riakc_set:del_element(Value, Set)
+                    end,
+                    Data
+                )
+            catch
+                throw:erase_index_key ->
+                    %% We need to remove the whole key as we would
+                    %% otherwise leave the key with an empty set
+                    %% This is safe to do even in the case of
+                    %% concurrent updates as we are using an ORSWOT
+                    %% in which adds win
+                    riakc_map:erase(IKey, Data)
+            end
         end,
         Partition
     ).
-
 
 
 %% @private
@@ -878,6 +917,40 @@ maybe_reverse(Order, Order, L) ->
 
 maybe_reverse(_, _, L) ->
     lists:reverse(L).
+
+
+%% @private
+erase_check(Value, Set, {_, set} = Key, Map) ->
+    try
+        erase_check(Value, Set)
+    catch
+        throw:erase_index_key ->
+
+            case riakc_map:is_key(Key, Map) andalso riakc_map:size(Map) == 1 of
+                true ->
+                    %% A del_element would result in an empty set and since
+                    %% this is the only key in the map we would be wasting
+                    %% space, so we remove the AggregateKey from the Data map
+                    %% instead
+                    throw(erase_aggregate_key);
+                false ->
+                    throw(erase_index_key)
+            end
+    end.
+
+
+%% @private
+erase_check(Value, Set) ->
+    case riakc_set:is_element(Value, Set) andalso riakc_set:size(Set) == 1 of
+        true ->
+            %% A del_element would result in an empty set which wastes
+            %% space, so we remove the set from the Aggregate map
+            %% instead
+            throw(erase_index_key);
+        false ->
+            ok
+    end.
+
 
 
 %% -----------------------------------------------------------------------------
