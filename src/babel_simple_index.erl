@@ -33,6 +33,13 @@
 -define(KEYPATH_LIST_SPEC, {list, [binary, tuple, {list, [binary, tuple]}]}).
 
 -define(SPEC, #{
+    case_sensitive => #{
+        required => true,
+        allow_null => false,
+        allow_undefined => false,
+        default => false,
+        datatype => boolean
+    },
     sort_ordering => #{
         required => true,
         allow_null => false,
@@ -59,6 +66,7 @@
 }).
 
 -type t()           ::  #{
+    case_sensitive := boolean(),
     sort_ordering := asc | desc,
     partition_identifier_prefix := binary(),
     index_by := fields(),
@@ -102,6 +110,16 @@
 %% API
 %% =============================================================================
 
+
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns true if the index is case sensitivity.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec case_sensitive(t()) -> boolean().
+
+case_sensitive(#{case_sensitive := Value}) -> Value.
 
 
 %% -----------------------------------------------------------------------------
@@ -190,10 +208,16 @@ from_riak_dict(Dict) ->
         )
     ),
 
+    CaseSensitive = case orddict:find({<<"case_sensitive">>, flag}, Dict) of
+        {ok, Value} -> Value;
+        error -> false
+    end,
+
     %% As this object is read-only and embeded in an Index Collection we turn it
     %% into an Erlang map as soon as we read it from the collection for enhanced
     %% performance. So loosing its CRDT context it not an issue.
     #{
+        case_sensitive => CaseSensitive,
         sort_ordering => Sort,
         partition_identifier_prefix => Prefix,
         index_by => IndexBy,
@@ -210,6 +234,7 @@ from_riak_dict(Dict) ->
 
 to_riak_object(Config) ->
     #{
+        case_sensitive := CaseSensitive,
         sort_ordering := Sort,
         partition_identifier_prefix := Prefix,
         index_by := IndexBy,
@@ -218,6 +243,7 @@ to_riak_object(Config) ->
 
 
     Values = [
+        {{<<"case_sensitive">>, flag}, CaseSensitive},
         {{<<"sort_ordering">>, register}, atom_to_binary(Sort, utf8)},
         {{<<"partition_identifier_prefix">>, register}, Prefix},
         {{<<"index_by">>, register}, encode_fields(IndexBy)},
@@ -288,7 +314,7 @@ partition_identifier(KeyValue, Config) ->
     %% We collect the partition keys from the key value object and build a
     %% binary key that we use as id for the partition i.e. we use as key in
     %% Riak KV.
-    try gen_key(Keys, KeyValue) of
+    try gen_key(Keys, KeyValue, Config) of
         PKey -> gen_identifier(Prefix, PKey)
     catch
         error:{badkey, Key} ->
@@ -383,7 +409,7 @@ update_partition([], Partition, _) ->
     Partition;
 
 update_partition({delete, Data}, Partition, Config) ->
-    Value = gen_key(covered_fields(Config), Data),
+    Value = gen_key(covered_fields(Config), Data, Config),
 
     babel_index_partition:update_data(
         fun(Set) -> riakc_set:del_element(Value, Set) end,
@@ -391,7 +417,7 @@ update_partition({delete, Data}, Partition, Config) ->
     );
 
 update_partition({insert, Data}, Partition, Config) ->
-    Value = gen_key(covered_fields(Config), Data),
+    Value = gen_key(covered_fields(Config), Data, Config),
 
     babel_index_partition:update_data(
         fun(Set) -> riakc_set:add_element(Value, Set) end,
@@ -405,7 +431,7 @@ update_partition({insert, Data}, Partition, Config) ->
 %% -----------------------------------------------------------------------------
 match(Pattern, Partition, Config) ->
     IndexBy = index_by(Config),
-    IndexKey = safe_gen_key(IndexBy, Pattern),
+    IndexKey = safe_gen_key(IndexBy, Pattern, Config),
 
     case IndexKey of
         error ->
@@ -512,8 +538,14 @@ gen_identifier(Prefix, IndexKey) ->
 %% We do this as Riak does not support list and sets are ordered.
 %% @end
 %% -----------------------------------------------------------------------------
-gen_key(Keys, Data) ->
-    binary_utils:join(babel_key_value:collect(Keys, Data)).
+gen_key(Keys, Data, #{case_sensitive := true}) ->
+    binary_utils:join(babel_key_value:collect(Keys, Data));
+
+gen_key(Keys, Data, #{case_sensitive := false}) ->
+    L = [
+        string:lowercase(X) || X <- babel_key_value:collect(Keys, Data)
+    ],
+    binary_utils:join(L).
 
 
 %% -----------------------------------------------------------------------------
@@ -525,12 +557,12 @@ gen_key(Keys, Data) ->
 %% exceptions and returns a value.
 %% @end
 %% -----------------------------------------------------------------------------
-safe_gen_key([], _) ->
+safe_gen_key([], _, _) ->
     undefined;
 
-safe_gen_key(Keys, Data) ->
+safe_gen_key(Keys, Data, Config) ->
     try
-        binary_utils:join(babel_key_value:collect(Keys, Data))
+        gen_key(Keys, Data, Config)
     catch
         error:{badkey, _} ->
             error
