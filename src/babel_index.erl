@@ -620,6 +620,7 @@ maybe_init_partition(Mod, PartitionId, Config) ->
             error({partition_not_found, PartitionId})
     end.
 
+
 %% -----------------------------------------------------------------------------
 %% @private
 %% We generate the tuple
@@ -628,19 +629,17 @@ maybe_init_partition(Mod, PartitionId, Config) ->
 prepare_actions([{update, undefined, Data} | T], Index, Opts, Acc) ->
     prepare_actions([{insert, Data} | T], Index, Opts, Acc);
 
-prepare_actions([H|T], Index, Opts, Acc) ->
-    Data = case H of
-        {update, _, Value} -> Value;
-        {insert, Value} -> Value;
-        {delete, Value} -> Value
-    end,
+prepare_actions([{update, Old, Data} | T], Index, Opts, Acc) ->
+    prepare_actions([{delete, Old}, {insert, Data} | T], Index, Opts, Acc);
 
+prepare_actions([{_, Value} = H|T], Index, Opts, Acc) ->
     %% We use this call so that we cache the distinguished_key_paths
     %% result in Opts
     {Keys, Opts1} = distinguished_key_paths(Index, Opts),
-    Summary = change_summary(Keys, Data, Opts1),
 
-    NewAcc = prepare_action(H, Index, Opts1, Acc, Summary),
+    Summary = change_summary(Keys, Value, Opts1),
+
+    NewAcc = maybe_add_action(H, Index, Opts1, Acc, Summary),
     prepare_actions(T, Index, Opts1, NewAcc);
 
 prepare_actions([], _, _, Acc) ->
@@ -648,52 +647,32 @@ prepare_actions([], _, _, Acc) ->
 
 
 %% @private
-prepare_action(_, _, _, Acc, nomatch) ->
-    %% We do not need to update the index as one or more distinguished keys are
-    %% not present in the map
-    Acc;
-
-prepare_action({update, undefined, Data}, Index, Opts, Acc, Summary) ->
-    prepare_action({insert, Data}, Index, Opts, Acc, Summary);
-
-prepare_action({update, _, _}, _, _, Acc, none) ->
-    %% We do not need to update the index as no distinguished key has
-    %% changed
-    Acc;
-
-prepare_action({update, Old, _}, Index, _, Acc, removed) ->
-    %% One or more distinguished keys have been removed so we just need
-    %% to delete the entry in this index for Old
-    add_action({delete, Old}, Index, Acc);
-
-prepare_action({update, Old, New}, Index, _, Acc0, Summary) when
-Summary == undefined orelse
-Summary == both orelse
-Summary == updated ->
-    Acc1 = add_action({delete, Old}, Index, Acc0),
-    add_action({insert, New}, Index, Acc1);
-
-prepare_action({_, _} = Action, Index, _, Acc, undefined) ->
+maybe_add_action({_, _} = Action, Index, _, Acc, undefined) ->
     %% Data is not a babel map, so we cannot be smart about changes we
     %% just perform the action
     add_action(Action, Index, Acc);
 
-prepare_action({delete, _} = Action, Index, _, Acc, none) ->
+maybe_add_action(_, _, _, Acc, nomatch) ->
+    %% We do not need to update the index as one or more distinguished keys are
+    %% not present in the map
+    Acc;
+
+maybe_add_action({delete, _} = Action, Index, _, Acc, none) ->
     add_action(Action, Index, Acc);
 
-prepare_action({delete, _} = Action, _, _, _, _) ->
+maybe_add_action({insert, _}, _, _, Acc, none) ->
+    %% We do not need to update the index as no distinguished key has
+    %% changed
+    Acc;
+
+maybe_add_action({delete, _} = Action, _, _, _, _) ->
     %% We cannot delete because the object has been modified and thus
     %% we might not have the data to call the indices. We cannot just
     %% ignore those indices either, so we fail. The user should not be
     %% calling a delete with an updated datatype.
     error({badaction, Action});
 
-prepare_action({insert, _}, _, _, Acc, none) ->
-    %% We do not need to update the index as no distinguished key has
-    %% changed
-    Acc;
-
-prepare_action({insert, _} = Action, Index, _, Acc, _) ->
+maybe_add_action({insert, _} = Action, Index, _, Acc, _) ->
     %% One or more distinguished keys have been removed so we just need
     %% to delete the entry in this index
     add_action(Action, Index, Acc).
@@ -710,7 +689,17 @@ when Op == insert orelse Op == delete ->
 
 
 
+%% -----------------------------------------------------------------------------
 %% @private
+%% @doc
+%% * undefined - not a babel map, so we do not have change tracking metadata
+%% * nomatch - one or more distinguished keys were missing from the map
+%% * none - the map has no changes
+%% * updated - the map has updated keys
+%% * removed - the maps has removed keys
+%% * both - the map has updated and removed keys
+%% @end
+%% -----------------------------------------------------------------------------
 -spec change_summary([babel_key_value:path()], babel_key_value:t(), map()) ->
     nomatch | undefined | none | updated | removed | both.
 
