@@ -29,7 +29,7 @@
   1},
  {<<"leap">>,
   {git,"https://gitlab.com/leapsight/leap.git",
-       {ref,"b7cc3d3b6cd18cd185309dc6f1ce06e816c34ff1"}},
+       {ref,"2a726ad5ae8043e6a94ce9bdfff5239df9de954d"}},
   0},
  {<<"pooler">>,{pkg,<<"pooler">>,<<"1.5.3">>},1},
  {<<"reliable">>,

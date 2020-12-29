@@ -1,7 +1,7 @@
 -include_lib("riakc/include/riakc.hrl").
 
--define(DEFAULT_REQ_TIMEOUT, 5000).
--define(DEFAULT_REQ_DEADLINE, 5 * 60 * 1000).
+-define(DEFAULT_REQ_TIMEOUT, 60000).
+-define(DEFAULT_REQ_DEADLINE, 5 * ?DEFAULT_REQ_TIMEOUT).
 %% Riak HTTP does not like the $/
 -define(PATH_SEPARATOR, $-).
 -define(KEY(Bucket), <<Bucket/binary, "idx">>).

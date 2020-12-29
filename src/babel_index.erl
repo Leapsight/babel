@@ -648,8 +648,8 @@ prepare_actions([], _, _, Acc) ->
 
 %% @private
 maybe_add_action({_, _} = Action, Index, _, Acc, undefined) ->
-    %% Data is not a babel map, so we cannot be smart about changes we
-    %% just perform the action
+    %% The action value is not a babel map, so we cannot be smart about
+    %% changes, we just perform the action
     add_action(Action, Index, Acc);
 
 maybe_add_action(_, _, _, Acc, nomatch) ->
@@ -676,7 +676,6 @@ maybe_add_action({insert, _} = Action, Index, _, Acc, _) ->
     %% One or more distinguished keys have been removed so we just need
     %% to delete the entry in this index
     add_action(Action, Index, Acc).
-
 
 
 %% @private
@@ -753,8 +752,11 @@ actions_by_partition_id(Actions, Index, Opts) ->
     %%    [ {partition_id(), [{update_action(), key_value()}]} ]
     %% by grouping by the 1st element and collecting the 2nd element
     Proj = {1, {function, collect, [2]}},
-    %% We sort as we need deletes to precede inserts on the same partition
+
+    %% We sort the groupings
+    %% (this retains the user provided action order per partition)
     SOpts = #{sort => true},
+
     leap_tuples:summarize(Tuples, Proj, SOpts).
 
 
