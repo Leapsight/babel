@@ -648,8 +648,7 @@ prepare_actions([], _, _, Acc) ->
 
 %% @private
 maybe_add_action({_, _} = Action, Index, _, Acc, undefined) ->
-    %% The action value is not a babel map, so we cannot be smart about
-    %% changes, we just perform the action
+    %% The action value is not a babel map, we just perform the action
     add_action(Action, Index, Acc);
 
 maybe_add_action(_, _, _, Acc, nomatch) ->
@@ -665,14 +664,16 @@ maybe_add_action({insert, _}, _, _, Acc, none) ->
     %% changed
     Acc;
 
-maybe_add_action({delete, _} = Action, _, _, _, _) ->
+maybe_add_action({delete, _} = Action, _, _, _, Summary)
+when Summary == both orelse Summary == removed orelse Summary == updated ->
     %% We cannot delete because the object has been modified and thus
     %% we might not have the data to call the indices. We cannot just
     %% ignore those indices either, so we fail. The user should not be
     %% calling a delete with an updated datatype.
     error({badaction, Action});
 
-maybe_add_action({insert, _} = Action, Index, _, Acc, _) ->
+maybe_add_action({insert, _} = Action, Index, _, Acc, Summary)
+when Summary == both orelse Summary == removed orelse Summary == updated ->
     %% One or more distinguished keys have been removed so we just need
     %% to delete the entry in this index
     add_action(Action, Index, Acc).
@@ -709,7 +710,7 @@ change_summary(Keys, Map, _) ->
     try
         babel_map:is_type(Map) orelse throw(undefined),
         Fold = fun(X, Acc) ->
-            try babel_map:change_status(X, Map, nomatch) of
+            case babel_map:change_status(X, Map, nomatch) of
                 nomatch ->
                     %% A distinguished key was missing from Map
                     throw(nomatch);
@@ -719,9 +720,6 @@ change_summary(Keys, Map, _) ->
                     throw(both);
                 Status ->
                     Status
-            catch
-                error:{badkey, _} ->
-                    throw(undefined)
             end
         end,
         lists:foldl(Fold, none, Keys)
