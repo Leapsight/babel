@@ -165,6 +165,8 @@ get(Key, KVTerm, Default) ->
 -spec collect([key()], KVTerm :: t()) -> [any()].
 
 collect(Keys, KVTerm) ->
+    %% TODO this is not efficient as we traverse the tree from root for
+    %% every key. We should implement collect_map/2 (which should be optimised)%% and then return the values for the Keys.
     collect(Keys, KVTerm, ?BADKEY).
 
 
