@@ -441,7 +441,7 @@ change_status(KeyOrPath, Map) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec change_status(KeyOrPath :: key_path(), Map :: t(), Default :: any()) ->
-    none | both | removed | updated | any() | no_return().
+    none | removed | updated | any() | no_return().
 
 change_status([Key|[]], Map, Default) ->
     change_status(Key, Map, Default);
@@ -464,12 +464,20 @@ change_status(Key, #babel_map{values = V, updates = U, removes = R}, Default) ->
             IsU = ordsets:is_element(Key, U),
             IsR = ordsets:is_element(Key, R),
             case {IsU, IsR} of
-                {true, true} -> both;
-                {true, false} -> updated;
-                {false, true} -> removed;
-                _ -> none
+                {false, false} -> none;
+                _ -> updated
             end;
-        false when Default == ?BADKEY ->
+        false when length(R) > 0 ->
+            IsU = ordsets:is_element(Key, U),
+            IsR = ordsets:is_element(Key, R),
+            case {IsU, IsR} of
+                {_, true} -> removed;
+                {true, false} -> updated;
+                _ ->
+                    Default == ?BADKEY andalso error({badkey, Key}),
+                    Default
+            end;
+         false when Default == ?BADKEY ->
             error({badkey, Key});
         false ->
             Default
