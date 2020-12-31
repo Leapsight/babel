@@ -175,6 +175,7 @@ end).
 -export([typed_bucket/1]).
 -export([update/3]).
 -export([distinguished_key_paths/1]).
+-export([change_summary/3]).
 
 
 %% Till we fix maps_utils:validate
@@ -629,15 +630,22 @@ maybe_init_partition(Mod, PartitionId, Config) ->
 prepare_actions([{update, undefined, Data} | T], Index, Opts, Acc) ->
     prepare_actions([{insert, Data} | T], Index, Opts, Acc);
 
-prepare_actions([{update, Old, Data} | T], Index, Opts, Acc) ->
-    prepare_actions([{delete, Old}, {insert, Data} | T], Index, Opts, Acc);
+prepare_actions([{update, Old, New} = H | T], Index, Opts, Acc) ->
+    %% We use this call so that we cache the distinguished_key_paths
+    %% result in Opts
+    {Keys, Opts1} = distinguished_key_paths(Index, Opts),
+    OldSummary = change_summary(Keys, Old, Opts1),
+    NewSummary = change_summary(Keys, New, Opts1),
+    Summary = {OldSummary, NewSummary},
+    NewAcc = maybe_add_action(H, Index, Opts1, Acc, Summary),
+    prepare_actions(T, Index, Opts1, NewAcc);
 
-prepare_actions([{_, Value} = H|T], Index, Opts, Acc) ->
+prepare_actions([{_, Data} = H|T], Index, Opts, Acc) ->
     %% We use this call so that we cache the distinguished_key_paths
     %% result in Opts
     {Keys, Opts1} = distinguished_key_paths(Index, Opts),
 
-    Summary = change_summary(Keys, Value, Opts1),
+    Summary = change_summary(Keys, Data, Opts1),
 
     NewAcc = maybe_add_action(H, Index, Opts1, Acc, Summary),
     prepare_actions(T, Index, Opts1, NewAcc);
@@ -647,33 +655,45 @@ prepare_actions([], _, _, Acc) ->
 
 
 %% @private
-maybe_add_action({_, _} = Action, Index, _, Acc, undefined) ->
-    %% The action value is not a babel map, we just perform the action
-    add_action(Action, Index, Acc);
-
-maybe_add_action(_, _, _, Acc, nomatch) ->
+maybe_add_action(_, _, _, Acc, error) ->
     %% We do not need to update the index as one or more distinguished keys are
     %% not present in the map
     Acc;
 
+maybe_add_action({update, _, _}, _, _, Acc, {error, error}) ->
+    Acc;
+
+maybe_add_action({update, _, _}, _, _, Acc, {none, none}) ->
+    %% If the new value has not changed then we should neither delete nor insert
+    Acc;
+
+maybe_add_action({update, _, Data}, Index, Opts, Acc, {error, Summary}) ->
+    maybe_add_action({insert, Data}, Index, Opts, Acc, Summary);
+
+maybe_add_action({update, Data, _}, Index, Opts, Acc, {Summary, error}) ->
+    maybe_add_action({delete, Data}, Index, Opts, Acc, Summary);
+
+maybe_add_action({update, Old, New}, Index, Opts, Acc0, {none, updated}) ->
+    %% If the new value has not changed then we should neither delete nor insert
+    Acc1 = maybe_add_action({delete, Old}, Index, Opts, Acc0, none),
+    maybe_add_action({insert, New}, Index, Opts, Acc1, updated);
+
 maybe_add_action({delete, _} = Action, Index, _, Acc, none) ->
     add_action(Action, Index, Acc);
 
-maybe_add_action({insert, _}, _, _, Acc, none) ->
-    %% We do not need to update the index as no distinguished key has
-    %% changed
-    Acc;
-
-maybe_add_action({delete, _} = Action, _, _, _, Summary)
-when Summary == both orelse Summary == removed orelse Summary == updated ->
+maybe_add_action({delete, _} = Action, _, _, _, updated) ->
     %% We cannot delete because the object has been modified and thus
     %% we might not have the data to call the indices. We cannot just
     %% ignore those indices either, so we fail. The user should not be
     %% calling a delete with an updated datatype.
     error({badaction, Action});
 
-maybe_add_action({insert, _} = Action, Index, _, Acc, Summary)
-when Summary == both orelse Summary == removed orelse Summary == updated ->
+maybe_add_action({insert, _}, _, _, Acc, none) ->
+    %% We do not need to update the index as no distinguished key has
+    %% changed
+    Acc;
+
+maybe_add_action({insert, _} = Action, Index, _, Acc, updated) ->
     %% One or more distinguished keys have been removed so we just need
     %% to delete the entry in this index
     add_action(Action, Index, Acc).
@@ -692,34 +712,32 @@ when Op == insert orelse Op == delete ->
 %% -----------------------------------------------------------------------------
 %% @private
 %% @doc
-%% * undefined - not a babel map, so we do not have change tracking metadata
-%% * nomatch - one or more distinguished keys were missing from the map
+%% * error - one or more distinguished keys were missing from the map
 %% * none - the map has no changes
 %% * updated - the map has updated keys
-%% * removed - the maps has removed keys
-%% * both - the map has updated and removed keys
 %% @end
 %% -----------------------------------------------------------------------------
 -spec change_summary([babel_key_value:path()], babel_key_value:t(), map()) ->
-    nomatch | undefined | none | updated | removed | both.
+    error | none | updated.
 
 change_summary(_, _, #{force := true}) ->
-    both;
+    %% force option overrides the summary logic an treats the object as updated
+    updated;
 
 change_summary(Keys, Map, _) ->
     try
-        babel_map:is_type(Map) orelse throw(undefined),
+        babel_map:is_type(Map) orelse throw(error),
         Fold = fun(X, Acc) ->
-            case babel_map:change_status(X, Map, nomatch) of
-                nomatch ->
+            case babel_map:change_status(X, Map, error) of
+                error ->
                     %% A distinguished key was missing from Map
-                    throw(nomatch);
-                both ->
-                    throw(both);
-                Status when Acc /= none andalso Acc /= Status ->
-                    throw(both);
-                Status ->
-                    Status
+                    throw(error);
+                removed ->
+                    throw(error);
+                updated ->
+                    updated;
+                _ ->
+                    Acc
             end
         end,
         lists:foldl(Fold, none, Keys)

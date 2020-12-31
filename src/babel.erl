@@ -732,7 +732,7 @@ rebuild_index(_IndexName, _Collection, _Opts) ->
     | no_return().
 
 update_indices(Actions, IdxNames, Collection, Opts0) when is_list(Actions) ->
-    Opts = validate_opts(Opts0),
+    Opts = validate_opts(Opts0, relaxed),
 
     Fun = fun() ->
         CollectionId = babel_index_collection:id(Collection),

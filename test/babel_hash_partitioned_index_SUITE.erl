@@ -174,11 +174,11 @@ index_5_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    RiakOpts = #{connection => Conn},
+    BabelOpts = #{connection => Conn},
 
     %% Cleanup previous runs
     Cleanup = fun() ->
-        case babel_index_collection:lookup(Prefix, IdxName, RiakOpts) of
+        case babel_index_collection:lookup(Prefix, IdxName, BabelOpts) of
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
@@ -225,15 +225,19 @@ index_5_test(_) ->
 
     Update = fun() ->
         %% We fetch the collection from Riak KV
-        Collection = babel_index_collection:fetch(Prefix, IdxName, RiakOpts),
-        {true, #{is_nested := true}} = babel:update_all_indices(Actions, Collection, RiakOpts),
+        Collection = babel_index_collection:fetch(Prefix, IdxName, BabelOpts),
+        {true, #{is_nested := true}} = babel:update_all_indices(
+            Actions,
+            Collection,
+            BabelOpts#{force => true} % as Obj is not a babel_map
+        ),
         ok
     end,
 
     {true, #{work_ref := WorkRef3, result := ok}} = babel:workflow(Update),
     {ok, _} = babel:yield(WorkRef3, 10000),
 
-    Collection = babel_index_collection:fetch(Prefix, IdxName, RiakOpts),
+    Collection = babel_index_collection:fetch(Prefix, IdxName, BabelOpts),
     Index = babel_index_collection:index(
         <<"persons_by_account">>, Collection),
 
@@ -243,7 +247,7 @@ index_5_test(_) ->
 
     ?assertEqual(
         [#{<<"id">> => <<"mrn:person:2">>}],
-        babel_index:match(Pattern, Index, RiakOpts)
+        babel_index:match(Pattern, Index, BabelOpts)
     ),
     ok.
 
@@ -280,11 +284,11 @@ huge_index_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    RiakOpts = #{connection => Conn},
+    BabelOpts = #{connection => Conn},
 
     %% Cleanup previous runs
     Cleanup = fun() ->
-        case babel_index_collection:lookup(Prefix, CName, RiakOpts) of
+        case babel_index_collection:lookup(Prefix, CName, BabelOpts) of
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
@@ -336,28 +340,32 @@ huge_index_test(_) ->
 
     Fun2 = fun() ->
         %% We fetch the collection from Riak KV
-        Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
-        {true, #{is_nested := true}} = babel:update_all_indices(Actions, Collection, RiakOpts),
+        Collection = babel_index_collection:fetch(Prefix, CName, BabelOpts),
+        {true, #{is_nested := true}} = babel:update_all_indices(
+            Actions,
+            Collection,
+            BabelOpts#{force => true} % as Obj is not a babel_map
+        ),
         ok
     end,
 
     {true, #{work_ref := WorkRef, result := ok}} = babel:workflow(Fun2),
     {ok, _} = babel:yield(WorkRef, 15000),
 
-    Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
+    Collection = babel_index_collection:fetch(Prefix, CName, BabelOpts),
     Index = babel_index_collection:index(IdxName, Collection),
 
     Pattern1 = #{
         <<"post_code">> => <<"PC1">>
     },
 
-    Res1 = babel_index:match(Pattern1, Index, RiakOpts),
+    Res1 = babel_index:match(Pattern1, Index, BabelOpts),
     ?assertEqual(5000, length(Res1)),
     Pattern2 = #{
         <<"post_code">> => <<"PC1">>,
         <<"email">> => <<"1@example.com">>
     },
-    Res2 = babel_index:match(Pattern2, Index, RiakOpts),
+    Res2 = babel_index:match(Pattern2, Index, BabelOpts),
     ?assertEqual(1, length(Res2)),
 
     ?assertEqual(
@@ -398,11 +406,11 @@ index_6_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    RiakOpts = #{connection => Conn},
+    BabelOpts = #{connection => Conn},
 
     %% Cleanup previous runs
     Cleanup = fun() ->
-        case babel_index_collection:lookup(Prefix, CName, RiakOpts) of
+        case babel_index_collection:lookup(Prefix, CName, BabelOpts) of
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
@@ -451,15 +459,19 @@ index_6_test(_) ->
 
     Update = fun() ->
         %% We fetch the collection from Riak KV
-        Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
-        {true, #{is_nested := true}} = babel:update_all_indices(Actions, Collection, RiakOpts),
+        Collection = babel_index_collection:fetch(Prefix, CName, BabelOpts),
+        {true, #{is_nested := true}} = babel:update_all_indices(
+            Actions,
+            Collection,
+            BabelOpts#{force => true} % as Obj is not a babel_map
+            ),
         ok
     end,
 
     {true, #{work_ref := WorkRef3, result := ok}} = babel:workflow(Update),
     {ok, _} = babel:yield(WorkRef3, 10000),
 
-    Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
+    Collection = babel_index_collection:fetch(Prefix, CName, BabelOpts),
     Index = babel_index_collection:index(
         <<"persons_by_account">>, Collection),
 
@@ -467,7 +479,7 @@ index_6_test(_) ->
         <<"account_id">> =>  <<"mrn:account:2">>
     },
 
-    Result = babel_index:match(Pattern, Index, RiakOpts),
+    Result = babel_index:match(Pattern, Index, BabelOpts),
     ?assertEqual(
         2,
         length(Result)
@@ -510,13 +522,13 @@ accounts_by_identification_type_and_number_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    RiakOpts = #{
+    BabelOpts = #{
         connection => Conn
     },
 
     %% Cleanup previous runs
     Cleanup = fun() ->
-        case babel_index_collection:lookup(Prefix, CName, RiakOpts) of
+        case babel_index_collection:lookup(Prefix, CName, BabelOpts) of
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
@@ -582,10 +594,13 @@ accounts_by_identification_type_and_number_test(_) ->
         ],
 
         Collection = babel_index_collection:fetch(
-            Prefix, CName, RiakOpts),
+            Prefix, CName, BabelOpts),
         _Index = babel_index_collection:index(IdxName, Collection),
         {true, #{is_nested := true}} = babel:update_all_indices(
-            Actions, Collection, RiakOpts),
+            Actions,
+            Collection,
+            BabelOpts#{force => true} % as Obj is not a babel_map
+        ),
         ok
     end,
     {true, #{work_ref := WorkRef3, result := ok}} = babel:workflow(
@@ -593,14 +608,14 @@ accounts_by_identification_type_and_number_test(_) ->
     ,
     {ok, _} = babel:yield(WorkRef3, 15000),
 
-    Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
+    Collection = babel_index_collection:fetch(Prefix, CName, BabelOpts),
     Idx = babel_index_collection:index(IdxName, Collection),
 
     Pattern = #{
         <<"identification_type">> => <<"DNI">>,
         <<"identification_number">> => <<"1">>
     },
-    Res = babel_index:match(Pattern, Idx, RiakOpts),
+    Res = babel_index:match(Pattern, Idx, BabelOpts),
     ?assertEqual(1, length(Res)),
     ?assertEqual(
         [<<"account_id">>],
@@ -617,13 +632,13 @@ accounts_by_identification_type_and_number_many_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    RiakOpts = #{
+    BabelOpts = #{
         connection => Conn
     },
 
     %% Cleanup previous runs
     Cleanup = fun() ->
-        case babel_index_collection:lookup(Prefix, CName, RiakOpts) of
+        case babel_index_collection:lookup(Prefix, CName, BabelOpts) of
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
@@ -690,10 +705,13 @@ accounts_by_identification_type_and_number_many_test(_) ->
         ],
 
         Collection = babel_index_collection:fetch(
-            Prefix, CName, RiakOpts),
+            Prefix, CName, BabelOpts),
         _Index = babel_index_collection:index(IdxName, Collection),
         {true, #{is_nested := true}} = babel:update_all_indices(
-            Actions, Collection, RiakOpts),
+            Actions,
+            Collection,
+            BabelOpts#{force => true} % as Obj is not a babel_map
+        ),
         ok
     end,
 
@@ -702,7 +720,7 @@ accounts_by_identification_type_and_number_many_test(_) ->
     ,
     {ok, _} = babel:yield(WorkRef3, 15000),
 
-    Collection = babel_index_collection:fetch(Prefix, CName, RiakOpts),
+    Collection = babel_index_collection:fetch(Prefix, CName, BabelOpts),
     Idx = babel_index_collection:index(IdxName, Collection),
 
     Pattern = #{
@@ -710,7 +728,7 @@ accounts_by_identification_type_and_number_many_test(_) ->
         <<"identification_number">> => <<"1">>
     },
 
-    Res = babel_index:match(Pattern, Idx, RiakOpts),
+    Res = babel_index:match(Pattern, Idx, BabelOpts),
     ?assertEqual(2, length(Res)),
     ?assertEqual(
         [<<"account_id">>],
