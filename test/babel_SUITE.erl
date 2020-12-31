@@ -89,7 +89,7 @@ update_indices_1_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    RiakOpts = #{
+    BabelOpts = #{
         connection => Conn
     },
 
@@ -116,9 +116,13 @@ update_indices_1_test(_) ->
     Fun2 = fun() ->
         %% We fetch the collection from Riak KV
         Collection = babel_index_collection:fetch(
-            <<"babel_SUITE">>, <<"users">>, RiakOpts
+            <<"babel_SUITE">>, <<"users">>, BabelOpts
         ),
-        {true, #{is_nested := true}} = babel:update_all_indices([{insert, Object}], Collection, RiakOpts),
+        {true, #{is_nested := true}} = babel:update_all_indices(
+            [{insert, Object}],
+            Collection,
+            BabelOpts#{force => true} % as Object is not a babel_map
+        ),
         ok
     end,
 
@@ -131,15 +135,15 @@ match_1_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    RiakOpts = #{
+    BabelOpts = #{
         connection => Conn
     },
     Collection = babel_index_collection:fetch(
-        <<"babel_SUITE">>, <<"users">>, RiakOpts
+        <<"babel_SUITE">>, <<"users">>, BabelOpts
     ),
     Index = babel_index_collection:index(<<"users_by_email">>, Collection),
     Res = babel_index:match(
-        #{{<<"email">>, register} => <<"johndoe@me.com">>}, Index, RiakOpts),
+        #{{<<"email">>, register} => <<"johndoe@me.com">>}, Index, BabelOpts),
     Expected = [
         #{
             {<<"user_id">>, register} => <<"mrn:user:1">>,
@@ -153,13 +157,13 @@ delete_index_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    RiakOpts = #{
+    BabelOpts = #{
         connection => Conn
     },
 
     Fun = fun() ->
         Res = babel_index_collection:lookup(
-            <<"mytenant">>, <<"users">>, RiakOpts
+            <<"mytenant">>, <<"users">>, BabelOpts
         ),
 
         case Res of
