@@ -40,124 +40,6 @@
 %% TODO
 -define(DEFAULT_OPTS, #{}).
 
--define(BABEL_OPTS_SPEC, #{
-    connection => #{
-        required => false,
-        datatype => [pid, function]
-    },
-    riak_opts => #{
-        required => false,
-        datatype => map,
-        validator => ?RIAK_OPTS_SPEC
-    }
-}).
-
--define(RIAK_EC_TYPE, [non_neg_integer , {in, [one, all, quorum, default]}]).
-
--define(RIAK_OPTS_SPEC, #{
-    n_val => #{
-        alias => <<"n_val">>,
-        key => n_val,
-        required => false,
-        allow_null => false,
-        allow_undefined => false,
-        datatype => non_neg_integer
-    },
-    r => #{
-        alias => <<"r">>,
-        key => r,
-        required => false,
-        allow_null => false,
-        allow_undefined => false,
-        datatype => ?RIAK_EC_TYPE
-    },
-    w => #{
-        alias => <<"w">>,
-        key => w,
-        required => false,
-        allow_null => false,
-        allow_undefined => false,
-        datatype => ?RIAK_EC_TYPE
-    },
-    dw => #{
-        alias => <<"dw">>,
-        key => dw,
-        required => false,
-        allow_null => false,
-        allow_undefined => false,
-        datatype => ?RIAK_EC_TYPE
-    },
-    pr => #{
-        alias => <<"pr">>,
-        key => pr,
-        required => false,
-        allow_null => false,
-        allow_undefined => false,
-        datatype => ?RIAK_EC_TYPE
-    },
-    pw => #{
-        alias => <<"pw">>,
-        key => pw,
-        required => false,
-        allow_null => false,
-        allow_undefined => false,
-        datatype => ?RIAK_EC_TYPE
-    },
-    rw => #{
-        alias => <<"rw">>,
-        key => rw,
-        required => false,
-        allow_null => false,
-        allow_undefined => false,
-        datatype => ?RIAK_EC_TYPE
-    },
-    notfound_ok => #{
-        alias => <<"notfound_ok">>,
-        key => notfound_ok,
-        required => false,
-        allow_null => false,
-        allow_undefined => false,
-        datatype => boolean
-    },
-    basic_quorum => #{
-        alias => <<"basic_quorum">>,
-        key => basic_quorum,
-        required => false,
-        allow_null => false,
-        allow_undefined => false,
-        datatype => boolean
-    },
-    sloppy_quorum => #{
-        alias => <<"sloppy_quorum">>,
-        key => sloppy_quorum,
-        required => false,
-        allow_null => false,
-        allow_undefined => false,
-        datatype => boolean
-    },
-    return_body => #{
-        alias => <<"return_body">>,
-        key => return_body,
-        required => false,
-        datatype => boolean
-    },
-    return_head => #{
-        alias => <<"return_head">>,
-        key => return_head,
-        required => false,
-        datatype => boolean
-    },
-    timeout => #{
-        alias => <<"timeout">>,
-        key => timeout,
-        description => <<
-            "The timeout for a Riak request. The default is 5 secs."
-        >>,
-        required => true,
-        default => ?DEFAULT_REQ_TIMEOUT,
-        datatype => timeout
-    }
-}).
 
 -type datatype()        ::  babel_map:t() | babel_set:t() | babel_counter:t().
 -type type_spec()       ::  babel_map:type_spec()
@@ -165,42 +47,73 @@
                             | babel_counter:type_spec().
 -type riak_op()         ::  riakc_datatype:update(term()).
 
--type opts()      ::  #{
+-type opts()            ::  get_opts() | put_opts() | delete_opts().
+
+-type get_opts()        ::  #{
     connection => pid() | fun(() -> pid()),
-    riak_opts => riak_opts(),
-    '$validated' => boolean()
+    r => quorum(),
+    pr => quorum(),
+    if_modified => binary(),
+    notfound_ok => boolean(),
+    n_val => non_neg_integer(),
+    basic_quorum => boolean(),
+    sloppy_quorum => boolean(),
+    head => boolean(),
+    deletedvclock => boolean(),
+    timeout => timeout(),
+    '$get_validated' => boolean()
 }.
 
--type riak_opts()   :: #{
+-type put_opts()       ::  #{
+    connection => pid() | fun(() -> pid()),
+    w => quorum(),
+    dw => quorum(),
+    pw => quorum(),
+    if_not_modified => boolean(),
+    if_none_match => boolean(),
+    notfound_ok => boolean(),
+    n_val => non_neg_integer(),
+    sloppy_quorum => boolean(),
+    return_body => boolean(),
+    return_head => boolean(),
+    timeout => timeout(),
+    '$put_validated' => boolean()
+}.
+
+-type delete_opts()    ::  #{
+    connection => pid() | fun(() -> pid()),
     r => quorum(),
     pr => quorum(),
     w => quorum(),
     dw => quorum(),
     pw => quorum(),
-    notfound_ok => boolean(),
-    basic_quorum => boolean(),
+    n_val => non_neg_integer(),
     sloppy_quorum => boolean(),
     timeout => timeout(),
-    return_body => boolean()
+    '$delete_validated' => boolean()
 }.
 
 -export_type([datatype/0]).
 -export_type([type_spec/0]).
 -export_type([riak_op/0]).
 -export_type([opts/0]).
--export_type([riak_opts/0]).
+-export_type([get_opts/0]).
+-export_type([put_opts/0]).
+-export_type([delete_opts/0]).
+
 
 %% API
 -export([delete/3]).
 -export([execute/3]).
 -export([get/4]).
+-export([get_connection/0]).
 -export([get_connection/1]).
 -export([module/1]).
 -export([opts_to_riak_opts/1]).
 -export([put/5]).
 -export([type/1]).
--export([validate_opts/1]).
 -export([validate_opts/2]).
+-export([validate_opts/3]).
 
 %% API: WORKFLOW & WORKFLOW AWARE FUNCTIONS
 -export([create_index/2]).
@@ -272,7 +185,6 @@ module(_) ->
     undefined.
 
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Retrieves a Riak Datatype (counter, set or map) from bucket type and
 %% bucket `TypedBucket' and key `Key'. It uses type spec `Spec' to transform
@@ -297,16 +209,16 @@ module(_) ->
     TypedBucket :: bucket_and_type(),
     Key :: binary(),
     Spec :: type_spec(),
-    Opts :: opts()) ->
+    Opts :: get_opts()) ->
     {ok, Datatype :: datatype()}
     | {error, Reason :: term()}.
 
 get(TypedBucket, Key, Spec, Opts0) ->
-    Opts = validate_opts(Opts0),
+    Opts = validate_opts(get, Opts0),
     Conn = get_connection(Opts),
-    ReqOpts = babel:opts_to_riak_opts(Opts),
+    RiakOpts = opts_to_riak_opts(Opts),
 
-    case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, ReqOpts) of
+    case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, RiakOpts) of
         {ok, Object} ->
             Type = riak_type(Object),
             {ok, to_babel_datatype(Type, Object, Spec)};
@@ -327,7 +239,7 @@ get(TypedBucket, Key, Spec, Opts0) ->
     Key :: binary(),
     Datatype :: datatype(),
     Spec :: type_spec(),
-    Opts :: opts()) ->
+    Opts :: put_opts()) ->
     ok
     | {true | false, reliable:wf_result()}
     | {error, Reason :: any()}
@@ -348,7 +260,9 @@ put(TypedBucket, Key, Datatype, Spec, Opts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec delete(
-    TypedBucket :: bucket_and_type(), Key :: binary(), Opts :: opts()) ->
+    TypedBucket :: bucket_and_type(),
+    Key :: binary(),
+    Opts :: delete_opts()) ->
     ok
     | {true | false, reliable:wf_result()}
     | {error, Reason :: any()}
@@ -361,7 +275,6 @@ delete(TypedBucket, Key, Opts) ->
         true ->
             schedule_delete(TypedBucket, Key, Opts)
     end.
-
 
 
 %% -----------------------------------------------------------------------------
@@ -385,74 +298,91 @@ execute(Poolname, Fun, Opts)  ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Validates the opts
-%% @param Opts an erlang map containing valid option keys
-%% @equiv validate_opts(Opts, strict)
-%% @see validate_opts/2
+%% @doc Returns a Riak connection managed by {@link riak_pool} from the process
+%% dictonary or `undefined' if there is none.
 %% @end
 %% -----------------------------------------------------------------------------
--spec validate_opts(opts()) -> maybe_no_return(opts()).
+-spec get_connection() -> undefined | pid().
 
--dialyzer({nowarn_function, validate_opts/1}).
-
-validate_opts(Opts) ->
-    validate_opts(Opts, strict).
-
-
-%% -----------------------------------------------------------------------------
-%% @doc Validates the opts
-%% @end
-%% -----------------------------------------------------------------------------
--spec validate_opts(map(), strict | relaxed) -> maybe_no_return(map()).
-
--dialyzer({nowarn_function, validate_opts/1}).
-
-validate_opts(#{'$validated' := true} = Opts, _) ->
-    Opts;
-
-validate_opts(Opts, Mode) ->
-    Flag = Mode == relaxed orelse false,
-    Opts1 = maps_utils:validate(
-        Opts, ?BABEL_OPTS_SPEC, #{keep_unknown => Flag}
-    ),
-    Opts1#{'$validated' => true}.
+get_connection() ->
+    riak_pool:get_connection().
 
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec opts_to_riak_opts(map()) -> list().
-
-opts_to_riak_opts(#{riak_opts := Opts}) ->
-    maps:to_list(Opts);
-
-opts_to_riak_opts(_) ->
-    [].
-
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
-get_connection(#{connection := Conn}) when is_pid(Conn) ->
-    Conn;
+get_connection(#{connection := Pid}) when is_pid(Pid) ->
+    Pid;
 
 get_connection(#{connection := Get}) when is_function(Get, 0) ->
     Get();
 
 get_connection(Opts) ->
-    case babel_config:get(default_pool, undefined) of
+    case get_connection() of
         undefined ->
-            error(no_connection_provided);
-        Poolname ->
-            Timeout = maps:get(timeout, Opts, 5000),
-            case riak_pool:checkout(Poolname, #{timeout => Timeout}) of
-                {ok, Pid} -> Pid;
-                {error, Reason} -> error(Reason)
-            end
+            case babel_config:get(default_pool, undefined) of
+                undefined ->
+                    error(no_connection_provided);
+                Poolname ->
+                    Timeout = maps:get(timeout, Opts, 5000),
+                    case riak_pool:checkout(Poolname, #{timeout => Timeout}) of
+                        {ok, Pid} -> Pid;
+                        {error, Reason} -> error(Reason)
+                    end
+            end;
+        Pid when is_pid(Pid) ->
+            Pid
     end.
 
+
+%% -----------------------------------------------------------------------------
+%% @doc Validates the options `Opts' for an operation `Op'.
+%% @param Opts an erlang map containing valid option keys
+%% @equiv validate_opts(Op, Opts, strict)
+%% @see validate_opts/3
+%% @end
+%% -----------------------------------------------------------------------------
+-spec validate_opts(Op :: get | put | delete, Opts :: map()) -> opts().
+
+validate_opts(Op, Opts) ->
+    validate_opts(Op, Opts, strict).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Validates the options
+%% @end
+%% -----------------------------------------------------------------------------
+-spec validate_opts(
+    Operation :: get | put | delete,
+    Opts :: map(),
+    Mode :: strict | relaxed) -> opts().
+
+validate_opts(get, #{'$get_validated' := true} = Opts, _) ->
+    Opts;
+
+validate_opts(put, #{'$put_validated' := true} = Opts, _) ->
+    Opts;
+
+validate_opts(delete, #{'$delete_validated' := true} = Opts, _) ->
+    Opts;
+
+validate_opts(Op, Opts, Mode) ->
+    Flag = Mode == relaxed orelse false,
+    Spec = spec(Op),
+    Opts1 = maps_utils:validate(Opts, Spec, #{keep_unknown => Flag}),
+    flag_validated(Op, Opts1).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% Assumes the options have been validated with  {@link validate_opts/3}.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec opts_to_riak_opts(map()) -> list().
+
+opts_to_riak_opts(Opts) ->
+    maps:to_list(maps:without([connection], Opts)).
 
 
 
@@ -500,10 +430,9 @@ workflow(Fun) ->
 %% function raises an exception. In case of an internal error, the function
 %% returns the tuple `{error, Reason}'.
 %%
-%% If everything goes well, the function returns the triple
-%% `{ok, WorkId, ResultOfFun}' where `WorkId' is the identifier for the
-%% workflow schedule by Reliable and `ResultOfFun' is the value of the last
-%% expression in `Fun'.
+%% If everything goes well, the function returns the tuple
+%% `{Flag, Result}}' where `Flag' is a boolean denoting whether a workflow was
+%% scheduled or not, and Result is a `reliable:wf_result()' structure.
 %%
 %% > Notice that calling this function schedules the work to Reliable, you need
 %% to use the WorkId to check with Reliable the status of the workflow
@@ -634,7 +563,6 @@ yield(WorkRef, Timeout) ->
     reliable:yield(WorkRef, Timeout).
 
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Calls {@link create_index/3} passing the default options as third
 %% argument.
@@ -671,7 +599,7 @@ create_index(Index, Collection) ->
     | no_return().
 
 create_index(Index, Collection, Opts0) ->
-    Opts = validate_opts(Opts0),
+    Opts = validate_opts(put, Opts0),
     Fun = fun() ->
         %% It is an error to add and index to a collection scheduled to be
         %% deleted in a parent workflow
@@ -700,7 +628,7 @@ create_index(Index, Collection, Opts0) ->
 -spec rebuild_index(
     Index :: babel_index:t(),
     Collection :: babel_index_collection:t(),
-    Opts :: riak_opts()) ->
+    Opts :: opts()) ->
     {true | false, reliable:wf_result()}
     | {error, Reason :: any()}
     | no_return().
@@ -726,14 +654,12 @@ rebuild_index(_IndexName, _Collection, _Opts) ->
     Actions :: [babel_index:update_action()],
     IdxNames :: [binary()],
     Collection :: babel_index_collection:t(),
-    Opts :: opts()) ->
+    Opts :: babel_index:update_opts()) ->
     {true | false, reliable:wf_result()}
     | {error, Reason :: any()}
     | no_return().
 
-update_indices(Actions, IdxNames, Collection, Opts0) when is_list(Actions) ->
-    Opts = validate_opts(Opts0, relaxed),
-
+update_indices(Actions, IdxNames, Collection, Opts) when is_list(Actions) ->
     Fun = fun() ->
         CollectionId = babel_index_collection:id(Collection),
 
@@ -797,7 +723,7 @@ update_indices(Actions, IdxNames, Collection, Opts0) when is_list(Actions) ->
 -spec update_all_indices(
     Actions :: [babel_index:update_action()],
     Collection :: babel_index_collection:t(),
-    RiakOpts :: opts()) ->
+    Opts :: babel_index:update_opts()) ->
    {true | false, reliable:wf_result()}
     | {error, Reason :: any()}
     | no_return().
@@ -840,7 +766,7 @@ drop_index(IndexName, Collection) ->
     | no_return().
 
 drop_index(IndexName, Collection0, Opts0) when is_binary(IndexName) ->
-    Opts = validate_opts(Opts0),
+    Opts = validate_opts(delete, Opts0),
 
     Fun = fun() ->
         try
@@ -918,7 +844,7 @@ drop_indices(IdxNames, Collection) ->
     | no_return().
 
 drop_indices(IdxNames, Collection, Opts0) ->
-    Opts = validate_opts(Opts0),
+    Opts = validate_opts(delete, Opts0),
     Fun = fun() ->
         %% We delete all indices.
         %% drop_index also removes then index definition from the collection.
@@ -961,17 +887,19 @@ drop_all_indices(Collection, Opts) ->
 
 
 
+
 %% =============================================================================
-%% PRIVATE
+%% PRIVATE: RIAK CRDT OPERATIONS
 %% =============================================================================
 
 
 
 %% @private
 do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
-    Opts = validate_opts(Opts0),
+    Opts = validate_opts(put, Opts0),
     Conn = get_connection(Opts),
-    RiakOpts = babel:opts_to_riak_opts(Opts),
+    RiakOpts = opts_to_riak_opts(Opts),
+
     Type = type(Datatype),
     Op = datatype_to_op(Type, Datatype, Spec),
 
@@ -990,6 +918,7 @@ do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
 
 %% @private
 schedule_put(TypedBucket, Key, Datatype, Spec, _Opts0) ->
+    %% TODO pass down the RiakOpts to the task
     ok = reliable:ensure_in_workflow(),
     Id = {TypedBucket, Key},
     Type = type(Datatype),
@@ -1001,9 +930,9 @@ schedule_put(TypedBucket, Key, Datatype, Spec, _Opts0) ->
 
 %% @private
 do_delete(TypedBucket, Key, Opts0) ->
-    Opts = validate_opts(Opts0),
+    Opts = validate_opts(delete, Opts0),
     Conn = get_connection(Opts),
-    RiakOpts = babel:opts_to_riak_opts(Opts),
+    RiakOpts = opts_to_riak_opts(Opts),
 
     case riakc_pb_socket:delete(Conn, TypedBucket, Key, RiakOpts) of
         ok ->
@@ -1016,12 +945,114 @@ do_delete(TypedBucket, Key, Opts0) ->
 
 %% @private
 schedule_delete(TypedBucket, Key, _Opts0) ->
+    %% TODO pass down the RiakOpts to the task
     ok = reliable:ensure_in_workflow(),
     Id = {TypedBucket, Key},
     Task = to_delete_task(TypedBucket, Key),
     WorkflowItem = {Id, {delete, Task}},
     ok = reliable:add_workflow_items([WorkflowItem]),
     {scheduled, Id}.
+
+
+
+%% @private
+to_update_task(map, TypedBucket, Key, Datatype, Spec) ->
+    Op = babel_map:to_riak_op(Datatype, Spec),
+    to_update_task(TypedBucket, Key, Op);
+
+to_update_task(set, TypedBucket, Key, Datatype, Spec) ->
+    Op = babel_set:to_riak_op(Datatype, Spec),
+    to_update_task(TypedBucket, Key, Op);
+
+to_update_task(counter, TypedBucket, Key, Datatype, Spec) ->
+    Op = babel_set:to_riak_op(Datatype, Spec),
+    to_update_task(TypedBucket, Key, Op).
+
+
+%% @private
+to_update_task(TypedBucket, Key, Op) ->
+    Args = [TypedBucket, Key, Op],
+    reliable_task:new(
+        node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]
+    ).
+
+
+%% @private
+to_delete_task(TypedBucket, Key) ->
+    Args = [TypedBucket, Key],
+    reliable_task:new(
+        node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]
+    ).
+
+
+%% @private
+datatype_to_op(map, Datatype, Spec) ->
+    babel_map:to_riak_op(Datatype, Spec);
+
+datatype_to_op(set, Datatype, Spec) ->
+    babel_set:to_riak_op(Datatype, Spec);
+
+datatype_to_op(counter, Datatype, Spec) ->
+    babel_counter:to_riak_op(Datatype, Spec).
+
+
+%% @private
+to_babel_datatype(map, RiakDatatype, Spec) ->
+    babel_map:from_riak_map(RiakDatatype, Spec);
+
+to_babel_datatype(set, Datatype, Spec) ->
+    babel_set:from_riak_set(Datatype, Spec);
+
+to_babel_datatype(counter, Datatype, Spec) ->
+    babel_counter:from_riak_counter(Datatype, Spec).
+
+
+%% @private
+-spec riak_type(term()) -> set | map | counter | flag.
+
+riak_type(Term) when is_tuple(Term) ->
+    Mods = [riakc_set, riakc_map, riakc_counter, riakc_flag],
+    Fun = fun(Mod, Acc) ->
+        case (catch Mod:is_type(Term)) of
+            true ->
+                throw({type, Mod:type()});
+            _ ->
+                Acc
+        end
+    end,
+
+    try
+        error = lists:foldl(Fun, error, Mods),
+        error(badarg)
+    catch
+        throw:{type, Mod} -> Mod
+    end.
+
+
+
+%% =============================================================================
+%% PRIVATE: OPTIONS
+%% =============================================================================
+
+
+
+%% @private
+spec(get) -> ?RIAK_GET_OPTS_SPEC;
+spec(put) -> ?RIAK_PUT_OPTS_SPEC;
+spec(delete) -> ?RIAK_DELETE_OPTS_SPEC.
+
+
+%% @private
+flag_validated(get, Opts) -> Opts#{'$get_validated' => true};
+flag_validated(put, Opts) -> Opts#{'$put_validated' => true};
+flag_validated(delete, Opts) -> Opts#{'$delete_validated' => true}.
+
+
+
+%% =============================================================================
+%% PRIVATE: INDEX OPERATIONS
+%% =============================================================================
+
 
 
 %% -----------------------------------------------------------------------------
@@ -1061,13 +1092,13 @@ do_create_index(Index, Collection) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-maybe_already_exists(Id) ->
-    case reliable:find_workflow_item(Id) of
-        {ok, _} ->
-            throw({already_exists, Id});
-        error ->
-            ok
-    end.
+% maybe_already_exists(Id) ->
+%     case reliable:find_workflow_item(Id) of
+%         {ok, _} ->
+%             throw({already_exists, Id});
+%         error ->
+%             ok
+%     end.
 
 
 %% -----------------------------------------------------------------------------
@@ -1123,76 +1154,3 @@ partition_update_items(Collection, Index, Partitions, Mode) ->
         end || P <- Partitions
     ].
 
-
-%% @private
-datatype_to_op(map, Datatype, Spec) ->
-    babel_map:to_riak_op(Datatype, Spec);
-
-datatype_to_op(set, Datatype, Spec) ->
-    babel_set:to_riak_op(Datatype, Spec);
-
-datatype_to_op(counter, Datatype, Spec) ->
-    babel_counter:to_riak_op(Datatype, Spec).
-
-
-%% @private
-to_babel_datatype(map, RiakDatatype, Spec) ->
-    babel_map:from_riak_map(RiakDatatype, Spec);
-
-to_babel_datatype(set, Datatype, Spec) ->
-    babel_set:from_riak_set(Datatype, Spec);
-
-to_babel_datatype(counter, Datatype, Spec) ->
-    babel_counter:from_riak_counter(Datatype, Spec).
-
-
-%% @private
-to_update_task(map, TypedBucket, Key, Datatype, Spec) ->
-    Op = babel_map:to_riak_op(Datatype, Spec),
-    to_update_task(TypedBucket, Key, Op);
-
-to_update_task(set, TypedBucket, Key, Datatype, Spec) ->
-    Op = babel_set:to_riak_op(Datatype, Spec),
-    to_update_task(TypedBucket, Key, Op);
-
-to_update_task(counter, TypedBucket, Key, Datatype, Spec) ->
-    Op = babel_set:to_riak_op(Datatype, Spec),
-    to_update_task(TypedBucket, Key, Op).
-
-
-%% @private
-to_update_task(TypedBucket, Key, Op) ->
-    Args = [TypedBucket, Key, Op],
-    reliable_task:new(
-        node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]
-    ).
-
-
-%% @private
-to_delete_task(TypedBucket, Key) ->
-    Args = [TypedBucket, Key],
-    reliable_task:new(
-        node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]
-    ).
-
-
-%% @private
--spec riak_type(term()) -> set | map | counter | flag.
-
-riak_type(Term) when is_tuple(Term) ->
-    Mods = [riakc_set, riakc_map, riakc_counter, riakc_flag],
-    Fun = fun(Mod, Acc) ->
-        case (catch Mod:is_type(Term)) of
-            true ->
-                throw({type, Mod:type()});
-            _ ->
-                Acc
-        end
-    end,
-
-    try
-        error = lists:foldl(Fun, error, Mods),
-        error(badarg)
-    catch
-        throw:{type, Mod} -> Mod
-    end.

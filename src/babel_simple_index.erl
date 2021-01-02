@@ -100,7 +100,6 @@
 -export([number_of_partitions/1]).
 -export([partition_identifier/2]).
 -export([partition_identifiers/2]).
--export([partition/3]).
 -export([to_riak_object/1]).
 -export([update_partition/3]).
 -export([distinguished_key_paths/1]).
@@ -319,49 +318,6 @@ partition_identifier(KeyValue, Config) ->
     catch
         error:{badkey, Key} ->
             error({missing_pattern_key, Key})
-    end.
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec partition(
-    Pattern :: babel_index:key_value(),
-    Index :: babel_index:t(),
-    Opts :: babel:opts()) ->
-    babel_index:partition_id() | no_return().
-
-partition(Pattern, Index, Opts0) ->
-    Config = babel_index:config(Index),
-    TypeBucket = babel_index:typed_bucket(Index),
-    PartitionId = partition_identifier(Pattern, Config),
-    %% Index dynamically creates partitions fo we need to lookup and
-    %% create a new partition if one does not exist
-
-    ROpts = babel_key_value:put([riak_opts, notfound_ok], false, Opts0),
-    case babel_index_partition:lookup(TypeBucket, PartitionId, ROpts) of
-        {ok, Partition} ->
-            Partition;
-        {error, not_found} ->
-            ?LOG_INFO(#{
-                message => "Creating dynamic index partition",
-                typed_bucket => TypeBucket,
-                partition_id => PartitionId
-            }),
-            WOpts = #{
-                riak_opts =>#{
-                    w => quorum,
-                    pw => quorum,
-                    notfound_ok => false,
-                    basic_quorum => true
-                }
-            },
-            TypedBucket = babel_index:typed_bucket(Index),
-            Partition = babel_index_partition:new(PartitionId, #{type => set}),
-            ok = babel_index_partition:store(
-                TypedBucket, PartitionId, Partition, WOpts
-            ),
-            Partition
     end.
 
 

@@ -95,7 +95,7 @@ babel_put_test(_) ->
 
     Opts = #{
         connection => Conn,
-        riak_opts => #{return_body => true}
+        return_body => true
     },
 
     ?assertEqual(false, reliable:is_in_workflow()),
@@ -632,7 +632,7 @@ update_counter_value_roundtrip(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
     GetOpts = #{connection => Conn},
-    PutOpts = GetOpts#{riak_opts => #{return_body => true}},
+    PutOpts = GetOpts#{return_body => true},
 
     TypedBucket = {<<"index_data">>, <<"test">>},
     Key = <<"update_counter_value_roundtrip">>,
@@ -656,7 +656,7 @@ update_set_value_roundtrip(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
     GetOpts = #{connection => Conn},
-    PutOpts = GetOpts#{riak_opts => #{return_body => true}},
+    PutOpts = GetOpts#{return_body => true},
 
     TypedBucket = {<<"index_data">>, <<"test">>},
     Key = <<"update_set_value_roundtrip">>,
@@ -680,7 +680,7 @@ concurrent_set_update(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
     GetOpts = #{connection => Conn},
-    PutOpts = GetOpts#{riak_opts => #{return_body => true}},
+    PutOpts = GetOpts#{return_body => true},
 
     TypedBucket = {<<"index_data">>, <<"test">>},
     Key = <<"concurrent_set_update">>,

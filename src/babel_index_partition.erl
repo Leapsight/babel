@@ -260,22 +260,14 @@ update_data(Fun, #babel_index_partition{type = Type} = Partition) ->
     TypedBucket :: typed_bucket(),
     Key :: binary(),
     Partition :: t(),
-    Opts :: babel:opts()) ->
+    Opts :: babel:put_opts()) ->
     ok | {error, any()}.
 
 store(TypedBucket, Key, Partition, Opts0) ->
-    Opts1 = babel:validate_opts(Opts0),
-    Opts = Opts1#{
-        riak_opts =>#{
-            w => quorum,
-            pw => quorum,
-            notfound_ok => false,
-            basic_quorum => true
-        }
-    },
-
+    Opts = babel:validate_opts(put, Opts0),
     Conn = babel:get_connection(Opts),
     RiakOpts = babel:opts_to_riak_opts(Opts),
+
     Op = riakc_map:to_op(to_riak_object(Partition)),
 
     case riakc_pb_socket:update_type(Conn, TypedBucket, Key, Op, RiakOpts) of
@@ -311,20 +303,10 @@ store(BucketType, BucketPrefix, Key, Partition, Opts0) ->
 -spec fetch(
     TypedBucket :: {binary(), binary()},
     Key :: binary(),
-    RiakOpts :: babel:opts()) ->
+    RiakOpts :: babel:get_opts()) ->
     t() | no_return().
 
-fetch(TypedBucket, Key, Opts0) ->
-    Opts1 = babel:validate_opts(Opts0),
-    Opts = Opts1#{
-        riak_opts =>#{
-            r => quorum,
-            pr => quorum,
-            notfound_ok => false,
-            basic_quorum => true
-        }
-    },
-
+fetch(TypedBucket, Key, Opts) ->
     case lookup(TypedBucket, Key, Opts) of
         {ok, Value} -> Value;
         {error, Reason} -> error(Reason)
@@ -342,17 +324,7 @@ fetch(TypedBucket, Key, Opts0) ->
     RiakOpts :: babel:opts()) ->
     t() | no_return().
 
-fetch(BucketType, BucketPrefix, Key, Opts0) ->
-    Opts1 = babel:validate_opts(Opts0),
-    Opts = Opts1#{
-        riak_opts =>#{
-            r => quorum,
-            pr => quorum,
-            notfound_ok => false,
-            basic_quorum => true
-        }
-    },
-
+fetch(BucketType, BucketPrefix, Key, Opts) ->
     case lookup(BucketType, BucketPrefix, Key, Opts) of
         {ok, Value} -> Value;
         {error, Reason} -> error(Reason)
@@ -388,7 +360,7 @@ lookup(TypedBucket, Key, Opts) ->
     BucketType :: binary(),
     BucketPrefix :: binary(),
     Key :: binary(),
-    Opts :: babel:opts()) ->
+    Opts :: babel:get_opts()) ->
     {ok, t()} | {error, not_found | term()}.
 
 lookup(BucketType, BucketPrefix, Key, RiakOpts) ->
@@ -404,15 +376,14 @@ lookup(BucketType, BucketPrefix, Key, RiakOpts) ->
     BucketType :: binary(),
     BucketPrefix :: binary(),
     Key :: binary(),
-    Opts :: babel:opts()) ->
+    Opts :: babel:delete_opts()) ->
     ok | {error, not_found | term()}.
 
 delete(BucketType, BucketPrefix, Key, Opts0) ->
-    Opts = babel:validate_opts(Opts0),
-
+    TypedBucket = typed_bucket(BucketType, BucketPrefix),
+    Opts = babel:validate_opts(delete, Opts0),
     Conn = babel:get_connection(Opts),
     RiakOpts = babel:opts_to_riak_opts(Opts),
-    TypedBucket = typed_bucket(BucketType, BucketPrefix),
 
     ok = cache:delete(?MODULE, {TypedBucket, Key}),
 
@@ -442,7 +413,7 @@ typed_bucket(Type, Prefix) ->
 
 %% @private
 maybe_lookup(TypedBucket, Key, Opts0, undefined) ->
-    Opts = babel:validate_opts(Opts0),
+    Opts = babel:validate_opts(get, Opts0),
     Conn = babel:get_connection(Opts),
     RiakOpts = babel:opts_to_riak_opts(Opts),
 
@@ -460,7 +431,7 @@ maybe_lookup(TypedBucket, Key, Opts0, undefined) ->
     end;
 
 maybe_lookup(_, _, _, Partition) ->
-    error(from_cache),
+    %% We return from cache
     {ok, Partition}.
 
 

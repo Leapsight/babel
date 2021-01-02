@@ -110,6 +110,7 @@
 -export([to_update_task/1]).
 
 
+
 %% =============================================================================
 %% API
 %% =============================================================================
@@ -291,7 +292,6 @@ index_names(Collection) ->
     end.
 
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Returns a copy of collection `Collection' where the index `Index' has
 %% been added.
@@ -340,7 +340,6 @@ when is_binary(IndexId) ->
 
 delete_index(Index, Collection) ->
     delete_index(babel_index:name(Index), Collection).
-
 
 
 %% -----------------------------------------------------------------------------
@@ -402,12 +401,12 @@ fold(Fun, Acc, Collection) ->
 %% value returned by {@link id/1}.
 %% @end
 %% -----------------------------------------------------------------------------
--spec store(Collection :: t(), Opts :: babel:opts()) ->
+-spec store(Collection :: t(), Opts :: babel:put_opts()) ->
     {ok, Index :: t()} | {error, Reason :: any()}.
 
 
 store(Collection, Opts0) ->
-    Opts = babel:validate_opts(Opts0),
+    Opts = babel:validate_opts(put, Opts0),
     Conn = babel:get_connection(Opts),
     RiakOpts = babel:opts_to_riak_opts(Opts),
 
@@ -415,7 +414,6 @@ store(Collection, Opts0) ->
     Object = Collection#babel_index_collection.object,
     TypeBucket = typed_bucket(Collection),
     Op = riakc_map:to_op(Object),
-
 
     case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, RiakOpts) of
         {error, _} = Error ->
@@ -432,16 +430,10 @@ store(Collection, Opts0) ->
 -spec fetch(
     BucketPrefix :: binary(),
     Key :: binary(),
-    Opts :: babel:opts()) ->
+    Opts :: babel:get_opts()) ->
     t() | no_return().
 
-fetch(BucketPrefix, Key, Opts0) ->
-    Opts = Opts0#{
-        riak_opts => #{
-            r => quorum,
-            pr => quorum
-        }
-    },
+fetch(BucketPrefix, Key, Opts) ->
     case lookup(BucketPrefix, Key, Opts) of
         {ok, Value} -> Value;
         {error, Reason} -> error(Reason)
@@ -455,23 +447,15 @@ fetch(BucketPrefix, Key, Opts0) ->
 -spec lookup(
     BucketPrefix :: binary(),
     Key :: binary(),
-    Opts :: babel:opts()) ->
+    Opts :: babel:get_opts()) ->
     {ok, t()} | {error, not_found | term()}.
 
 lookup(BucketPrefix, Key, Opts0)
 when is_binary(BucketPrefix) andalso is_binary(Key) ->
-
-    Opts1 = babel:validate_opts(Opts0),
-    Opts = Opts1#{
-        riak_opts => #{
-            r => quorum,
-            pr => quorum
-        }
-    },
-
+    TypeBucket = typed_bucket(BucketPrefix),
+    Opts = babel:validate_opts(get, Opts0),
     Conn = babel:get_connection(Opts),
     RiakOpts = babel:opts_to_riak_opts(Opts),
-    TypeBucket = typed_bucket(BucketPrefix),
 
     case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, RiakOpts) of
         {ok, Object} -> {ok, from_riak_object(Object)};
@@ -487,24 +471,15 @@ when is_binary(BucketPrefix) andalso is_binary(Key) ->
 -spec delete(
     BucketPrefix :: binary(),
     Key :: binary(),
-    Opts :: babel:opts()) ->
+    Opts :: babel:delete_opts()) ->
     ok | {error, not_found | term()}.
 
 delete(BucketPrefix, Key, Opts0)
 when is_binary(BucketPrefix) andalso is_binary(Key) ->
-    Opts1 = babel:validate_opts(Opts0),
-    Opts = Opts1#{
-        riak_opts => #{
-            r => quorum,
-            w => quorum,
-            pr => quorum,
-            pw => quorum
-        }
-    },
-
+    TypeBucket = typed_bucket(BucketPrefix),
+    Opts = babel:validate_opts(delete, Opts0),
     Conn = babel:get_connection(Opts),
     RiakOpts = babel:opts_to_riak_opts(Opts),
-    TypeBucket = typed_bucket(BucketPrefix),
 
     case riakc_pb_socket:delete(Conn, TypeBucket, Key, RiakOpts) of
         ok -> ok;

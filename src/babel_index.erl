@@ -37,6 +37,27 @@
 
 -define(BUCKET_SUFFIX, "index_data").
 
+-define(DEFAULT_GET_OPTS, #{
+    r => quorum,
+    pr => 1,
+    notfound_ok => false,
+    basic_quorum => true,
+    timeout => ?DEFAULT_REQ_TIMEOUT
+}).
+
+-define(DEFAULT_PUT_OPTS, #{
+    w => quorum,
+    pw => 1,
+    timeout => ?DEFAULT_REQ_TIMEOUT
+}).
+
+-define(DEFAULT_DELETE_OPTS, #{
+    r => quorum,
+    w => quorum,
+    pw => 1,
+    timeout => ?DEFAULT_REQ_TIMEOUT
+}).
+
 %% Validator for maps_utils:validate/2,3
 -define(BINARY_VALIDATOR, fun
     (Val) when is_atom(Val) ->
@@ -87,6 +108,31 @@ end).
         default => #{},
         datatype => map
     }
+    % ,
+    % request_opts => #{
+    %     description => <<
+    %         "The opts to use when calling riakc for this index."
+    %     >>,
+    %     required => false,
+    %     datatype => map,
+    %     validator => #{
+    %         get => #{
+    %             required => false,
+    %             datatype => map,
+    %             validator => ?RIAK_GET_OPTS_SPEC
+    %         },
+    %         put => #{
+    %             required => false,
+    %             datatype => map,
+    %             validator => ?RIAK_PUT_OPTS_SPEC
+    %         },
+    %         delete => #{
+    %             required => false,
+    %             datatype => map,
+    %             validator => ?RIAK_DELETE_OPTS_SPEC
+    %         }
+    %     }
+    % }
 }).
 
 
@@ -133,7 +179,8 @@ end).
 }.
 
 -type update_opts()             ::  #{
-    force => boolean, riak_opts => babel:opts()
+    connection => pid() | fun(() -> pid()),
+    force => boolean
 }.
 
 
@@ -218,7 +265,7 @@ end).
 -callback match(Pattern :: key_value(), babel_index_partition:t(), map()) ->
     [map()] | no_return().
 
--callback iterator(Index :: t(), Config :: map(), Opts :: babel:opts()) ->
+-callback iterator(Index :: t(), Config :: map(), Opts :: babel:get_opts()) ->
     Iterator :: any().
 
 -callback iterator_move(
@@ -461,6 +508,31 @@ config(#{config := Value}) -> Value.
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+-spec request_opts(get | put | delete, t()) -> babel:opts().
+
+request_opts(get, #{request_opts := #{get := Opts}}) ->
+    Opts;
+
+request_opts(get, _) ->
+     ?DEFAULT_GET_OPTS;
+
+request_opts(put, #{request_opts := #{put := Opts}}) ->
+    Opts;
+
+request_opts(put, _) ->
+     ?DEFAULT_PUT_OPTS;
+
+request_opts(delete, #{request_opts := #{delete := Opts}}) ->
+    Opts;
+
+request_opts(delete, _) ->
+    ?DEFAULT_DELETE_OPTS.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
 -spec partition_identifier(KeyValue :: key_value(), Index :: t()) -> binary().
 
 partition_identifier(KeyValue, Index) ->
@@ -496,20 +568,17 @@ distinguished_key_paths(Index) ->
     Opts :: update_opts()) ->
     maybe_no_return([babel_index_partition:t()]).
 
-update(Actions, Index, Opts0) when is_list(Actions) ->
-    %% We allow additional properties to remaing in the map
-    %% In our case 'force' but also specific index options
-    Opts = babel:validate_opts(Opts0, relaxed),
-
+update(Actions, Index, Opts) when is_list(Actions) ->
     Mod = type(Index),
     Config = config(Index),
     TypeBucket = typed_bucket(Index),
     GroupedActions = actions_by_partition_id(Actions, Index, Opts),
 
-    ROpts = babel_key_value:put([riak_opts, not_found_ok], false, Opts),
+    %% We add the index Riak Opts or defaaults if none to the update Opts
+    GetOpts = maps:merge(Opts, request_opts(get, Index)),
 
     Fun = fun({PartitionId, PActions}, Acc) ->
-        Result = babel_index_partition:lookup(TypeBucket, PartitionId, ROpts),
+        Result = babel_index_partition:lookup(TypeBucket, PartitionId, GetOpts),
 
         Part0 = case Result of
             {ok, Value} -> Value;
@@ -590,8 +659,11 @@ match(Pattern, Index, Opts) ->
     Config = config(Index),
     PartitionId = partition_identifier(Pattern, Index),
     TypeBucket = typed_bucket(Index),
-    ROpts = babel_key_value:put([riak_opts, notfound_ok], false, Opts),
-    Result = babel_index_partition:lookup(TypeBucket, PartitionId, ROpts),
+
+    %% We add the index Riak Opts or defaults if none to the update Opts0
+    GetOpts = maps:merge(Opts, request_opts(get, Index)),
+
+    Result = babel_index_partition:lookup(TypeBucket, PartitionId, GetOpts),
     Partition = case Result of
         {ok, Value} -> Value;
         {error, not_found} -> maybe_init_partition(Mod, PartitionId, Config)
