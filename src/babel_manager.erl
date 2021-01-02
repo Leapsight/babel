@@ -133,7 +133,6 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 
-
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -267,10 +266,11 @@ handle_info({ok, Info0, Pid}, #state{worker = Pid} = State) ->
     Info2 = maps:put(status, finished, Info1),
     Elapsed = elapsed(Info2),
 
-    _ = ?LOG_INFO(
-        "Finished rebuilding indices; elapsed_time_secs=~p, info=~p",
-        [Elapsed, Info2]
-    ),
+    _ = ?LOG_INFO(#{
+        message => "Finished rebuilding indices",
+        elapsed_time_secs => Elapsed,
+        info => Info2
+    }),
     %% We store the last info and remove worker pid
     NewState = State#state{info = Info2, worker = undefined},
     {noreply, NewState};
@@ -293,7 +293,10 @@ handle_info({update, Info, Pid}, #state{worker = Pid} = State) ->
     {noreply, State#state{info = Info}};
 
 handle_info(Info, State) ->
-    _ = ?LOG_DEBUG("Unexpected message, message=~p", [Info]),
+    _ = ?LOG_DEBUG(#{
+        message => "Unexpected event",
+        event => Info
+    }),
     {noreply, State}.
 
 
@@ -369,11 +372,11 @@ async_rebuild_indices(Opts , State0) ->
                 throw(Reason)
         catch
             _:EReason:Stacktrace ->
-                _ = ?LOG_ERROR(
-                    "Error rebuilding Riak KV indices; "
-                    "reason=~p, stacktrace=~p",
-                    [EReason, Stacktrace]
-                ),
+                _ = ?LOG_ERROR(#{
+                    message => "Error rebuilding Riak KV indices",
+                    rason => EReason,
+                    stacktrace => Stacktrace
+                }),
                 Manager ! {error, EReason, Info0, self()}
         end
     end),
@@ -384,7 +387,10 @@ async_rebuild_indices(Opts , State0) ->
 
 %% @private
 do_rebuild_indices(Manager, Info) ->
-    _ = ?LOG_INFO("Rebuilding Riak KV indices; info=~p", [Info]),
+    _ = ?LOG_INFO(#{
+        message => "Rebuilding Riak KV indices",
+        info => Info
+    }),
 
     #{host := Host, port := Port} = maps:get(connection, Info),
     {ok, Conn} = magenta_riak:connect(Host, Port),
@@ -408,11 +414,12 @@ do_rebuild_indices(Manager, Info) ->
                 )
             catch
                 throw:Reason:Stacktrace ->
-                    _ = ?LOG_WARNING(
-                        "Skipped rebuilding Riak KV indices for object; "
-                        "reason=~p, key=~p, stacktrace=~p",
-                        [Reason, Key, Stacktrace]
-                    ),
+                    _ = ?LOG_WARNING(#{
+                        message => "Skipped rebuilding Riak KV indices for object",
+                        reason => Reason,
+                        key => Key,
+                        stacktrace => Stacktrace
+                    }),
                     EFoldAcc1 = maps:update_with(
                         failed_count, fun(V) -> V + 1 end, FoldAcc0
                     ),
@@ -457,11 +464,12 @@ put(Conn, Prefix, Key, Obj0, PList) ->
                 Conn, Prefix, Key, DTOps, [{timeout, ?RIAK_TIMEOUT} | PList]
             );
         error ->
-            _ = ?LOG_WARNING(
-                "Skipped rebuilding Riak KV indices for object; "
-                "reason=~p, key=~p, object=~p",
-                [invalid_object, Key, Obj0]
-            ),
+            _ = ?LOG_WARNING(#{
+                message => "Skipped rebuilding Riak KV indices for object",
+                reason => invalid_object,
+                key => Key,
+                object => Obj0
+            }),
             ok
     end.
 
