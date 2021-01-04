@@ -389,7 +389,8 @@ validate_opts(Op, Opts, Mode) ->
 -spec opts_to_riak_opts(map()) -> list().
 
 opts_to_riak_opts(Opts) ->
-    maps:to_list(maps:without([connection], Opts)).
+    L = [connection, '$get_validated', '$put_validated', '$delete_validated'],
+    maps:to_list(maps:without(L, Opts)).
 
 
 
