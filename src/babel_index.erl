@@ -205,8 +205,10 @@ end).
 %% -export([fold/4]).
 -export([bucket/1]).
 -export([bucket_type/1]).
+-export([change_summary/3]).
 -export([config/1]).
 -export([create_partitions/1]).
+-export([distinguished_key_paths/1]).
 -export([foreach/2]).
 -export([from_riak_object/1]).
 -export([match/3]).
@@ -221,8 +223,6 @@ end).
 -export([type/1]).
 -export([typed_bucket/1]).
 -export([update/3]).
--export([distinguished_key_paths/1]).
--export([change_summary/3]).
 
 
 %% Till we fix maps_utils:validate

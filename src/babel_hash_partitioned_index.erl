@@ -952,7 +952,6 @@ erase_check(Value, Set) ->
     end.
 
 
-
 %% -----------------------------------------------------------------------------
 %% @private
 %% @doc We encode the term in JSON for interoperability with clients in other

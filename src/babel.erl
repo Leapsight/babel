@@ -188,20 +188,21 @@ module(_) ->
 %% -----------------------------------------------------------------------------
 %% @doc Retrieves a Riak Datatype (counter, set or map) from bucket type and
 %% bucket `TypedBucket' and key `Key'. It uses type spec `Spec' to transform
-%% the Riak Datatype into a Babel Datatype and if successful returns a {@link
-%% babel_counter}, {@link babel_set} or {@link babel_map} respectively.
+%% the Riak Datatype into a Babel Datatype and if successful returns
+%% `{ok, Datatype}' where Datatype is one of {@link
+%% babel_counter}, {@link babel_set} or {@link babel_map}.
+%% Returns `{error, not_found}' if the key is not on the server.
 %%
 %% This function gets the riak client connection from the options `Opts' under
 %% the key `connection' which can have the connection pid or a function object
 %% returning a connection pid. This allows a lot of flexibility such as reusing
-%% a given connection over several calls the babel function of using your own
+%% a given connection over several calls and using your own
 %% connection pool and management.
 %%
 %% In case the `connection' option does not provide a connection as explained
-%% above, this function tries to use the `default' connection pool if it was
-%% enabled through Babel's configuration options.
-%%
-%% Returns `{error, not_found}' if the key is not on the server.
+%% above, this function tries to get a connection from the the `default'
+%% riak_pool connection pool if it was enabled through Babel's configuration
+%% options.
 %%
 %% @end
 %% -----------------------------------------------------------------------------
@@ -230,8 +231,14 @@ get(TypedBucket, Key, Spec, Opts0) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
-%% ?> This function is workflow aware
+%% @doc Transforms the datatype `Datatype' to a Riak Datatype using type
+%% specification `Spec' and stores it under `TypedBucket' and `Key' using
+%% options `Opts.
+%%
+%% When called outside a workflow it returns `ok' or `{error, Reason}'.
+%%
+%% ?> This function is workflow aware. See {@link workflow/2} to understand the
+%% result value.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec put(
