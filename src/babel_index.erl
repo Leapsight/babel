@@ -119,17 +119,17 @@ end).
     %         get => #{
     %             required => false,
     %             datatype => map,
-    %             validator => ?RIAK_GET_OPTS_SPEC
+    %             validator => ?GET_OPTS_SPEC
     %         },
     %         put => #{
     %             required => false,
     %             datatype => map,
-    %             validator => ?RIAK_PUT_OPTS_SPEC
+    %             validator => ?PUT_OPTS_SPEC
     %         },
     %         delete => #{
     %             required => false,
     %             datatype => map,
-    %             validator => ?RIAK_DELETE_OPTS_SPEC
+    %             validator => ?DELETE_OPTS_SPEC
     %         }
     %     }
     % }

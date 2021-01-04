@@ -28,7 +28,20 @@
 
 -define(RIAK_EC_TYPE, [non_neg_integer , {in, [one, all, quorum, default]}]).
 
--define(RIAK_GET_OPTS_SPEC, #{
+-define(RIAK_GET_KEYS, [
+    r,
+    pr,
+    if_modified,
+    notfound_ok,
+    n_val,
+    basic_quorum,
+    sloppy_quorum,
+    head,
+    deletedvclock,
+    timeout
+]).
+
+-define(GET_OPTS_SPEC, #{
     connection => #{
         required => false,
         datatype => [pid, function]
@@ -101,7 +114,23 @@
     }
 }).
 
--define(RIAK_PUT_OPTS_SPEC, #{
+
+-define(RIAK_PUT_KEYS, [
+    w,
+    dw,
+    pw,
+    if_not_modified,
+    if_none_match,
+    notfound_ok,
+    n_val,
+    sloppy_quorum,
+    return_body,
+    return_head,
+    timeout
+]).
+
+
+-define(PUT_OPTS_SPEC, #{
     connection => #{
         required => false,
         datatype => [pid, function]
@@ -182,7 +211,20 @@
     }
 }).
 
--define(RIAK_DELETE_OPTS_SPEC, #{
+
+-define(RIAK_DELETE_KEYS, [
+    r,
+    pr,
+    w,
+    dw,
+    pw,
+    n_val,
+    sloppy_quorum,
+    timeout
+]).
+
+
+-define(DELETE_OPTS_SPEC, #{
     connection => #{
         required => false,
         datatype => [pid, function]

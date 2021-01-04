@@ -383,14 +383,24 @@ validate_opts(Op, Opts, Mode) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc
-%% Assumes the options have been validated with  {@link validate_opts/3}.
+%% Converts the options map into Riak KV property list format.
+%% It fails with a badarg exception if `Opts' is not the result of
+%% {@link validate_opts/3}.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec opts_to_riak_opts(map()) -> list().
 
-opts_to_riak_opts(Opts) ->
-    L = [connection, '$get_validated', '$put_validated', '$delete_validated'],
-    maps:to_list(maps:without(L, Opts)).
+opts_to_riak_opts(#{'$get_validated' := true} = Opts) ->
+    maps:to_list(maps:with(?RIAK_GET_KEYS, Opts));
+
+opts_to_riak_opts(#{'$put_validated' := true} = Opts) ->
+    maps:to_list(maps:with(?RIAK_PUT_KEYS, Opts));
+
+opts_to_riak_opts(#{'$delete_validated' := true} = Opts) ->
+    maps:to_list(maps:with(?RIAK_DELETE_KEYS, Opts));
+
+opts_to_riak_opts(_) ->
+    error(badarg).
 
 
 
@@ -1058,9 +1068,9 @@ riak_type(Term) when is_tuple(Term) ->
 
 
 %% @private
-spec(get) -> ?RIAK_GET_OPTS_SPEC;
-spec(put) -> ?RIAK_PUT_OPTS_SPEC;
-spec(delete) -> ?RIAK_DELETE_OPTS_SPEC.
+spec(get) -> ?GET_OPTS_SPEC;
+spec(put) -> ?PUT_OPTS_SPEC;
+spec(delete) -> ?DELETE_OPTS_SPEC.
 
 
 %% @private
