@@ -675,36 +675,46 @@ update_indices(Actions, IdxNames, Collection, Opts) when is_list(Actions) ->
         %% parent workflow
         ok = ensure_not_deleted(CollectionId),
 
-        ok = lists:foreach(
-            fun(Name) ->
+        Updated = lists:foldl(
+            fun(Name, Acc) ->
                 Index = babel_index_collection:index(Name, Collection),
                 Partitions = babel_index:update(Actions, Index, Opts),
 
-                %% Tradeoff between memory intensive (lazy) or CPU
-                %% intensive (eager) evaluation.
-                %% We use eager here as we assume the
-                %% user is smart enough to aggregate all operations for a
-                %% collection and perform a single call to this function within
-                %% a workflow.
-                Items = partition_update_items(
-                    Collection, Index, Partitions, eager
-                ),
+                case length(Partitions) > 0 of
+                    true ->
+                        %% Tradeoff between memory intensive (lazy) or CPU
+                        %% intensive (eager) evaluation.
+                        %% We use eager here as we assume the
+                        %% user is smart enough to aggregate all operations for
+                        %% a collection and perform a single call to this
+                        %% function within a workflow.
+                        Items = partition_update_items(
+                            Collection, Index, Partitions, eager
+                        ),
 
-                %% We use the nop just to setup the precedence digraph
-                CollectionItem = {CollectionId, undefined},
-                ok = reliable:add_workflow_items([CollectionItem | Items]),
+                        %% We use the nop just to setup the precedence digraph
+                        CollectionItem = {CollectionId, undefined},
+                        ok = reliable:add_workflow_items(
+                            [CollectionItem | Items]
+                        ),
 
-                %% If there is an update on the collection we want it to occur
-                %% before the partition updates
-                reliable:add_workflow_precedence(
-                    CollectionId, [Id || {Id, _} <- Items]
-                )
+                        %% If there is an update on the collection we want it to occur
+                        %% before the partition updates
+                        reliable:add_workflow_precedence(
+                            CollectionId, [Id || {Id, _} <- Items]
+                        ),
+                        [Name | Acc];
+                    false ->
+                        Acc
+                end
+
             end,
+            [],
             IdxNames
         ),
 
         %% We return the index names that have been updated.
-        IdxNames
+        Updated
     end,
     workflow(Fun, Opts).
 
@@ -856,10 +866,6 @@ drop_indices(IdxNames, Collection, Opts0) ->
     Fun = fun() ->
         %% We delete all indices.
         %% drop_index also removes then index definition from the collection.
-        _ = lists:foreach(
-            fun(IdxName) -> drop_index(IdxName, Collection, Opts) end,
-            IdxNames
-        ),
         lists:foldl(
             fun(IdxName, AccIn) ->
                 {_, #{result := AccOut}} = drop_index(IdxName, AccIn, Opts),

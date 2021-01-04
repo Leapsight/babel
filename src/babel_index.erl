@@ -141,7 +141,8 @@ end).
     bucket_type := binary(),
     config := _,
     name := binary(),
-    type := atom()
+    type := atom(),
+    request_opts => map()
 }.
 
 -type riak_object()             ::  riakc_map:crdt_map().
@@ -205,7 +206,6 @@ end).
 %% -export([fold/4]).
 -export([bucket/1]).
 -export([bucket_type/1]).
--export([change_summary/3]).
 -export([config/1]).
 -export([create_partitions/1]).
 -export([distinguished_key_paths/1]).
@@ -445,8 +445,6 @@ to_delete_task(Index, PartitionId) ->
     ).
 
 
-
-
 %% -----------------------------------------------------------------------------
 %% @doc Returns name of this index
 %% @end
@@ -530,7 +528,8 @@ request_opts(delete, _) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc
+%% @doc Returns the identifier for the index partition assigned for key value
+%% object `KeyValue' when passed as an action to {@link update/3}.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec partition_identifier(KeyValue :: key_value(), Index :: t()) -> binary().
@@ -542,9 +541,8 @@ partition_identifier(KeyValue, Index) ->
 
 
 %% -----------------------------------------------------------------------------
-%% @doc Returns the list of the key paths for which a value will need to be
-%% present in the key value object passed as an action to the {@link update/3}
-%% function.
+%% @doc Returns the list of the key paths that need to be
+%% present in the key value object passed as an action to {@link update/3}.
 %% @end
 %% -----------------------------------------------------------------------------
 -spec distinguished_key_paths(Index :: t()) -> [babel_key_value:path()].
@@ -642,7 +640,7 @@ partition_identifiers(Index, Order) ->
 -spec foreach(foreach_fun(), Index :: t()) -> any().
 
 foreach(_Fun, _Index) ->
-    ok.
+    error(not_implemented).
 
 
 %% -----------------------------------------------------------------------------
@@ -706,18 +704,18 @@ prepare_actions([{update, Old, New} = H | T], Index, Opts, Acc) ->
     %% We use this call so that we cache the distinguished_key_paths
     %% result in Opts
     {Keys, Opts1} = distinguished_key_paths(Index, Opts),
-    OldSummary = change_summary(Keys, Old, Opts1),
-    NewSummary = change_summary(Keys, New, Opts1),
+    OldSummary = change_summary(delete, Keys, Old, Opts1),
+    NewSummary = change_summary(insert, Keys, New, Opts1),
     Summary = {OldSummary, NewSummary},
     NewAcc = maybe_add_action(H, Index, Opts1, Acc, Summary),
     prepare_actions(T, Index, Opts1, NewAcc);
 
-prepare_actions([{_, Data} = H|T], Index, Opts, Acc) ->
+prepare_actions([{Op, Data} = H|T], Index, Opts, Acc) ->
     %% We use this call so that we cache the distinguished_key_paths
     %% result in Opts
     {Keys, Opts1} = distinguished_key_paths(Index, Opts),
 
-    Summary = change_summary(Keys, Data, Opts1),
+    Summary = change_summary(Op, Keys, Data, Opts1),
 
     NewAcc = maybe_add_action(H, Index, Opts1, Acc, Summary),
     prepare_actions(T, Index, Opts1, NewAcc);
@@ -789,14 +787,19 @@ when Op == insert orelse Op == delete ->
 %% * updated - the map has updated keys
 %% @end
 %% -----------------------------------------------------------------------------
--spec change_summary([babel_key_value:path()], babel_key_value:t(), map()) ->
+-spec change_summary(
+    delete | insert, [babel_key_value:path()], babel_key_value:t(), map()) ->
     error | none | updated.
 
-change_summary(_, _, #{force := true}) ->
+change_summary(delete, _, _, #{force := true}) ->
+    %% force option overrides the summary logic an treats the object as updated
+    none;
+
+change_summary(insert, _, _, #{force := true}) ->
     %% force option overrides the summary logic an treats the object as updated
     updated;
 
-change_summary(Keys, Map, _) ->
+change_summary(_, Keys, Map, _) ->
     try
         babel_map:is_type(Map) orelse throw(error),
         Fold = fun(X, Acc) ->
