@@ -97,7 +97,7 @@
         key => timeout,
         required => true,
         default => ?DEFAULT_REQ_TIMEOUT,
-        datatype => timeout
+        datatype => non_neg_integer
     }
 }).
 
@@ -178,7 +178,7 @@
         >>,
         required => true,
         default => ?DEFAULT_REQ_TIMEOUT,
-        datatype => timeout
+        datatype => non_neg_integer
     }
 }).
 
@@ -235,6 +235,6 @@
         key => timeout,
         required => true,
         default => ?DEFAULT_REQ_TIMEOUT,
-        datatype => timeout
+        datatype => non_neg_integer
     }
 }).
