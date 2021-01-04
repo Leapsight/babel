@@ -795,11 +795,11 @@ drop_index(IndexName, Collection0, Opts0) when is_binary(IndexName) ->
             ],
             ok = reliable:add_workflow_items(Items),
 
-            Collection1 = babel_index_collection:delete_index(
+            NewCollection = babel_index_collection:delete_index(
                 Index, Collection0
             ),
             Task = fun() ->
-                babel_index_collection:to_update_task(Collection1)
+                babel_index_collection:to_update_task(NewCollection)
             end,
             CollectionItem = {CollectionId, {update, Task}},
             reliable:add_workflow_items([CollectionItem]),
@@ -811,7 +811,7 @@ drop_index(IndexName, Collection0, Opts0) when is_binary(IndexName) ->
                 reliable:add_workflow_precedence([CollectionId], X)
                 || {X, _} <- Items
             ],
-            CollectionId
+            NewCollection
         catch
             error:badindex ->
                 {error, badindex}
@@ -860,7 +860,14 @@ drop_indices(IdxNames, Collection, Opts0) ->
             fun(IdxName) -> drop_index(IdxName, Collection, Opts) end,
             IdxNames
         ),
-        ok
+        lists:foldl(
+            fun(IdxName, AccIn) ->
+                {_, #{result := AccOut}} = drop_index(IdxName, AccIn, Opts),
+                AccOut
+            end,
+            Collection,
+            IdxNames
+        )
     end,
     workflow(Fun, Opts).
 
