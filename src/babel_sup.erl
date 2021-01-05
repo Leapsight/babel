@@ -30,7 +30,7 @@
     segments => 10,
     ttl => 600,
     size => 10000,
-    memory => 1_073_741_824, % 1GB
+    memory => 1073741824, % 1GB
     policy => lru,
     check => 60
 }).
@@ -122,9 +122,8 @@ init([]) ->
 maybe_add_caches(Acc) ->
     case babel_config:get([index_cache, enabled], false) of
         true ->
-            Opts = maps:to_list(
-                maps:merge(?CACHE_OPTS, babel_config:get(index_cache, #{}))
-            ),
+            Opts0 = maps:without([enabled], babel_config:get(index_cache, #{})),
+            Opts = maps:to_list(maps:merge(?CACHE_OPTS, Opts0)),
             add_caches(Acc, Opts);
         false ->
             Acc
