@@ -277,7 +277,7 @@ store(TypedBucket, Key, Partition, Opts0) ->
     case riakc_pb_socket:update_type(Conn, TypedBucket, Key, Op, PutOpts) of
         {ok, Object} ->
             Updated = from_riak_object(Object),
-            ok = cache:put(?CACHE, {TypedBucket, Key}, Updated),
+            ok = cache_put({TypedBucket, Key}, Updated),
             ok = on_update(TypedBucket, Key),
             ok;
         {error, _} = Error ->
@@ -351,12 +351,7 @@ fetch(BucketType, BucketPrefix, Key, Opts) ->
     {ok, t()} | {error, not_found | term()}.
 
 lookup(TypedBucket, Key, Opts) ->
-    Result = case babel_config:get([index_cache, enabled], false) of
-        true ->
-            cache:get(?CACHE, {TypedBucket, Key});
-        false ->
-            undefined
-    end,
+    Result = cache_get({TypedBucket, Key}),
     maybe_lookup(TypedBucket, Key, Opts, Result).
 
 
@@ -394,7 +389,7 @@ delete(BucketType, BucketPrefix, Key, Opts0) ->
     Conn = babel:get_connection(Opts),
     RiakOpts = babel:opts_to_riak_opts(Opts),
 
-    ok = cache:delete(?CACHE, {TypedBucket, Key}),
+    ok = cache_delete({TypedBucket, Key}),
 
     case riakc_pb_socket:delete(Conn, TypedBucket, Key, RiakOpts) of
         ok ->
@@ -413,6 +408,30 @@ delete(BucketType, BucketPrefix, Key, Opts0) ->
 %% =============================================================================
 
 
+cache_get({_, _} = PrefixedKey) ->
+    case babel_config:get([index_cache, enabled], false) of
+        true ->
+            cache:get(?CACHE, PrefixedKey);
+        false ->
+            undefined
+    end.
+
+cache_delete({_, _} = PrefixedKey) ->
+    case babel_config:get([index_cache, enabled], false) of
+        true ->
+            cache:delete(?CACHE, PrefixedKey);
+        false ->
+            ok
+    end.
+
+cache_put({_, _} = PrefixedKey, Partition) ->
+    case babel_config:get([index_cache, enabled], false) of
+        true ->
+            cache:put(?CACHE, PrefixedKey, Partition);
+        false ->
+            ok
+    end.
+
 
 %% @private
 typed_bucket(Type, Prefix) ->
@@ -429,7 +448,7 @@ maybe_lookup(TypedBucket, Key, Opts0, undefined) ->
     case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, GetOpts) of
         {ok, Object} ->
             Partition = from_riak_object(Object),
-            ok = cache:put(?CACHE, {TypedBucket, Key}, Partition),
+            ok = cache_put({TypedBucket, Key}, Partition),
             {ok, Partition};
 
         {error, {notfound, map}} ->
