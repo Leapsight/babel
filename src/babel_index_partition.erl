@@ -275,12 +275,13 @@ store(TypedBucket, Key, Partition, Opts0) ->
     Op = riakc_map:to_op(to_riak_object(Partition)),
 
     case riakc_pb_socket:update_type(Conn, TypedBucket, Key, Op, PutOpts) of
-        {error, _} = Error ->
-            Error;
-        {ok, Updated} ->
-            ok = cache:put(?CACHE, {TypedBucket, Key}, Partition),
+        {ok, Object} ->
+            Updated = from_riak_object(Object),
+            ok = cache:put(?CACHE, {TypedBucket, Key}, Updated),
             ok = on_update(TypedBucket, Key),
-            ok
+            ok;
+        {error, _} = Error ->
+            Error
     end.
 
 

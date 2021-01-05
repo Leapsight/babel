@@ -87,10 +87,12 @@
 
 
 %% BEHAVIOUR CALLBACKS
+-export([case_sensitive/1]).
+-export([distinguished_key_paths/1]).
 -export([from_riak_dict/1]).
 -export([init/2]).
--export([init_partitions/1]).
 -export([init_partition/2]).
+-export([init_partitions/1]).
 -export([iterator/3]).
 -export([iterator_done/1]).
 -export([iterator_key/1]).
@@ -102,7 +104,6 @@
 -export([partition_identifiers/2]).
 -export([to_riak_object/1]).
 -export([update_partition/3]).
--export([distinguished_key_paths/1]).
 
 
 %% =============================================================================
