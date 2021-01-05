@@ -414,7 +414,7 @@ update_action_2(Config) ->
     {save_config, NewConfig}.
 
 
-    update_action_3(Config) ->
+update_action_3(Config) ->
     {_, OldConfig} = ?config(saved_config, Config),
     Collection = ?config(collection, OldConfig),
     Index = ?config(index, OldConfig),
@@ -455,7 +455,7 @@ update_action_2(Config) ->
     {save_config, NewConfig}.
 
 
-    update_action_4(Config) ->
+update_action_4(Config) ->
     {_, OldConfig} = ?config(saved_config, Config),
     Collection = ?config(collection, OldConfig),
     Index = ?config(index, OldConfig),

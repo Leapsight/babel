@@ -1,8 +1,20 @@
 -module(babel_hash_partitioned_index_SUITE).
--include_lib("eunit/include/eunit.hrl").
+-include_lib("common_test/include/ct.hrl").
+-include_lib("stdlib/include/assert.hrl").
 -compile(export_all).
 -compile([nowarn_export_all, export_all]).
 
+
+groups() ->
+    [
+        {accounts_by_id_one, [sequence], [
+            accounts_by_id_create,
+            accounts_by_id_update
+        ]},
+        {accounts_by_id_many, [sequence], [
+            accounts_by_id_many_test
+        ]}
+    ].
 
 
 all() ->
@@ -16,18 +28,17 @@ all() ->
         index_6_test,
         distinguished_key_paths_1_test,
         huge_index_test,
-        accounts_by_identification_type_and_number_test,
-        accounts_by_identification_type_and_number_many_test
+        {group, accounts_by_id_one},
+        {group, accounts_by_id_many}
     ].
 
 
 init_per_suite(Config) ->
-
     ok = common:setup(),
     Config.
 
-end_per_suite(Config) ->
-    {save_config, Config}.
+end_per_suite(_) ->
+    ok.
 
 
 bad_index_test(_) ->
@@ -514,7 +525,7 @@ distinguished_key_paths_1_test(_) ->
     ).
 
 
-accounts_by_identification_type_and_number_test(_) ->
+accounts_by_id_create(_) ->
     Prefix = <<"babel-test">>,
     CName = <<"accounts">>,
     IdxName = <<"accounts_by_identification_type_and_number">>,
@@ -522,13 +533,11 @@ accounts_by_identification_type_and_number_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    BabelOpts = #{
-        connection => Conn
-    },
+    GetOpts = #{connection => Conn},
 
     %% Cleanup previous runs
     Cleanup = fun() ->
-        case babel_index_collection:lookup(Prefix, CName, BabelOpts) of
+        case babel_index_collection:lookup(Prefix, CName, GetOpts) of
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
@@ -583,48 +592,96 @@ accounts_by_identification_type_and_number_test(_) ->
         Actions = [
             begin
                 ID = integer_to_binary(X),
-                Rand = integer_to_binary(rand:uniform(100)),
                 Obj = #{
                     <<"identification_type">> => <<"DNI">>,
                     <<"identification_number">> => ID,
-                    <<"account_id">> => <<"mrn:account:", Rand/binary>>
+                    <<"account_id">> => <<"mrn:account:1">>
                 },
                 {insert, Obj}
-            end || X <- [1,1,2,2,3,3]
+            end || X <- lists:seq(1, 10)
         ],
 
-        Collection = babel_index_collection:fetch(
-            Prefix, CName, BabelOpts),
+        Collection = babel_index_collection:fetch(Prefix, CName, GetOpts),
         _Index = babel_index_collection:index(IdxName, Collection),
         {true, #{is_nested := true}} = babel:update_all_indices(
             Actions,
             Collection,
-            BabelOpts#{force => true} % as Obj is not a babel_map
+            GetOpts#{force => true} % as Obj is not a babel_map
         ),
         ok
     end,
     {true, #{work_ref := WorkRef3, result := ok}} = babel:workflow(
-        Update, #{timeout => 5000})
-    ,
+        Update, #{timeout => 5000}
+    ),
     {ok, _} = babel:yield(WorkRef3, 15000),
 
-    Collection = babel_index_collection:fetch(Prefix, CName, BabelOpts),
-    Idx = babel_index_collection:index(IdxName, Collection),
+    Collection = babel_index_collection:fetch(Prefix, CName, GetOpts),
+    Index = babel_index_collection:index(IdxName, Collection),
 
     Pattern = #{
         <<"identification_type">> => <<"DNI">>,
         <<"identification_number">> => <<"1">>
     },
-    Res = babel_index:match(Pattern, Idx, BabelOpts),
+    Res = babel_index:match(Pattern, Index, GetOpts),
     ?assertEqual(1, length(Res)),
-    ?assertEqual(
-        [<<"account_id">>],
-        maps:keys(hd(Res))
+
+    NewConfig = [{collection, Collection}, {index, Index}],
+    {save_config, NewConfig}.
+
+
+
+accounts_by_id_update(Config) ->
+    {_, OldConfig} = ?config(saved_config, Config),
+    Collection = ?config(collection, OldConfig),
+    Index = ?config(index, OldConfig),
+
+
+    Old = {babel_map,
+        #{
+            <<"account_id">> => <<"mrn:account:1">>,
+            <<"identification_type">> => <<"DNI">>,
+            <<"identification_number">> => <<"1">>
+        },
+        [], % no updates
+        [], % no removes
+        undefined
+    },
+    New = {babel_map,
+        #{
+            <<"account_id">> => <<"mrn:account:1">>,
+            <<"foo">> => 1
+        },
+        [<<"foo">>], % no updates
+        [<<"identification_type">>, <<"identification_number">>],
+        undefined
+    },
+    Actions = [{update, Old, New}],
+
+    {true, #{
+        work_ref := WorkRef,
+        result := Updated
+    }} = babel:update_all_indices(
+        Actions,
+        Collection,
+        #{}
     ),
-    ok.
+    %% We should have updated the two indices in the collection
+    ?assertEqual(2, length(Updated)),
+    {ok, _} = babel:yield(WorkRef, 10000),
+
+    %% No ops on this index
+    Pattern = #{
+        <<"identification_type">> => <<"DNI">>,
+        <<"identification_number">> => <<"1">>
+    },
+    Res = babel_index:match(Pattern, Index, #{}),
+    ?assertEqual(0, length(Res)),
+
+    NewConfig = [{collection, Collection}, {index, Index}],
+    {save_config, NewConfig}.
 
 
-accounts_by_identification_type_and_number_many_test(_) ->
+accounts_by_id_many_test(_) ->
     Prefix = <<"babel-test">>,
     CName = <<"accounts">>,
     IdxName = <<"accounts_by_identification_type_and_number_many">>,
@@ -632,13 +689,11 @@ accounts_by_identification_type_and_number_many_test(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     pong = riakc_pb_socket:ping(Conn),
 
-    BabelOpts = #{
-        connection => Conn
-    },
+    GetOpts = #{connection => Conn},
 
     %% Cleanup previous runs
     Cleanup = fun() ->
-        case babel_index_collection:lookup(Prefix, CName, BabelOpts) of
+        case babel_index_collection:lookup(Prefix, CName, GetOpts) of
             {ok, Collection} ->
                 case babel_index_collection:is_index(IdxName, Collection) of
                     true ->
@@ -705,12 +760,12 @@ accounts_by_identification_type_and_number_many_test(_) ->
         ],
 
         Collection = babel_index_collection:fetch(
-            Prefix, CName, BabelOpts),
+            Prefix, CName, GetOpts),
         _Index = babel_index_collection:index(IdxName, Collection),
         {true, #{is_nested := true}} = babel:update_all_indices(
             Actions,
             Collection,
-            BabelOpts#{force => true} % as Obj is not a babel_map
+            GetOpts#{force => true} % as Obj is not a babel_map
         ),
         ok
     end,
@@ -720,7 +775,7 @@ accounts_by_identification_type_and_number_many_test(_) ->
     ,
     {ok, _} = babel:yield(WorkRef3, 15000),
 
-    Collection = babel_index_collection:fetch(Prefix, CName, BabelOpts),
+    Collection = babel_index_collection:fetch(Prefix, CName, GetOpts),
     Idx = babel_index_collection:index(IdxName, Collection),
 
     Pattern = #{
@@ -728,7 +783,7 @@ accounts_by_identification_type_and_number_many_test(_) ->
         <<"identification_number">> => <<"1">>
     },
 
-    Res = babel_index:match(Pattern, Idx, BabelOpts),
+    Res = babel_index:match(Pattern, Idx, GetOpts),
     ?assertEqual(2, length(Res)),
     ?assertEqual(
         [<<"account_id">>],

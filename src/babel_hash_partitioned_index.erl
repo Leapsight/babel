@@ -751,9 +751,10 @@ safe_gen_key(Keys, Data, Config) ->
 
 %% @private
 update_data({AggregateKey, IndexKey}, Value, one, Partition) ->
-    %% - data :: map
-    %%    - AggregateKey :: map
-    %%        - IndexKey :: register -> Value
+    %% {data, map} ->
+    %%      {AggregateKey, map} ->
+    %%          {IndexKey, register} ->
+    %%              Value
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -772,9 +773,10 @@ update_data({AggregateKey, IndexKey}, Value, one, Partition) ->
     );
 
 update_data({AggregateKey, IndexKey}, Value, many, Partition) ->
-    %% - data :: map
-    %%    - AggregateKey :: map
-    %%        - IndexKey :: set ->  [ Values ]
+    %% {data, map} ->
+    %%      {AggregateKey, map} ->
+    %%          {IndexKey, set} ->
+    %%              Values
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -793,8 +795,9 @@ update_data({AggregateKey, IndexKey}, Value, many, Partition) ->
     );
 
 update_data(IndexKey, Value, one, Partition) ->
-    %% - data
-    %%    - IndexKey -> Value
+    %% {data, map} ->
+    %%      {IndexKey, register} ->
+    %%          Value
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -807,8 +810,9 @@ update_data(IndexKey, Value, one, Partition) ->
     );
 
 update_data(IndexKey, Value, many, Partition) ->
-    %% - data
-    %%    - IndexKey -> [ Value ]
+    %% {data, map} ->
+    %%      {IndexKey, set} ->
+    %%          Values
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
@@ -823,11 +827,15 @@ update_data(IndexKey, Value, many, Partition) ->
 
 %% @private
 delete_data({AggregateKey, IndexKey}, _, one, Partition) ->
+    %% {data, map} ->
+    %%      {AggregateKey, map} ->
+    %%          {IndexKey, register} ->
+    %%              Value
     babel_index_partition:update_data(
         fun(Data) ->
             riakc_map:update(
                 {AggregateKey, map},
-                fun(AMap) -> riakc_map:erase({IndexKey, map}, AMap) end,
+                fun(AMap) -> riakc_map:erase({IndexKey, register}, AMap) end,
                 Data
             )
         end,
@@ -835,11 +843,12 @@ delete_data({AggregateKey, IndexKey}, _, one, Partition) ->
     );
 
 delete_data({AggregateKey, IndexKey}, Value, many, Partition) ->
+    %% {data, map} ->
+    %%      {AggregateKey, map} ->
+    %%          {IndexKey, set} ->
+    %%              Values
     AKey = {AggregateKey, map},
     IKey = {IndexKey, set},
-    %% - data :: map
-    %%    - AggregateKey :: map
-    %%        - IndexKey :: set ->  [ Values ]
     babel_index_partition:update_data(
         fun(Data) ->
             try
@@ -878,16 +887,22 @@ delete_data({AggregateKey, IndexKey}, Value, many, Partition) ->
     );
 
 delete_data(IndexKey, _, one, Partition) ->
+    %% {data, map} ->
+    %%      {IndexKey, register} ->
+    %%          Value
+    IKey = {IndexKey, register},
     babel_index_partition:update_data(
-        fun(Data) -> riakc_map:erase({IndexKey, map}, Data) end,
+        fun(Map) -> riakc_map:erase(IKey, Map) end,
         Partition
     );
 
 delete_data(IndexKey, Value, many, Partition) ->
+    %% {data, map} ->
+    %%      {IndexKey, set} ->
+    %%          Values
     IKey = {IndexKey, set},
-
     babel_index_partition:update_data(
-        fun(Data) ->
+        fun(Map) ->
             try
                 riakc_map:update(
                     IKey,
@@ -895,7 +910,7 @@ delete_data(IndexKey, Value, many, Partition) ->
                         ok = erase_check(Value, Set),
                         riakc_set:del_element(Value, Set)
                     end,
-                    Data
+                    Map
                 )
             catch
                 throw:erase_index_key ->
@@ -904,7 +919,7 @@ delete_data(IndexKey, Value, many, Partition) ->
                     %% This is safe to do even in the case of
                     %% concurrent updates as we are using an ORSWOT
                     %% in which adds win
-                    riakc_map:erase(IKey, Data)
+                    riakc_map:erase(IKey, Map)
             end
         end,
         Partition
