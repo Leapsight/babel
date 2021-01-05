@@ -434,7 +434,7 @@ update_action_3(Config) ->
             <<"account_id">> => <<"mrn:account:1">>
         },
         [], % no updates
-        [<<"id">>], % no removes
+        [<<"id">>],
         undefined
     },
     Actions = [{update, Old, New}],
