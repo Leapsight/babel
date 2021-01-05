@@ -24,6 +24,7 @@
 -include("babel.hrl").
 
 -define(BUCKET_SUFFIX, "index_data").
+-define(CACHE, babel_index_partition_cache).
 
 -record(babel_index_partition, {
     id                      ::  binary(),
@@ -266,14 +267,18 @@ update_data(Fun, #babel_index_partition{type = Type} = Partition) ->
 store(TypedBucket, Key, Partition, Opts0) ->
     Opts = babel:validate_opts(put, Opts0),
     Conn = babel:get_connection(Opts),
-    RiakOpts = babel:opts_to_riak_opts(Opts),
+    PutOpts0 = babel:opts_to_riak_opts(Opts),
+
+    %% We retrieve the merged object so that we can update caches
+    PutOpts = maps:put(return_body, true, PutOpts0),
 
     Op = riakc_map:to_op(to_riak_object(Partition)),
 
-    case riakc_pb_socket:update_type(Conn, TypedBucket, Key, Op, RiakOpts) of
+    case riakc_pb_socket:update_type(Conn, TypedBucket, Key, Op, PutOpts) of
         {error, _} = Error ->
             Error;
-        _ ->
+        {ok, Updated} ->
+            ok = cache:put(?CACHE, {TypedBucket, Key}, Partition),
             ok = on_update(TypedBucket, Key),
             ok
     end.
@@ -345,9 +350,12 @@ fetch(BucketType, BucketPrefix, Key, Opts) ->
     {ok, t()} | {error, not_found | term()}.
 
 lookup(TypedBucket, Key, Opts) ->
-    %% TODO enable caching when we have update events working
-    %% Result = cache:get(?MODULE, {TypedBucket, Key}),
-    Result = undefined,
+    Result = case babel_config:get([index_cache, enabled], false) of
+        true ->
+            cache:get(?CACHE, {TypedBucket, Key});
+        false ->
+            undefined
+    end,
     maybe_lookup(TypedBucket, Key, Opts, Result).
 
 
@@ -385,7 +393,7 @@ delete(BucketType, BucketPrefix, Key, Opts0) ->
     Conn = babel:get_connection(Opts),
     RiakOpts = babel:opts_to_riak_opts(Opts),
 
-    ok = cache:delete(?MODULE, {TypedBucket, Key}),
+    ok = cache:delete(?CACHE, {TypedBucket, Key}),
 
     case riakc_pb_socket:delete(Conn, TypedBucket, Key, RiakOpts) of
         ok ->
@@ -415,12 +423,12 @@ typed_bucket(Type, Prefix) ->
 maybe_lookup(TypedBucket, Key, Opts0, undefined) ->
     Opts = babel:validate_opts(get, Opts0),
     Conn = babel:get_connection(Opts),
-    RiakOpts = babel:opts_to_riak_opts(Opts),
+    GetOpts = babel:opts_to_riak_opts(Opts),
 
-    case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, RiakOpts) of
+    case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, GetOpts) of
         {ok, Object} ->
             Partition = from_riak_object(Object),
-            ok = cache:put(?MODULE, {TypedBucket, Key}, Partition),
+            ok = cache:put(?CACHE, {TypedBucket, Key}, Partition),
             {ok, Partition};
 
         {error, {notfound, map}} ->

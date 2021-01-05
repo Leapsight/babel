@@ -26,6 +26,16 @@
 -include_lib("kernel/include/logger.hrl").
 
 
+-define(CACHE_OPTS, #{
+    segments => 10,
+    ttl => 600,
+    size => 10000,
+    memory => 1_073_741_824, % 1GB
+    policy => lru,
+    check => 60
+}).
+
+
 -define(SUPERVISOR(Id, Mod, Args, Restart, Timeout), #{
     id => Id,
     start => {Mod, start_link, Args},
@@ -87,25 +97,7 @@ start_link() ->
 
 
 init([]) ->
-    %% We first initialise the config
-    TTL = babel_config:get(cache_ttl_secs, 60),
-
-    Children = [
-        %% CACHES
-        ?WORKER(
-            babel_index_collection,
-            cache,
-            [babel_index_collection, [{n, 10}, {ttl, TTL}]],
-            permanent,
-            5000
-        ),
-        ?WORKER(
-            babel_index_partition,
-            cache,
-            [babel_index_partition, [{n, 10}, {ttl, TTL}]],
-            permanent,
-            5000
-        ),
+    Static = [
         %% EMBEDDED RELIABLE
         ?SUPERVISOR(
             reliable_sup,
@@ -115,6 +107,7 @@ init([]) ->
             5000
         )
     ],
+    Children = maybe_add_caches(Static),
     {ok, {{one_for_one, 1, 5}, Children}}.
 
 
@@ -125,7 +118,33 @@ init([]) ->
 
 
 
+%% @private
+maybe_add_caches(Acc) ->
+    case babel_config:get([index_cache, enabled], false) of
+        true ->
+            Opts = maps:to_list(
+                maps:merge(?CACHE_OPTS, babel_config:get(index_cache, #{}))
+            ),
+            add_caches(Acc, Opts);
+        false ->
+            Acc
+    end.
 
+
+%% @private
+add_caches(Acc, Opts) ->
+
+    Worker = ?WORKER(
+        babel_index_partition_cache,
+        cache,
+        [babel_index_partition_cache, Opts],
+        permanent,
+        5000
+    ),
+    [Worker | Acc].
+
+
+%% @private
 maybe_add_pool() ->
     case babel_config:get(riak_pools, undefined) of
         undefined ->
