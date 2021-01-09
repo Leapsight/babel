@@ -1008,7 +1008,8 @@ add_elements(Key, Values, Map) ->
                     badtype(set, Term)
             end;
         (error) ->
-            babel_set:set_context(Map#babel_map.context, babel_set:new(Values))
+            Ctxt = inherited_context(Map#babel_map.context),
+            babel_set:set_context(Ctxt, babel_set:new(Values))
     end,
     mutate(Key, Fun, Map).
 
@@ -1043,7 +1044,8 @@ del_element(Key, Value, Map) ->
                     badtype(set, Term)
             end;
         (error) ->
-            babel_set:set_context(Map#babel_map.context, babel_set:new(Value))
+            Ctxt = inherited_context(Map#babel_map.context),
+            babel_set:set_context(Ctxt, babel_set:new(Value))
     end,
     mutate(Key, Fun, Map).
 
@@ -1078,7 +1080,8 @@ set_elements(Key, Values, Map) ->
                     badtype(set, Term)
             end;
         (error) ->
-            babel_set:set_context(Map#babel_map.context, babel_set:new(Values))
+            Ctxt = inherited_context(Map#babel_map.context),
+            babel_set:set_context(Ctxt, babel_set:new(Values))
     end,
     mutate(Key, Fun, Map).
 
@@ -1418,6 +1421,7 @@ from_map(Map, {Ref, #{'_' := TypeOrSpec}}, Ctxt) ->
     from_map(Map, {Ref, Expanded}, Ctxt);
 
 from_map(Map, {{type_spec_ref, _} = Ref, Spec}, Ctxt) when is_map(Spec) ->
+    ICtxt = inherited_context(Ctxt),
     ConvertType = fun
         (_, undefined, Acc) ->
             %% We filter out entries with undefined value
@@ -1425,7 +1429,7 @@ from_map(Map, {{type_spec_ref, _} = Ref, Spec}, Ctxt) when is_map(Spec) ->
         (Key, Value, Acc) ->
             case maps:find(Key, Spec) of
                 {ok, {Datatype, SpecOrType}} ->
-                    NewValue = from_term(Value, Ctxt, Datatype, SpecOrType),
+                    NewValue = from_term(Value, ICtxt, Datatype, SpecOrType),
                     maps:put(Key, NewValue, Acc);
                 error ->
                     error({missing_spec, Key})
@@ -1508,12 +1512,13 @@ from_orddict(RMap, Context, {Ref, #{'_' := Spec}}, Opts) ->
 from_orddict(RMap, Context, {{type_spec_ref, _} = Ref, Spec}, Opts)
 when is_map(Spec) ->
     Strategy = maps:get(missing_spec, Opts, error),
+    ICtxt = inherited_context(Context),
 
     %% Convert values in RMap
     Convert = fun({Key, Datatype} = RKey, RValue, Acc) ->
         case maps:find(Key, Spec) of
             {ok, {X, SpecOrType}} when X == Datatype ->
-                Value = from_datatype(RKey, RValue, Context, SpecOrType),
+                Value = from_datatype(RKey, RValue, ICtxt, SpecOrType),
                 maps:put(Key, Value, Acc);
             {ok, {X, _SpecOrType}} ->
                 error({datatype_mismatch, X, Datatype});
@@ -1845,17 +1850,13 @@ mutate_eval(_, Fun, _) when is_function(Fun, 0) ->
 mutate_eval(Key, Fun, #babel_map{values = V}) when is_function(Fun, 1) ->
     Fun(maps:find(Key, V));
 
-mutate_eval(_, Value, #babel_map{context = Ctxt}) when not is_function(Value) ->
-    maybe_set_context(Ctxt, Value).
-
-
-%% @private
-maybe_set_context(Ctxt, Term) ->
-    case babel:module(Term) of
+mutate_eval(_, Value, #babel_map{} = Map) when not is_function(Value) ->
+    case babel:module(Value) of
         undefined ->
-            Term;
+            Value;
         Mod ->
-            Mod:set_context(Ctxt, Term)
+            Ctxt = inherited_context(Map#babel_map.context),
+            Mod:set_context(Ctxt, Value)
     end.
 
 
@@ -1948,13 +1949,14 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {map, Spec}) ->
             %% We update the inner map recursively and replace
             set(Key, update(Value, Inner, Spec), Acc);
         _ ->
+            Ctxt = inherited_context(Acc#babel_map.context),
             case is_type(Value) of
                 true ->
-                    set(Key, set_context(Acc#babel_map.context, Value), Acc);
+                    set(Key, set_context(Ctxt, Value), Acc);
                 false ->
                     %% The existing value was not found or is not a map, but it
                     %% should be according to spec, so we replace by a new map
-                    New = babel_map:new(Value, Spec, Acc#babel_map.context),
+                    New = babel_map:new(Value, Spec, Ctxt),
                     set(Key, New, Acc)
             end
     end;
@@ -1965,9 +1967,8 @@ do_update(Key, Value, Acc, {set, _}) when is_list(Value) ->
     catch
         throw:context_required ->
             %% We have a brand new set (not in Riak yet) so we just replace it
-            Set = babel_set:set_context(
-                Acc#babel_map.context, babel_set:new(Value)
-            ),
+            Ctxt = inherited_context(Acc#babel_map.context),
+            Set = babel_set:set_context(Ctxt, babel_set:new(Value)),
             set(Key, Set, Acc)
     end;
 
@@ -1994,7 +1995,7 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}) ->
     end;
 
 do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
-    Ctxt = Acc#babel_map.context,
+    Ctxt = inherited_context(Acc#babel_map.context),
 
     case maps:find(Key, V) of
         {ok, Term} ->
@@ -2107,5 +2108,17 @@ patch_eval(Action, _, _, _) ->
 patch_path(#{<<"path">> := BinPath}) ->
     [<<>> | Path] = binary:split(BinPath, [<<"/">>], [global, trim]),
     Path.
+
+
+%% @private
+
+inherited_context(undefined) ->
+    undefined;
+
+inherited_context(inherited) ->
+    inherited;
+
+inherited_context(Ctxt) when is_binary(Ctxt) ->
+    inherited.
 
 

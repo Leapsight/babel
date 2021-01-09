@@ -219,7 +219,7 @@ context(#babel_set{context = Value}) -> Value.
     NewT :: t().
 
 set_context(Ctxt, #babel_set{} = T)
-when is_binary(Ctxt) orelse Ctxt == undefined orelse inherited ->
+when is_binary(Ctxt) orelse Ctxt == undefined orelse Ctxt == inherited ->
     T#babel_set{context = Ctxt};
 
 set_context(Ctxt, #babel_set{}) ->

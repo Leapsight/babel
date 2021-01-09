@@ -181,7 +181,7 @@ context(#babel_flag{context = Value}) -> Value.
     NewT :: t().
 
 set_context(Ctxt, #babel_flag{} = T)
-when is_binary(Ctxt) orelse Ctxt == undefined orelse inherited ->
+when is_binary(Ctxt) orelse Ctxt == undefined orelse Ctxt == inherited ->
     T#babel_flag{context = Ctxt};
 
 set_context(Ctxt, #babel_flag{}) ->

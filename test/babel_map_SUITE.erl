@@ -435,7 +435,7 @@ set_test_1(_) ->
         },
         <<"version">> => <<"1.0">>
     },
-    Map0 = babel_map:set_context(<<>>, babel_map:new(Data, Ref)),
+    Map0 = babel_map:set_context(inherited, babel_map:new(Data, Ref)),
 
     Map1 = babel_map:set([Key, Version], TCs, Map0),
     ?assertEqual(
