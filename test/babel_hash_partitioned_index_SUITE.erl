@@ -644,6 +644,7 @@ accounts_by_id_update(Config) ->
         },
         [], % no updates
         [], % no removes
+        undefined,
         undefined
     },
     New = {babel_map,
@@ -653,6 +654,7 @@ accounts_by_id_update(Config) ->
         },
         [<<"foo">>], % no updates
         [<<"identification_type">>, <<"identification_number">>],
+        undefined,
         undefined
     },
     Actions = [{update, Old, New}],

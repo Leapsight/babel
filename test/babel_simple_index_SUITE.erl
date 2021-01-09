@@ -232,6 +232,7 @@ nop_delete_action_missing_keys(Config) ->
         Data,
         [], % no updates
         [], % no removes
+        undefined,
         undefined
     },
     Actions = [{delete, Map}],
@@ -257,6 +258,7 @@ ok_delete_action(Config) ->
         Data,
         [], % no updates
         [], % no removes
+        undefined,
         undefined
     },
     Actions = [{delete, Map}],
@@ -292,6 +294,7 @@ nop_insert_action_1(Config) ->
         Data,
         [], % no updates
         [], % no removes
+        undefined,
         undefined
     },
     Actions = [{insert, Map}],
@@ -315,6 +318,7 @@ nop_insert_action_2(Config) ->
         #{}, % missing keys
         [], % no updates
         [], % no removes
+        undefined,
         undefined
     },
     Actions = [{insert, Map}],
@@ -342,6 +346,7 @@ update_action_1(Config) ->
         },
         [], % no updates
         [], % no removes
+        undefined,
         undefined
     },
     New = babel_map:new(#{
@@ -386,7 +391,9 @@ update_action_2(Config) ->
         },
         [], % no updates
         [], % no removes
+        undefined,
         undefined
+
     },
     New = babel_map:new(#{}),
     Actions = [{update, Old, New}],
@@ -427,6 +434,7 @@ update_action_3(Config) ->
         },
         [], % no updates
         [], % no removes
+        undefined,
         undefined
     },
     New = {babel_map,
@@ -435,6 +443,7 @@ update_action_3(Config) ->
         },
         [], % no updates
         [<<"id">>],
+        undefined,
         undefined
     },
     Actions = [{update, Old, New}],
@@ -468,6 +477,7 @@ update_action_4(Config) ->
         },
         [], % no updates
         [], % no removes
+        undefined,
         undefined
     },
     New = {babel_map,
@@ -477,6 +487,7 @@ update_action_4(Config) ->
         },
         [<<"id">>], % no updates
         [], % no removes
+        undefined,
         undefined
     },
     Actions = [{update, Old, New}],

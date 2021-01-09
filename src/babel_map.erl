@@ -83,10 +83,12 @@
     values = #{}            ::  #{key() => value()},
     updates = []            ::  ordsets:ordset(key()),
     removes = []            ::  ordsets:ordset(key()),
-    context                 ::  riakc_datatype:context() | undefined
+    context                 ::  babel_context(),
+    type_spec_ref           ::  type_spec_ref() | undefined
 }).
 
 -opaque t()                 ::  #babel_map{}.
+
 -type datatype()            ::  counter | flag | register | set | map.
 -type type_spec()           ::  #{
                                     '$validated' => true,
@@ -114,9 +116,12 @@
                                     on_badkey => skip | error,
                                     return => map | list
                                 }.
+-type type_spec_ref()       ::  {type_spec_ref, any()}.
+
 
 -export_type([t/0]).
 -export_type([type_spec/0]).
+-export_type([type_spec_ref/0]).
 -export_type([key_path/0]).
 -export_type([action/0]).
 
@@ -158,12 +163,20 @@
 -export([set_context/2]).
 -export([set_elements/3]).
 -export([size/1]).
+-export([to_riak_op/1]).
 -export([to_riak_op/2]).
 -export([type/0]).
 -export([update/3]).
+-export([update/2]).
 -export([validate_type_spec/1]).
 -export([value/1]).
+-export([type_spec_ref/1]).
 
+
+-export([register_type_spec/1]).
+-export([register_type_spec/2]).
+-export([unregister_type_spec/1]).
+-export([get_registered_type_spec/1]).
 
 
 %% =============================================================================
@@ -245,7 +258,7 @@ new(Data, Spec) ->
 %% -----------------------------------------------------------------------------
 -spec new(
     Data :: map(),
-    Spec :: type_spec(),
+    Spec :: type_spec() | type_spec_ref(),
     Ctxt :: riakc_datatype:context()) -> t().
 
 new(Data, Spec, Ctxt) ->
@@ -277,18 +290,32 @@ from_riak_map(RMap, Spec) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec from_riak_map(
-    RMap :: riakc_map:crdt_map() | list(), Spec :: type_spec(), Opts :: map()) -> t().
+    RMap :: riakc_map:crdt_map() | list(),
+    Spec :: type_spec() | type_spec_ref(),
+    Opts :: map()) -> t().
 
-from_riak_map(RMap, #{'_' := Spec}, Opts) ->
-    from_riak_map(RMap, expand_spec(orddict:fetch_keys(RMap), Spec), Opts);
 
-from_riak_map(RMap, Spec, Opts) when is_tuple(RMap) ->
+from_riak_map(RMap, SpecOrRef, Opts) when is_tuple(RMap) ->
     Context = element(5, RMap),
     Values = riakc_map:value(RMap),
-    from_orddict(Values, Context, Spec, Opts);
+    from_orddict(Values, Context, SpecOrRef, Opts);
 
-from_riak_map(Values, Spec, Opts) when is_list(Values) ->
-    from_orddict(Values, undefined, Spec, Opts).
+from_riak_map(Values, SpecOrRef, Opts) when is_list(Values) ->
+    from_orddict(Values, undefined, SpecOrRef, Opts).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Extracts a Riak Operation from the map to be used with a Riak Client
+%% update request.
+%% The call fails with a `{badmap, T}' exception if `T' is not a map and
+%% `missing_spec' if it does not have a type specification reference.
+%% @end
+%% -----------------------------------------------------------------------------
+to_riak_op(#babel_map{type_spec_ref = {type_spec_ref, _} = Ref} = T) ->
+    to_riak_op(T, Ref);
+
+to_riak_op(_) ->
+    error(missing_spec).
 
 
 %% -----------------------------------------------------------------------------
@@ -299,6 +326,9 @@ from_riak_map(Values, Spec, Opts) when is_list(Values) ->
 %% -----------------------------------------------------------------------------
 -spec to_riak_op(T :: t(), Spec :: type_spec()) ->
     riakc_datatype:update(riakc_map:map_op()) | no_return().
+
+to_riak_op(T, {type_spec_ref, _} = Ref) ->
+    to_riak_op(T, get_registered_type_spec(Ref));
 
 to_riak_op(T, #{'_' := TypeOrSpec}) ->
     to_riak_op(T, expand_spec(modified_keys(T), TypeOrSpec));
@@ -501,7 +531,7 @@ is_type(Term) ->
 %% The call fails with a `{badmap, T}' exception if `T' is not a map.
 %% @end
 %% -----------------------------------------------------------------------------
--spec context(T :: t()) -> riakc_datatype:context() | no_return().
+-spec context(T :: t()) -> babel_context() | no_return().
 
 context(#babel_map{context = Value}) ->
     Value;
@@ -514,11 +544,11 @@ context(Term) ->
 %% @doc Sets the context `Ctxt'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec set_context(Ctxt :: riakc_datatype:set_context(), T :: t()) ->
+-spec set_context(Ctxt :: riakc_datatype:context(), T :: t()) ->
     NewT :: t().
 
 set_context(Ctxt, #babel_map{} = T)
-when is_binary(Ctxt) orelse Ctxt == undefined ->
+when is_binary(Ctxt) orelse Ctxt == undefined orelse Ctxt == inherited ->
     T#babel_map{context = Ctxt};
 
 set_context(Ctxt, #babel_map{}) ->
@@ -1053,16 +1083,24 @@ set_elements(Key, Values, Map) ->
     mutate(Key, Fun, Map).
 
 
+%% -----------------------------------------------------------------------------
+%% @doc Updates a map `T' with the provide key-value pairs `Values'.
+%% If the value associated with a key `Key' in `Values' is equal to `undefined`
+%% this equivalent to calling `remove(Key, Map)' with the difference that an
+%% exception will not be raised in case the map had no context assigned.
+%%
+%% This function fails with `missing_spec' if it does not have a type
+%% specification reference. See {@link update/3} to pass a type specification.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec update(Values :: babel_key_value:t(), T :: t()) ->
+    NewT :: t().
 
-%% -spec update(Key :: key_path(), Fun :: update_fun(), T :: t()) -> NewT :: t().
+update(Values, #babel_map{type_spec_ref = {type_spec_ref, _} = Ref} = T) ->
+    update(Values, T, get_registered_type_spec(Ref));
 
-%% update(Key, Fun, #babel_map{values = V, updates = U} = Map)
-%% when is_function(Fun, 1) ->
-%%     Map#babel_map{
-%%         values = maps:put(Key, Fun(maps:get(Key, V)), V),
-%%         updates = ordsets:add_element(Key, U)
-%%     }.
-
+update(_, _) ->
+    error(missing_spec).
 
 
 %% -----------------------------------------------------------------------------
@@ -1095,6 +1133,26 @@ update(Values, #babel_map{} = T, MapSpec0) when is_map(MapSpec0) ->
 
     end,
     babel_key_value:fold(Fun, T, Values).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Updates a map `T' with the provide key-value action list `ActionList'.
+%% If the value associated with a key `Key' in `Values' is equal to `undefined`
+%% this equivalent to calling `remove(Key, Map)' with the difference that an
+%% exception will not be raised in case the map had no context assigned.
+%%
+%% This function fails with `missing_spec' if it does not have a type
+%% specification reference. See {@link update/3} to pass a type specification.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec patch(ActionList :: [action()], T :: t()) ->
+    NewT :: t().
+
+patch(ActionList, #babel_map{type_spec_ref = {type_spec_ref, _} = Ref} = T) ->
+    patch(ActionList, T, get_registered_type_spec(Ref));
+
+patch(_, _) ->
+    error(missing_spec).
 
 
 %% -----------------------------------------------------------------------------
@@ -1239,6 +1297,96 @@ decrement(Key, Value, Map) ->
     mutate(Key, Fun, Map).
 
 
+%% -----------------------------------------------------------------------------
+%% @doc Registers a type specification `Spec' and returns a `type_spec_ref()'
+%% that can be use with any other map instance of the same kind. A registered
+%% type spec is validated during registration and the registration fails if it
+%% does not pass the validation. All functions that take a type specification
+%% as argument also accept a type specification reference, which is more
+%% efficient as there is no need to have the type specification in the local
+%% process memery and there is no need for further validation.
+%%
+%% This call fails with exception `{invalid_spec, Errors :: map()}' if the type
+%% specification `Spec' is invalid.
+%%
+%% The storage for specifications is implemented using {@link persistent_term}.
+%% So refer to that  module's documentation to understand best practices. In
+%% particular, it is ideal to register the type specifications as soon as your
+%% aplication starts in order to minimize the number of processes on the node
+%% before performing a registration. It would also be wise to avoid registering
+%% type specifications when the system is at peak load.
+%%
+%% @equiv register_type_spec(undefined, Spec)
+%% @end
+%% -----------------------------------------------------------------------------
+-spec register_type_spec(type_spec()) -> type_spec_ref().
+
+register_type_spec(Spec) ->
+    register_type_spec(undefined, Spec).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Registers a type specification `Spec' under a reference using unique
+%% identifier `Id'. Returns a `type_spec_ref()'.
+%% If `Id' equals `undefined', then id is computed by computing a hash of value
+%% of `Spec'.
+%% The returned reference can be use with any other map instance of the same
+%% kind. A registered type spec is validated during registration and the
+%% registration fails if it does not pass the validation.
+%% All functions that take a type specification
+%% as argument also accept a type specification reference, which is more
+%% efficient as there is no need to have the type specification in the local
+%% process memery and there is no need for further validation.
+%%
+%% This call fails with exception `{invalid_spec, Errors :: map()}' if the type
+%% specification `Spec' is invalid.
+%%
+%% The storage for specifications is implemented using {@link persistent_term}.
+%% So refer to that  module's documentation to understand best practices. In
+%% particular, it is ideal to register the type specifications as soon as your
+%% aplication starts in order to minimize the number of processes on the node
+%% before performing a registration. It would also be wise to avoid registering
+%% type specifications when the system is at peak load.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec register_type_spec(Id :: any() | undefined, type_spec()) ->
+    type_spec_ref().
+
+register_type_spec(Id, Spec0) ->
+    Spec = validate_type_spec(Spec0),
+    do_register_type_spec(Id, Spec).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec unregister_type_spec(Ref :: any()) -> boolean().
+
+unregister_type_spec({type_spec_ref, _} = Ref) ->
+    persistent_term:erase(Ref).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec get_registered_type_spec(Ref :: any()) -> type_spec_ref() | undefined.
+
+get_registered_type_spec({type_spec_ref, _} = Ref) ->
+    persistent_term:get(Ref, undefined).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns the type specification reference associated with map `T' or
+%% `undefined' is there is none.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec type_spec_ref(T :: t()) -> type_spec_ref() | undefined.
+
+type_spec_ref(#babel_map{type_spec_ref = Value}) -> Value.
+
+
 
 %% =============================================================================
 %% PRIVATE
@@ -1247,12 +1395,29 @@ decrement(Key, Value, Map) ->
 
 
 %% @private
-from_map(Map, #{'_' := TypeOrSpec}, Ctxt) ->
-    from_map(Map, expand_spec(maps:keys(Map), TypeOrSpec), Ctxt);
+do_register_type_spec(undefined, Spec) ->
+    do_register_type_spec(erlang:phash2(Spec), Spec);
+
+do_register_type_spec(Id, Spec) ->
+    Key = {type_spec_ref, Id},
+    ok = persistent_term:put(Key, Spec),
+    Key.
+
+
+%% @private
+from_map(Map, {type_spec_ref, _} = Ref, Ctxt) ->
+    from_map(Map, {Ref, get_registered_type_spec(Ref)}, Ctxt);
 
 from_map(Map, Spec0, Ctxt) when is_map(Spec0) ->
     Spec = validate_type_spec(Spec0),
+    Ref = register_type_spec(Spec),
+    from_map(Map, {Ref, Spec}, Ctxt);
 
+from_map(Map, {Ref, #{'_' := TypeOrSpec}}, Ctxt) ->
+    Expanded = expand_spec(maps:keys(Map), TypeOrSpec),
+    from_map(Map, {Ref, Expanded}, Ctxt);
+
+from_map(Map, {{type_spec_ref, _} = Ref, Spec}, Ctxt) when is_map(Spec) ->
     ConvertType = fun
         (_, undefined, Acc) ->
             %% We filter out entries with undefined value
@@ -1276,7 +1441,8 @@ from_map(Map, Spec0, Ctxt) when is_map(Spec0) ->
     #babel_map{
         values = Values,
         updates = ordsets:from_list(maps:keys(Values)),
-        context = Ctxt
+        context = Ctxt,
+        type_spec_ref = Ref
     }.
 
 
@@ -1326,8 +1492,21 @@ from_term(Term, _, Datatype, Type) ->
     orddict:orddict(), riakc_datatype:context(), type_spec(), Opts :: map()) ->
     maybe_no_return(t()).
 
+
 from_orddict(RMap, Context, Spec0, Opts) when is_map(Spec0) ->
     Spec = validate_type_spec(Spec0),
+    Ref = register_type_spec(Spec),
+    from_orddict(RMap, Context, {Ref, Spec}, Opts);
+
+from_orddict(RMap, Context, {type_spec_ref, _} = Ref, Opts) ->
+    from_orddict(RMap, Context, {Ref, get_registered_type_spec(Ref)}, Opts);
+
+from_orddict(RMap, Context, {Ref, #{'_' := Spec}}, Opts) ->
+    Expanded = expand_spec(orddict:fetch_keys(RMap), Spec),
+    from_orddict(RMap, Context, {Ref, Expanded}, Opts);
+
+from_orddict(RMap, Context, {{type_spec_ref, _} = Ref, Spec}, Opts)
+when is_map(Spec) ->
     Strategy = maps:get(missing_spec, Opts, error),
 
     %% Convert values in RMap
@@ -1353,7 +1532,11 @@ from_orddict(RMap, Context, Spec0, Opts) when is_map(Spec0) ->
     %% MissingKeys = lists:subtract(maps:keys(Spec), Keys),
     %% Values = init_values(maps:with(MissingKeys, Spec), Values0),
 
-    #babel_map{values = Values, context = Context}.
+    #babel_map{
+        values = Values,
+        context = Context,
+        type_spec_ref = Ref
+    }.
 
 
 

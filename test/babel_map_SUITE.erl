@@ -404,15 +404,16 @@ set_test_1(_) ->
         TCSpec
     ),
     Version = <<"20201118">>,
-    Map0 = {babel_map,#{
+    Ref = babel_map:register_type_spec(Spec),
+    Data = #{
         <<"account_type">> => <<"business">>,<<"active">> => true,
-        <<"address">> =>
-            {babel_map,#{<<"address_line1">> => <<"523">>,
-                        <<"city">> => <<"La Plata">>,
-                        <<"country">> => <<"Argentina">>,
-                        <<"postal_code">> => <<"1900">>,
-                        <<"state">> => <<"Buenos Aires">>},
-                    [],[],undefined},
+        <<"address">> =>#{
+            <<"address_line1">> => <<"523">>,
+            <<"city">> => <<"La Plata">>,
+            <<"country">> => <<"Argentina">>,
+            <<"postal_code">> => <<"1900">>,
+            <<"state">> => <<"Buenos Aires">>
+        },
         <<"country_id">> => <<"AR">>,
         <<"created_by">> => <<"testaccount@test.com.ar">>,
         <<"created_timestamp">> => 1605695133613,
@@ -425,17 +426,17 @@ set_test_1(_) ->
         <<"name">> => <<"My Account Ale Sin Phones and Emails">>,
         <<"number">> => <<"AB1234567">>,
         <<"operation_mode">> => <<"normal">>,
-        <<"services">> =>
-            {babel_map,#{<<"mrn:service:fleet">> =>
-                            {babel_map,#{<<"description">> => <<"Plan fleet habilitado">>,
-                                        <<"enabled">> => true,
-                                        <<"expiry_date">> => <<"2017-05-12T00:00:00+00:00">>},
-                                        [],[],undefined}},
-                    [],[],undefined},
-        <<"version">> => <<"1.0">>},
-        [],[],
-        <<>>
+        <<"services">> => #{
+            <<"mrn:service:fleet">> => #{
+                <<"description">> => <<"Plan fleet habilitado">>,
+                <<"enabled">> => true,
+                <<"expiry_date">> => <<"2017-05-12T00:00:00+00:00">>
+            }
+        },
+        <<"version">> => <<"1.0">>
     },
+    Map0 = babel_map:set_context(<<>>, babel_map:new(Data, Ref)),
+
     Map1 = babel_map:set([Key, Version], TCs, Map0),
     ?assertEqual(
         babel_map:value(TCs),
@@ -444,11 +445,18 @@ set_test_1(_) ->
     {ok, Conn} = riakc_pb_socket:start_link("127.0.0.1", 8087),
     ?assertEqual(pong, riakc_pb_socket:ping(Conn)),
 
+    Map2 = babel_map:set_context(undefined, Map1),
+
+    ?assertEqual(
+        babel_map:to_riak_op(Map2),
+        babel_map:to_riak_op(Map2, Spec)
+    ),
+
     ok = babel:put(
         {<<"index_data">>, <<"test">>},
         <<"set_test_1">>,
         %% We revert context to undefine so that Riak does not fail
-        babel_map:set_context(undefined, Map1),
+        Map2,
         Spec,
         #{connection => Conn}
     ),
