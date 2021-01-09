@@ -33,7 +33,7 @@
     %% RiakC uses undefined but this causes Riak to never record a flag
     %% initilised with 'false'.
     op = disable        ::  enable | disable | undefined,
-    context             ::  riakc_datatype:context() | undefined
+    context             ::  babel_context()
 }).
 
 -opaque t()             ::  #babel_flag{}.
@@ -93,7 +93,7 @@ new(false) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec new(Value :: boolean(), Ctxt :: riakc_datatype:context()) -> t().
+-spec new(Value :: boolean(), Ctxt :: babel_context()) -> t().
 
 new(Value, undefined) when is_boolean(Value) ->
     new(Value);
@@ -108,7 +108,7 @@ new(Value, Ctxt) when is_boolean(Value) ->
 %% -----------------------------------------------------------------------------
 -spec from_riak_flag(
     RiakFlag :: riakc_flag:riakc_t() | boolean,
-    Ctxt :: riakc_datatype:context(),
+    Ctxt :: babel_context(),
     Type :: type_spec()) ->
     maybe_no_return(t()).
 
@@ -168,7 +168,7 @@ is_valid_type_spec(_) -> false.
 %% @doc Returns the Riak KV context
 %% @end
 %% -----------------------------------------------------------------------------
--spec context(T :: t()) -> riakc_datatype:context().
+-spec context(T :: t()) -> babel_context().
 
 context(#babel_flag{context = Value}) -> Value.
 
@@ -177,11 +177,11 @@ context(#babel_flag{context = Value}) -> Value.
 %% @doc Sets the context `Ctxt'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec set_context(Ctxt :: riakc_datatype:set_context(), T :: t()) ->
+-spec set_context(Ctxt :: babel_context(), T :: t()) ->
     NewT :: t().
 
 set_context(Ctxt, #babel_flag{} = T)
-when is_binary(Ctxt) orelse Ctxt == undefined ->
+when is_binary(Ctxt) orelse Ctxt == undefined orelse inherited ->
     T#babel_flag{context = Ctxt};
 
 set_context(Ctxt, #babel_flag{}) ->

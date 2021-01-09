@@ -144,7 +144,7 @@ is_valid_type_spec(_) -> false.
 %% @doc Returns the Riak KV context
 %% @end
 %% -----------------------------------------------------------------------------
--spec context(T :: t()) -> riakc_datatype:context().
+-spec context(T :: t()) -> babel_context().
 
 context(#babel_counter{}) -> undefined.
 
@@ -154,7 +154,7 @@ context(#babel_counter{}) -> undefined.
 %% datatype interface.
 %% @end
 %% -----------------------------------------------------------------------------
--spec set_context(Ctxt :: riakc_datatype:set_context(), T :: t()) ->
+-spec set_context(Ctxt :: babel_context(), T :: t()) ->
     NewT :: t().
 
 set_context(_, #babel_counter{} = T) ->

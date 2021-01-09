@@ -28,7 +28,7 @@
     adds = []           ::  ordsets:ordset(any()),
     removes = []        ::  ordsets:ordset(any()),
     size = 0            ::  non_neg_integer(),
-    context             ::  riakc_datatype:context() | undefined
+    context             ::  babel_context()
 }).
 
 -opaque t()             ::  #babel_set{}.
@@ -206,7 +206,7 @@ is_valid_type_spec(_) -> false.
 %% @doc Returns the Riak KV context
 %% @end
 %% -----------------------------------------------------------------------------
--spec context(T :: t()) -> riakc_datatype:context().
+-spec context(T :: t()) -> babel_context().
 
 context(#babel_set{context = Value}) -> Value.
 
@@ -215,11 +215,11 @@ context(#babel_set{context = Value}) -> Value.
 %% @doc Sets the context `Ctxt'.
 %% @end
 %% -----------------------------------------------------------------------------
--spec set_context(Ctxt :: riakc_datatype:set_context(), T :: t()) ->
+-spec set_context(Ctxt :: babel_context(), T :: t()) ->
     NewT :: t().
 
 set_context(Ctxt, #babel_set{} = T)
-when is_binary(Ctxt) orelse Ctxt == undefined ->
+when is_binary(Ctxt) orelse Ctxt == undefined orelse inherited ->
     T#babel_set{context = Ctxt};
 
 set_context(Ctxt, #babel_set{}) ->
