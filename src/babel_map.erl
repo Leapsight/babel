@@ -156,6 +156,7 @@
 -export([new/1]).
 -export([new/2]).
 -export([new/3]).
+-export([patch/2]).
 -export([patch/3]).
 -export([put/3]).
 -export([remove/2]).
