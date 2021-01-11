@@ -3,5 +3,5 @@
 {modules,[babel,babel_app,babel_config,babel_consistent_hashing,babel_counter,
           babel_crdt,babel_flag,babel_hash_partitioned_index,babel_index,
           babel_index_collection,babel_index_partition,babel_key_value,
-          babel_manager,babel_map,babel_range_partitioned_index,babel_set,
-          babel_simple_index,babel_sup,babel_utils]}.
+          babel_manager,babel_map,babel_set,babel_simple_index,babel_sup,
+          babel_utils]}.

@@ -47,7 +47,7 @@ type_spec() = integer
 ### context/1 ###
 
 <pre><code>
-context(T::<a href="#type-t">t()</a>) -&gt; <a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>
+context(T::<a href="#type-t">t()</a>) -&gt; <a href="#type-babel_context">babel_context()</a>
 </code></pre>
 <br />
 
@@ -162,15 +162,15 @@ set(Amount::integer(), Babel_counter::<a href="#type-t">t()</a>) -&gt; <a href="
 </code></pre>
 <br />
 
-Increments or decrements the counter so that its resulting value would
-be equal to `Amount`.
+Increments or decrements the counter so that the result of calling
+[`value/1`](#value-1) would be equal to amount `Amount`.
 
 <a name="set_context-2"></a>
 
 ### set_context/2 ###
 
 <pre><code>
-set_context(Ctxt::<a href="riakc_datatype.md#type-set_context">riakc_datatype:set_context()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+set_context(Ctxt::<a href="#type-babel_context">babel_context()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
 </code></pre>
 <br />
 

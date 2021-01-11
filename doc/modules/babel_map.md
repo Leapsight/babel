@@ -54,9 +54,8 @@ result in a map containing the key `<<"friends">>` and a babel set contining
 the elements converted from binaries to lists.
 
 The special '\_' key name provides the capability to convert a Riak Map where
-the keys are not known in advance, and their values are all of the same
-type. These specs can only have a single entry as follows
-`#{{`\_', set}, binary}'.
+the keys are not known in advance. These specs can only have a single entry
+as follows `#{{`\_', set}, erl_type()}'.
 
 <a name="types"></a>
 
@@ -138,6 +137,17 @@ type_spec() = #{$validated =&gt; true, <a href="#type-key">key()</a> | _ =&gt; <
 </code></pre>
 
 
+<a name="type_spec_ref()"></a>
+
+
+### type_spec_ref() ###
+
+
+<pre><code>
+type_spec_ref() = {type_spec_ref, any()}
+</code></pre>
+
+
 <a name="value()"></a>
 
 
@@ -216,7 +226,7 @@ can be one of `updated`, `removed`, `both` or `none`.
 ### change_status/3 ###
 
 <pre><code>
-change_status(KeyOrPath::<a href="#type-key_path">key_path()</a>, Map::<a href="#type-t">t()</a>, Default::any()) -&gt; none | both | removed | updated | any() | no_return()
+change_status(KeyOrPath::<a href="#type-key_path">key_path()</a>, Map::<a href="#type-t">t()</a>, Default::any()) -&gt; none | removed | updated | any() | no_return()
 </code></pre>
 <br />
 
@@ -492,7 +502,7 @@ once.
 ### context/1 ###
 
 <pre><code>
-context(T::<a href="#type-t">t()</a>) -&gt; <a href="riakc_datatype.md#type-context">riakc_datatype:context()</a> | no_return()
+context(T::<a href="#type-t">t()</a>) -&gt; <a href="#type-babel_context">babel_context()</a> | no_return()
 </code></pre>
 <br />
 
@@ -590,7 +600,7 @@ Map `RMap`.
 ### from_riak_map/3 ###
 
 <pre><code>
-from_riak_map(RMap::<a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a> | list(), Spec::<a href="#type-type_spec">type_spec()</a>, Opts::map()) -&gt; <a href="#type-t">t()</a>
+from_riak_map(RMap::<a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a> | list(), Spec::<a href="#type-type_spec">type_spec()</a> | <a href="#type-type_spec_ref">type_spec_ref()</a>, Opts::map()) -&gt; <a href="#type-t">t()</a>
 </code></pre>
 <br />
 
@@ -637,6 +647,15 @@ the default value `Default` in case `T` does not contain `Key`.
 The call fails with a `{badarg, T}` exception if `T` is not a Babel Map.
 It also fails with a `{badkey, Key}` exception if no value is associated
 with `Key` or if `Key` is not a binary term.
+
+<a name="get_registered_type_spec-1"></a>
+
+### get_registered_type_spec/1 ###
+
+<pre><code>
+get_registered_type_spec(Ref::any()) -&gt; <a href="#type-type_spec_ref">type_spec_ref()</a> | undefined
+</code></pre>
+<br />
 
 <a name="get_value-2"></a>
 
@@ -751,12 +770,29 @@ Equivalent to [`new(Data, Spec, undefined)`](#new-3).
 ### new/3 ###
 
 <pre><code>
-new(Data::map(), Spec::<a href="#type-type_spec">type_spec()</a>, Ctxt::<a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>) -&gt; <a href="#type-t">t()</a>
+new(Data::map(), Spec::<a href="#type-type_spec">type_spec()</a> | <a href="#type-type_spec_ref">type_spec_ref()</a>, Ctxt::<a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>) -&gt; <a href="#type-t">t()</a>
 </code></pre>
 <br />
 
 Creates a new Babel Map from the erlang map `Data`, previously
 filtering out all keys assigned to the `undefined`.
+
+<a name="patch-2"></a>
+
+### patch/2 ###
+
+<pre><code>
+patch(ActionList::[<a href="#type-action">action()</a>], T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+Updates a map `T` with the provide key-value action list `ActionList`.
+If the value associated with a key `Key` in `Values` is equal to `undefined`
+this equivalent to calling `remove(Key, Map)` with the difference that an
+exception will not be raised in case the map had no context assigned.
+
+This function fails with `missing_spec` if it does not have a type
+specification reference. See [`update/3`](#update-3) to pass a type specification.
 
 <a name="patch-3"></a>
 
@@ -785,6 +821,66 @@ put(Key::<a href="#type-key_path">key_path()</a>, Value::<a href="#type-value">v
 
 Same as [`set/3`](#set-3).
 
+<a name="register_type_spec-1"></a>
+
+### register_type_spec/1 ###
+
+<pre><code>
+register_type_spec(Spec::<a href="#type-type_spec">type_spec()</a>) -&gt; <a href="#type-type_spec_ref">type_spec_ref()</a>
+</code></pre>
+<br />
+
+Equivalent to [`register_type_spec(undefined, Spec)`](#register_type_spec-2).
+
+Registers a type specification `Spec` and returns a `type_spec_ref()`
+that can be use with any other map instance of the same kind. A registered
+type spec is validated during registration and the registration fails if it
+does not pass the validation. All functions that take a type specification
+as argument also accept a type specification reference, which is more
+efficient as there is no need to have the type specification in the local
+process memery and there is no need for further validation.
+
+This call fails with exception `{invalid_spec, Errors :: map()}` if the type
+specification `Spec` is invalid.
+
+The storage for specifications is implemented using [`persistent_term`](persistent_term.md).
+So refer to that  module's documentation to understand best practices. In
+particular, it is ideal to register the type specifications as soon as your
+aplication starts in order to minimize the number of processes on the node
+before performing a registration. It would also be wise to avoid registering
+type specifications when the system is at peak load.
+
+<a name="register_type_spec-2"></a>
+
+### register_type_spec/2 ###
+
+<pre><code>
+register_type_spec(Id::any() | undefined, Spec0::<a href="#type-type_spec">type_spec()</a>) -&gt; <a href="#type-type_spec_ref">type_spec_ref()</a>
+</code></pre>
+<br />
+
+Registers a type specification `Spec` under a reference using unique
+identifier `Id`. Returns a `type_spec_ref()`.
+If `Id` equals `undefined`, then id is computed by computing a hash of value
+of `Spec`.
+The returned reference can be use with any other map instance of the same
+kind. A registered type spec is validated during registration and the
+registration fails if it does not pass the validation.
+All functions that take a type specification
+as argument also accept a type specification reference, which is more
+efficient as there is no need to have the type specification in the local
+process memery and there is no need for further validation.
+
+This call fails with exception `{invalid_spec, Errors :: map()}` if the type
+specification `Spec` is invalid.
+
+The storage for specifications is implemented using [`persistent_term`](persistent_term.md).
+So refer to that  module's documentation to understand best practices. In
+particular, it is ideal to register the type specifications as soon as your
+aplication starts in order to minimize the number of processes on the node
+before performing a registration. It would also be wise to avoid registering
+type specifications when the system is at peak load.
+
 <a name="remove-2"></a>
 
 ### remove/2 ###
@@ -798,6 +894,9 @@ throws `context_required`
 
 Removes a key and its value from the map. Removing a key that
 does not exist simply records a remove operation.
+
+In case the map has no context i.e. it is newly created, removes will only %% work for keys that have been updated since creation. In all other cases the
+call will fail with a `context_required` exception.
 
 <a name="set-3"></a>
 
@@ -825,7 +924,7 @@ partial key path is not a babel map.
 ### set_context/2 ###
 
 <pre><code>
-set_context(Ctxt::<a href="riakc_datatype.md#type-set_context">riakc_datatype:set_context()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+set_context(Ctxt::<a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
 </code></pre>
 <br />
 
@@ -867,6 +966,17 @@ size(T::<a href="#type-t">t()</a>) -&gt; non_neg_integer() | no_return()
 Returns the size of the values of the map `T`.
 The call fails with a `{badmap, T}` exception if `T` is not a map.
 
+<a name="to_riak_op-1"></a>
+
+### to_riak_op/1 ###
+
+`to_riak_op(Babel_map) -> any()`
+
+Extracts a Riak Operation from the map to be used with a Riak Client
+update request.
+The call fails with a `{badmap, T}` exception if `T` is not a map and
+`missing_spec` if it does not have a type specification reference.
+
 <a name="to_riak_op-2"></a>
 
 ### to_riak_op/2 ###
@@ -890,6 +1000,44 @@ type() -&gt; map
 <br />
 
 Returns the symbolic name of this container.
+
+<a name="type_spec_ref-1"></a>
+
+### type_spec_ref/1 ###
+
+<pre><code>
+type_spec_ref(T::<a href="#type-t">t()</a>) -&gt; <a href="#type-type_spec_ref">type_spec_ref()</a> | undefined
+</code></pre>
+<br />
+
+Returns the type specification reference associated with map `T` or
+`undefined` is there is none.
+
+<a name="unregister_type_spec-1"></a>
+
+### unregister_type_spec/1 ###
+
+<pre><code>
+unregister_type_spec(Ref::any()) -&gt; boolean()
+</code></pre>
+<br />
+
+<a name="update-2"></a>
+
+### update/2 ###
+
+<pre><code>
+update(Values::<a href="babel_key_value.md#type-t">babel_key_value:t()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+</code></pre>
+<br />
+
+Updates a map `T` with the provide key-value pairs `Values`.
+If the value associated with a key `Key` in `Values` is equal to `undefined`
+this equivalent to calling `remove(Key, Map)` with the difference that an
+exception will not be raised in case the map had no context assigned.
+
+This function fails with `missing_spec` if it does not have a type
+specification reference. See [`update/3`](#update-3) to pass a type specification.
 
 <a name="update-3"></a>
 

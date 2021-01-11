@@ -40,6 +40,28 @@ datatype() = <a href="babel_map.md#type-t">babel_map:t()</a> | <a href="babel_se
 </code></pre>
 
 
+<a name="delete_opts()"></a>
+
+
+### delete_opts() ###
+
+
+<pre><code>
+delete_opts() = #{connection =&gt; pid() | fun(() -&gt; pid()), r =&gt; <a href="#type-quorum">quorum()</a>, pr =&gt; <a href="#type-quorum">quorum()</a>, w =&gt; <a href="#type-quorum">quorum()</a>, dw =&gt; <a href="#type-quorum">quorum()</a>, pw =&gt; <a href="#type-quorum">quorum()</a>, n_val =&gt; non_neg_integer(), sloppy_quorum =&gt; boolean(), timeout =&gt; timeout(), $delete_validated =&gt; boolean()}
+</code></pre>
+
+
+<a name="get_opts()"></a>
+
+
+### get_opts() ###
+
+
+<pre><code>
+get_opts() = #{connection =&gt; pid() | fun(() -&gt; pid()), r =&gt; <a href="#type-quorum">quorum()</a>, pr =&gt; <a href="#type-quorum">quorum()</a>, if_modified =&gt; binary(), notfound_ok =&gt; boolean(), n_val =&gt; non_neg_integer(), basic_quorum =&gt; boolean(), sloppy_quorum =&gt; boolean(), head =&gt; boolean(), deletedvclock =&gt; boolean(), timeout =&gt; timeout(), $get_validated =&gt; boolean()}
+</code></pre>
+
+
 <a name="opts()"></a>
 
 
@@ -47,7 +69,18 @@ datatype() = <a href="babel_map.md#type-t">babel_map:t()</a> | <a href="babel_se
 
 
 <pre><code>
-opts() = #{connection =&gt; pid() | fun(() -&gt; pid()), riak_opts =&gt; <a href="#type-riak_opts">riak_opts()</a>, $validated =&gt; boolean()}
+opts() = <a href="#type-get_opts">get_opts()</a> | <a href="#type-put_opts">put_opts()</a> | <a href="#type-delete_opts">delete_opts()</a>
+</code></pre>
+
+
+<a name="put_opts()"></a>
+
+
+### put_opts() ###
+
+
+<pre><code>
+put_opts() = #{connection =&gt; pid() | fun(() -&gt; pid()), w =&gt; <a href="#type-quorum">quorum()</a>, dw =&gt; <a href="#type-quorum">quorum()</a>, pw =&gt; <a href="#type-quorum">quorum()</a>, if_not_modified =&gt; boolean(), if_none_match =&gt; boolean(), notfound_ok =&gt; boolean(), n_val =&gt; non_neg_integer(), sloppy_quorum =&gt; boolean(), return_body =&gt; boolean(), return_head =&gt; boolean(), timeout =&gt; timeout(), $put_validated =&gt; boolean()}
 </code></pre>
 
 
@@ -59,17 +92,6 @@ opts() = #{connection =&gt; pid() | fun(() -&gt; pid()), riak_opts =&gt; <a href
 
 <pre><code>
 riak_op() = <a href="riakc_datatype.md#type-update">riakc_datatype:update</a>(term())
-</code></pre>
-
-
-<a name="riak_opts()"></a>
-
-
-### riak_opts() ###
-
-
-<pre><code>
-riak_opts() = #{r =&gt; <a href="#type-quorum">quorum()</a>, pr =&gt; <a href="#type-quorum">quorum()</a>, w =&gt; <a href="#type-quorum">quorum()</a>, dw =&gt; <a href="#type-quorum">quorum()</a>, pw =&gt; <a href="#type-quorum">quorum()</a>, notfound_ok =&gt; boolean(), basic_quorum =&gt; boolean(), sloppy_quorum =&gt; boolean(), timeout =&gt; timeout(), return_body =&gt; boolean()}
 </code></pre>
 
 
@@ -123,7 +145,7 @@ of the possible return values.
 ### delete/3 ###
 
 <pre><code>
-delete(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Opts::<a href="#type-opts">opts()</a>) -&gt; ok | {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
+delete(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Opts::<a href="#type-delete_opts">delete_opts()</a>) -&gt; ok | {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -225,25 +247,38 @@ Options:
 ### get/4 ###
 
 <pre><code>
-get(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Spec::<a href="#type-type_spec">type_spec()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {ok, Datatype::<a href="#type-datatype">datatype()</a>} | {error, Reason::term()}
+get(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Spec::<a href="#type-type_spec">type_spec()</a>, Opts::<a href="#type-get_opts">get_opts()</a>) -&gt; {ok, Datatype::<a href="#type-datatype">datatype()</a>} | {error, Reason::term()}
 </code></pre>
 <br />
 
 Retrieves a Riak Datatype (counter, set or map) from bucket type and
 bucket `TypedBucket` and key `Key`. It uses type spec `Spec` to transform
-the Riak Datatype into a Babel Datatype and if successful returns a [`babel_counter`](babel_counter.md), [`babel_set`](babel_set.md) or [`babel_map`](babel_map.md) respectively.
+the Riak Datatype into a Babel Datatype and if successful returns
+`{ok, Datatype}` where Datatype is one of [`babel_counter`](babel_counter.md), [`babel_set`](babel_set.md) or [`babel_map`](babel_map.md).
+Returns `{error, not_found}` if the key is not on the server.
 
 This function gets the riak client connection from the options `Opts` under
 the key `connection` which can have the connection pid or a function object
 returning a connection pid. This allows a lot of flexibility such as reusing
-a given connection over several calls the babel function of using your own
+a given connection over several calls and using your own
 connection pool and management.
 
 In case the `connection` option does not provide a connection as explained
-above, this function tries to use the `default` connection pool if it was
-enabled through Babel's configuration options.
+above, this function tries to get a connection from the the `default`
+riak_pool connection pool if it was enabled through Babel's configuration
+options.
 
-Returns `{error, not_found}` if the key is not on the server.
+<a name="get_connection-0"></a>
+
+### get_connection/0 ###
+
+<pre><code>
+get_connection() -&gt; undefined | pid()
+</code></pre>
+<br />
+
+Returns a Riak connection managed by [`riak_pool`](riak_pool.md) from the process
+dictonary or `undefined` if there is none.
 
 <a name="get_connection-1"></a>
 
@@ -267,27 +302,38 @@ Returns the module associated with the type of term `Term`.
 ### opts_to_riak_opts/1 ###
 
 <pre><code>
-opts_to_riak_opts(X1::map()) -&gt; list()
+opts_to_riak_opts(Opts::map()) -&gt; list()
 </code></pre>
 <br />
+
+Converts the options map into Riak KV property list format.
+It fails with a badarg exception if `Opts` is not the result of
+[`validate_opts/3`](#validate_opts-3).
 
 <a name="put-5"></a>
 
 ### put/5 ###
 
 <pre><code>
-put(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>, Spec::<a href="#type-type_spec">type_spec()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; ok | {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
+put(TypedBucket::<a href="#type-bucket_and_type">bucket_and_type()</a>, Key::binary(), Datatype::<a href="#type-datatype">datatype()</a>, Spec::<a href="#type-type_spec">type_spec()</a>, Opts::<a href="#type-put_opts">put_opts()</a>) -&gt; ok | {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
-?> This function is workflow aware
+Transforms the datatype `Datatype` to a Riak Datatype using type
+specification `Spec` and stores it under `TypedBucket` and `Key` using
+options `Opts.
+
+When called outside a workflow it returns `ok` or `{error, Reason}`.
+
+?> This function is workflow aware. See [`workflow/2`](#workflow-2) to understand the
+result value.
 
 <a name="rebuild_index-3"></a>
 
 ### rebuild_index/3 ###
 
 <pre><code>
-rebuild_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-riak_opts">riak_opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
+rebuild_index(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -334,7 +380,7 @@ Returns the atom name for a babel datatype.
 ### update_all_indices/3 ###
 
 <pre><code>
-update_all_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, RiakOpts::<a href="#type-opts">opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
+update_all_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="babel_index.md#type-update_opts">babel_index:update_opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -360,7 +406,7 @@ of the possible return values.
 ### update_indices/4 ###
 
 <pre><code>
-update_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], IdxNames::[binary()], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="#type-opts">opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
+update_indices(Actions::[<a href="babel_index.md#type-update_action">babel_index:update_action()</a>], IdxNames::[binary()], Collection::<a href="babel_index_collection.md#type-t">babel_index_collection:t()</a>, Opts::<a href="babel_index.md#type-update_opts">babel_index:update_opts()</a>) -&gt; {true | false, <a href="/Volumes/Work/Leapsight/babel/_build/default/lib/reliable/doc/reliable.md#type-wf_result">reliable:wf_result()</a>} | {error, Reason::any()} | no_return()
 </code></pre>
 <br />
 
@@ -374,33 +420,33 @@ The names of the updated indices is returned under the key `result` of the
 ?> This function uses a workflow, see [`workflow/2`](#workflow-2) for an explanation
 of the possible return values.
 
-<a name="validate_opts-1"></a>
-
-### validate_opts/1 ###
-
-<pre><code>
-validate_opts(Opts::<a href="#type-opts">opts()</a>) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-opts">opts()</a>)
-</code></pre>
-<br />
-
-`Opts`: an erlang map containing valid option keys<br />
-
-Equivalent to [`validate_opts(Opts, strict)`](#validate_opts-2).
-
-Validates the opts
-
-__See also:__ [validate_opts/2](#validate_opts-2).
-
 <a name="validate_opts-2"></a>
 
 ### validate_opts/2 ###
 
 <pre><code>
-validate_opts(Opts::map(), Mode::strict | relaxed) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>(map())
+validate_opts(Op::get | put | delete, Opts::map()) -&gt; <a href="#type-opts">opts()</a>
 </code></pre>
 <br />
 
-Validates the opts
+`Opts`: an erlang map containing valid option keys<br />
+
+Equivalent to [`validate_opts(Op, Opts, strict)`](#validate_opts-3).
+
+Validates the options `Opts` for an operation `Op`.
+
+__See also:__ [validate_opts/3](#validate_opts-3).
+
+<a name="validate_opts-3"></a>
+
+### validate_opts/3 ###
+
+<pre><code>
+validate_opts(Operation::get | put | delete, Opts::map(), Mode::strict | relaxed) -&gt; <a href="#type-opts">opts()</a>
+</code></pre>
+<br />
+
+Validates the options
 
 <a name="workflow-1"></a>
 
@@ -444,10 +490,9 @@ error or general exception, the entire workflow is terminated and the
 function raises an exception. In case of an internal error, the function
 returns the tuple `{error, Reason}`.
 
-If everything goes well, the function returns the triple
-`{ok, WorkId, ResultOfFun}` where `WorkId` is the identifier for the
-workflow schedule by Reliable and `ResultOfFun` is the value of the last
-expression in `Fun`.
+If everything goes well, the function returns the tuple
+`{Flag, Result}}` where `Flag` is a boolean denoting whether a workflow was
+scheduled or not, and Result is a `reliable:wf_result()` structure.
 
 > Notice that calling this function schedules the work to Reliable, you need
 to use the WorkId to check with Reliable the status of the workflow

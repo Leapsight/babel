@@ -48,7 +48,7 @@ fields() = [<a href="babel_key_value.md#type-key">babel_key_value:key()</a>]
 
 
 <pre><code>
-iterator() = #babel_hash_partitioned_index_iter{partition = <a href="babel_index_partition.md#type-t">babel_index_partition:t()</a> | undefined, case_sensitive = boolean(), sort_ordering = asc | desc, key = binary() | undefined, values = map() | undefined, typed_bucket = {binary(), binary()}, first = binary() | undefined, keys = [binary()], partition_identifiers = [<a href="babel_index.md#type-partition_id">babel_index:partition_id()</a>], riak_opts = <a href="babel.md#type-riak_opts">babel:riak_opts()</a>, done = boolean()}
+iterator() = #babel_hash_partitioned_index_iter{partition = <a href="babel_index_partition.md#type-t">babel_index_partition:t()</a> | undefined, case_sensitive = boolean(), sort_ordering = asc | desc, key = binary() | undefined, values = map() | undefined, typed_bucket = {binary(), binary()}, first = binary() | undefined, keys = [binary()], partition_identifiers = [<a href="babel_index.md#type-partition_id">babel_index:partition_id()</a>], opts = <a href="babel.md#type-opts">babel:opts()</a>, done = boolean()}
 </code></pre>
 
 
@@ -155,7 +155,7 @@ init_partitions(X1::<a href="#type-t">t()</a>) -&gt; {ok, [<a href="babel_index_
 ### iterator/3 ###
 
 <pre><code>
-iterator(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Config::<a href="babel_index.md#type-config">babel_index:config()</a>, Opts::<a href="babel.md#type-riak_opts">babel:riak_opts()</a>) -&gt; Iterator::<a href="#type-iterator">iterator()</a>
+iterator(Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Config::<a href="babel_index.md#type-config">babel_index:config()</a>, Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; Iterator::<a href="#type-iterator">iterator()</a>
 </code></pre>
 <br />
 

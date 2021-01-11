@@ -65,7 +65,7 @@ add_elements(Elements::[any()], T::<a href="#type-t">t()</a>) -&gt; <a href="#ty
 ### context/1 ###
 
 <pre><code>
-context(T::<a href="#type-t">t()</a>) -&gt; <a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>
+context(T::<a href="#type-t">t()</a>) -&gt; <a href="#type-babel_context">babel_context()</a>
 </code></pre>
 <br />
 
@@ -129,19 +129,6 @@ from_riak_set(RiakSet::<a href="riakc_set.md#type-riakc_set">riakc_set:riakc_set
 
 throws `{badindex, term()}`
 
-<a name="from_riak_set-3"></a>
-
-### from_riak_set/3 ###
-
-<pre><code>
-from_riak_set(RiakSet::<a href="riakc_set.md#type-riakc_set">riakc_set:riakc_set()</a> | <a href="ordsets.md#type-ordset">ordsets:ordset()</a>, Ctxt::<a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>, Type::<a href="#type-type_spec">type_spec()</a>) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
-</code></pre>
-<br />
-
-throws `{badindex, term()}`
-
-Overrides context
-
 <a name="is_element-2"></a>
 
 ### is_element/2 ###
@@ -201,12 +188,15 @@ new(Data::<a href="ordsets.md#type-ordset">ordsets:ordset</a>(any())) -&gt; <a h
 </code></pre>
 <br />
 
+!> **Important**. Notice that using this function might result in
+incompatible types when later using a type specification e.g. [`to_riak_op/2`](#to_riak_op-2). We strongly suggest not using this function and using [`new/2`](#new-2) instead.
+
 <a name="new-2"></a>
 
 ### new/2 ###
 
 <pre><code>
-new(Data::<a href="ordsets.md#type-ordset">ordsets:ordset</a>(any()), Ctxt::<a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>) -&gt; <a href="#type-t">t()</a>
+new(Data::<a href="ordsets.md#type-ordset">ordsets:ordset</a>(any()), Type::<a href="#type-type_spec">type_spec()</a>) -&gt; <a href="#type-t">t()</a>
 </code></pre>
 <br />
 
@@ -228,7 +218,7 @@ but of the type defined by the conversion `spec()` used to create the set.
 ### set_context/2 ###
 
 <pre><code>
-set_context(Ctxt::<a href="riakc_datatype.md#type-set_context">riakc_datatype:set_context()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+set_context(Ctxt::<a href="#type-babel_context">babel_context()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
 </code></pre>
 <br />
 

@@ -157,7 +157,7 @@ riak_object() = <a href="riakc_map.md#type-crdt_map">riakc_map:crdt_map()</a>
 
 
 <pre><code>
-t() = #{bucket =&gt; binary(), bucket_type =&gt; binary(), config =&gt; term(), name =&gt; binary(), type =&gt; atom()}
+t() = #{bucket =&gt; binary(), bucket_type =&gt; binary(), config =&gt; term(), name =&gt; binary(), type =&gt; atom(), request_opts =&gt; map()}
 </code></pre>
 
 
@@ -179,7 +179,7 @@ update_action() = {insert | delete, <a href="#type-key_value">key_value()</a>} |
 
 
 <pre><code>
-update_opts() = #{force =&gt; boolean, riak_opts =&gt; <a href="babel.md#type-opts">babel:opts()</a>}
+update_opts() = #{connection =&gt; pid() | fun(() -&gt; pid()), force =&gt; boolean}
 </code></pre>
 
 
@@ -239,9 +239,8 @@ distinguished_key_paths(Index::<a href="#type-t">t()</a>) -&gt; [<a href="babel_
 </code></pre>
 <br />
 
-Returns the list of the key paths for which a value will need to be
-present in the key value object passed as an action to the [`update/3`](#update-3)
-function.
+Returns the list of the key paths that need to be
+present in the key value object passed as an action to [`update/3`](#update-3).
 
 <a name="foreach-2"></a>
 
@@ -317,6 +316,9 @@ index.
 partition_identifier(KeyValue::<a href="#type-key_value">key_value()</a>, Index::<a href="#type-t">t()</a>) -&gt; binary()
 </code></pre>
 <br />
+
+Returns the identifier for the index partition assigned for key value
+object `KeyValue` when passed as an action to [`update/3`](#update-3).
 
 <a name="partition_identifiers-1"></a>
 

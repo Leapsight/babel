@@ -1118,11 +1118,7 @@ do_create_index(Index, Collection) ->
     NewCollection.
 
 
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+
 % maybe_already_exists(Id) ->
 %     case reliable:find_workflow_item(Id) of
 %         {ok, _} ->

@@ -48,13 +48,24 @@ iterator() = term()
 
 
 <pre><code>
-t() = #{sort_ordering =&gt; asc | desc, partition_identifier_prefix =&gt; binary(), index_by =&gt; <a href="#type-fields">fields()</a>, covered_fields =&gt; <a href="#type-fields">fields()</a>}
+t() = #{case_sensitive =&gt; boolean(), sort_ordering =&gt; asc | desc, partition_identifier_prefix =&gt; binary(), index_by =&gt; <a href="#type-fields">fields()</a>, covered_fields =&gt; <a href="#type-fields">fields()</a>}
 </code></pre>
 
 
 <a name="functions"></a>
 
 ## Function Details ##
+
+<a name="case_sensitive-1"></a>
+
+### case_sensitive/1 ###
+
+<pre><code>
+case_sensitive(X1::<a href="#type-t">t()</a>) -&gt; boolean()
+</code></pre>
+<br />
+
+Returns true if the index is case sensitivity.
 
 <a name="covered_fields-1"></a>
 
@@ -176,15 +187,6 @@ iterator_values(Iterator::any()) -&gt; Key::<a href="babel_index.md#type-index_v
 
 <pre><code>
 number_of_partitions(X1::<a href="#type-t">t()</a>) -&gt; pos_integer() | undefined
-</code></pre>
-<br />
-
-<a name="partition-3"></a>
-
-### partition/3 ###
-
-<pre><code>
-partition(Pattern::<a href="babel_index.md#type-key_value">babel_index:key_value()</a>, Index::<a href="babel_index.md#type-t">babel_index:t()</a>, Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; <a href="babel_index.md#type-partition_id">babel_index:partition_id()</a> | no_return()
 </code></pre>
 <br />
 

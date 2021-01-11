@@ -49,7 +49,7 @@ type_spec() = boolean
 ### context/1 ###
 
 <pre><code>
-context(T::<a href="#type-t">t()</a>) -&gt; <a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>
+context(T::<a href="#type-t">t()</a>) -&gt; <a href="#type-babel_context">babel_context()</a>
 </code></pre>
 <br />
 
@@ -84,7 +84,7 @@ Enables the flag, setting its value to true.
 ### from_riak_flag/3 ###
 
 <pre><code>
-from_riak_flag(RiakFlag::<a href="riakc_flag.md#type-riakc_t">riakc_flag:riakc_t()</a> | boolean, Ctxt::<a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>, Type::<a href="#type-type_spec">type_spec()</a>) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
+from_riak_flag(RiakFlag::<a href="riakc_flag.md#type-riakc_t">riakc_flag:riakc_t()</a> | boolean, Ctxt::<a href="#type-babel_context">babel_context()</a>, Type::<a href="#type-type_spec">type_spec()</a>) -&gt; <a href="#type-maybe_no_return">maybe_no_return</a>(<a href="#type-t">t()</a>)
 </code></pre>
 <br />
 
@@ -129,7 +129,7 @@ new(Value::boolean()) -&gt; <a href="#type-t">t()</a>
 ### new/2 ###
 
 <pre><code>
-new(Value::boolean(), Ctxt::<a href="riakc_datatype.md#type-context">riakc_datatype:context()</a>) -&gt; <a href="#type-t">t()</a>
+new(Value::boolean(), Ctxt::<a href="#type-babel_context">babel_context()</a>) -&gt; <a href="#type-t">t()</a>
 </code></pre>
 <br />
 
@@ -158,7 +158,7 @@ set(X1::boolean(), T::<a href="#type-t">t()</a>) -&gt; <a href="#type-t">t()</a>
 ### set_context/2 ###
 
 <pre><code>
-set_context(Ctxt::<a href="riakc_datatype.md#type-set_context">riakc_datatype:set_context()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
+set_context(Ctxt::<a href="#type-babel_context">babel_context()</a>, T::<a href="#type-t">t()</a>) -&gt; NewT::<a href="#type-t">t()</a>
 </code></pre>
 <br />
 

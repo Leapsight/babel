@@ -81,7 +81,7 @@ data(Partition::<a href="#type-t">t()</a>) -&gt; <a href="#type-data">data()</a>
 ### delete/4 ###
 
 <pre><code>
-delete(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; ok | {error, not_found | term()}
+delete(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Opts::<a href="babel.md#type-delete_opts">babel:delete_opts()</a>) -&gt; ok | {error, not_found | term()}
 </code></pre>
 <br />
 
@@ -90,7 +90,7 @@ delete(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Opts::<a hre
 ### fetch/3 ###
 
 <pre><code>
-fetch(TypedBucket::{binary(), binary()}, Key::binary(), RiakOpts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
+fetch(TypedBucket::{binary(), binary()}, Key::binary(), RiakOpts::<a href="babel.md#type-get_opts">babel:get_opts()</a>) -&gt; <a href="#type-t">t()</a> | no_return()
 </code></pre>
 <br />
 
@@ -144,7 +144,7 @@ lookup(TypedBucket::{binary(), binary()}, Key::binary(), Opts::<a href="babel.md
 ### lookup/4 ###
 
 <pre><code>
-lookup(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Opts::<a href="babel.md#type-opts">babel:opts()</a>) -&gt; {ok, <a href="#type-t">t()</a>} | {error, not_found | term()}
+lookup(BucketType::binary(), BucketPrefix::binary(), Key::binary(), Opts::<a href="babel.md#type-get_opts">babel:get_opts()</a>) -&gt; {ok, <a href="#type-t">t()</a>} | {error, not_found | term()}
 </code></pre>
 <br />
 

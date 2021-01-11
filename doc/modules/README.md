@@ -21,7 +21,6 @@
 <tr><td><a href="babel_key_value.md" class="module">babel_key_value</a></td></tr>
 <tr><td><a href="babel_manager.md" class="module">babel_manager</a></td></tr>
 <tr><td><a href="babel_map.md" class="module">babel_map</a></td></tr>
-<tr><td><a href="babel_range_partitioned_index.md" class="module">babel_range_partitioned_index</a></td></tr>
 <tr><td><a href="babel_set.md" class="module">babel_set</a></td></tr>
 <tr><td><a href="babel_simple_index.md" class="module">babel_simple_index</a></td></tr>
 <tr><td><a href="babel_sup.md" class="module">babel_sup</a></td></tr>
