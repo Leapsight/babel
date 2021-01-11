@@ -103,8 +103,8 @@ update_indices_1_test(_) ->
         ok
     end,
 
-    {true, #{result := ok}} = babel:workflow(Fun),
-    timer:sleep(5000),
+    {true, #{work_ref := Ref1, result := ok}} = babel:workflow(Fun),
+    {ok, _} = babel:yield(Ref1, 5000),
 
     Object = #{
         {<<"email">>, register} => <<"johndoe@me.com">>,
@@ -126,7 +126,8 @@ update_indices_1_test(_) ->
         ok
     end,
 
-    {true, #{result := ok}} = babel:workflow(Fun2),
+    {true, #{work_ref := Ref2, result := ok}} = babel:workflow(Fun2),
+    {ok, _} = babel:yield(Ref2, 5000),
 
     ok.
 
