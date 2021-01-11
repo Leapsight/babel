@@ -1184,16 +1184,16 @@ patch(_, T, _) ->
 %% -----------------------------------------------------------------------------
 %% @doc Removes a key and its value from the map. Removing a key that
 %% does not exist simply records a remove operation.
+%%
+%% In case the map has no context i.e. it is newly created, removes will only %% work for keys that have been updated since creation. In all other cases the
+%% call will fail with a `context_required' exception.
 %% @throws context_required
 %% @end
 %% -----------------------------------------------------------------------------
 -spec remove(Key :: key_path(), T :: t()) -> NewT :: maybe_no_return(t()).
 
-remove(_, #babel_map{context = undefined}) ->
-    error(context_required);
-
 remove(Key, T) ->
-    do_remove(Key, T).
+    do_remove(Key, T, T#babel_map.context).
 
 
 %% -----------------------------------------------------------------------------
@@ -1901,32 +1901,54 @@ collect_acc(_, Value, Acc) when is_list(Acc) ->
 
 
 %% @private
-do_remove([H|[]], Map) ->
-    do_remove(H, Map);
+do_remove([H|[]], Map, Ctxt) ->
+    do_remove(H, Map, Ctxt);
 
-do_remove([H|T], #babel_map{values = V} = Map) ->
+do_remove([H|T], #babel_map{values = V} = Map, Ctxt) ->
     case maps:get(H, V, undefined) of
         #babel_map{} = HMap ->
             Map#babel_map{
-                values = maps:put(H, do_remove(T, HMap), V),
+                values = maps:put(H, do_remove(T, HMap, Ctxt), V),
                 updates = ordsets:add_element(H, Map#babel_map.updates)
             };
+        undefined when Ctxt == undefined ->
+            error(context_required);
         undefined ->
-            error({badkey, H});
+            %% TODO use the spec to check the type. Should this be a map we
+            %% should proceed with recording a removal and carry on with
+            %% removing T, otherwise fail
+            Map#babel_map{
+                removes = ordsets:add_element(H, Map#babel_map.removes)
+            };
         Term ->
             badtype(map, Term)
     end;
 
-do_remove(Key, #babel_map{} = Map) when is_binary(Key) ->
-    Map#babel_map{
-        values = maps:remove(Key, Map#babel_map.values),
-        removes = ordsets:add_element(Key, Map#babel_map.removes)
-    };
+do_remove(Key, #babel_map{} = Map, Ctxt) when is_binary(Key) ->
+    try change_status(Key, Map) of
+        none when Ctxt == undefined ->
+            error(context_required);
+        _ ->
+            Map#babel_map{
+                values = maps:remove(Key, Map#babel_map.values),
+                removes = ordsets:add_element(Key, Map#babel_map.removes)
+            }
+    catch
+        error:{badkey, Key} when Ctxt == undefined ->
+            error(context_required);
+        error:{badkey, Key} ->
+            %% TODO use the spec to check the type. Should this be a map we
+            %% should proceed with recording a removal but only if Context is
+            %% defined
+            Map#babel_map{
+                removes = ordsets:add_element(Key, Map#babel_map.removes)
+            }
+    end;
 
-do_remove(Key, #babel_map{}) when not is_binary(Key) ->
+do_remove(Key, #babel_map{}, _) when not is_binary(Key) ->
     error({badkey, Key});
 
-do_remove(_, Term) ->
+do_remove(_, Term, _) ->
     badtype(map, Term).
 
 
