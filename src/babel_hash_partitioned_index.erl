@@ -85,7 +85,7 @@
     },
     aggregate_by => #{
         required => true,
-        description => <<"A list of keys that will be use to compute the aggregate. It has to be a subset of the index_by value.">>,
+        description => <<"A list of keys that will be use to compute the aggregate. It has to be a prefix of the index_by list.">>,
         default => [],
         allow_null => false,
         allow_undefined => false,
@@ -130,7 +130,7 @@
     first                       ::  binary() | undefined,
     keys = []                   ::  [binary()],
     partition_identifiers = []  ::  [babel_index:partition_id()],
-    opts                   ::  babel:opts(),
+    opts                        ::  babel:opts(),
     done = false                ::  boolean()
 }).
 
