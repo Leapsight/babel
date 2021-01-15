@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+# set -e
 
 docker exec -it riakkv riak-admin bucket-type create index_collection '{"props":{"datatype":"map", "n_val":3, "pw":"quorum", "pr":"quorum"}}'
 docker exec -it riakkv riak-admin bucket-type activate index_collection
