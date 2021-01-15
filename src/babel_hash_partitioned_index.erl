@@ -439,8 +439,9 @@ init_partitions(#{partition_identifiers := Identifiers}) ->
     {ok, babel_index_partition:t()}
     | {error, any()}.
 
-init_partition(_, _) ->
-    {error, unsupported}.
+init_partition(PartitionId, _) ->
+    Partition = babel_index_partition:new(PartitionId),
+    {ok, Partition}.
 
 
 %% -----------------------------------------------------------------------------
@@ -563,7 +564,8 @@ match(Pattern, Partition, Config) ->
     Cardinality = cardinality(Config),
     IndexBy = index_by(Config),
     IndexKey = safe_gen_key(IndexBy, Pattern, Config),
-    AggregateKey = safe_gen_key(aggregate_by(Config), Pattern, Config),
+    AggregateBy = aggregate_by(Config),
+    AggregateKey = safe_gen_key(AggregateBy, Pattern, Config),
 
     Result = case {AggregateKey, IndexKey} of
         {error, error} ->
@@ -606,8 +608,9 @@ match(Pattern, Partition, Config) ->
             )
     end,
     Covered = covered_fields(Config),
+    Acc = build_output(AggregateBy, AggregateKey),
     IsAggregate = AggregateKey /= undefined,
-    match_output(IsAggregate, IndexBy, Covered, Cardinality, Result).
+    match_output(IsAggregate, IndexBy, Covered, Cardinality, Result, Acc).
 
 
 %% -----------------------------------------------------------------------------
@@ -1024,48 +1027,61 @@ iterator_sort_ordering(#{sort_ordering := Value}, _) ->
 
 
 %% @private
-match_output(_, _, _, _, nomatch) ->
+match_output(_, _, _, _, nomatch, _) ->
     [];
 
-match_output(true, IndexBy, CoveredFields, Cardinality, Result)
+match_output(false, _, CoveredFields, one, Bin, Map0) when is_binary(Bin) ->
+    [build_output(CoveredFields, Bin, Map0)];
+
+match_output(false, _IndexBy, CoveredFields, many, Result, Map0)
+when is_list(Result) ->
+    Fun = fun
+        (Bin, Acc)  ->
+            Map = build_output(CoveredFields, Bin, Map0),
+            [Map| Acc]
+    end,
+    lists:foldl(Fun, [], Result);
+
+match_output(true, IndexBy, CoveredFields, Cardinality, Result, Map0)
 when is_list(Result) ->
     Fun = fun
         ({Key, register}, Bin, Acc) when Cardinality == one ->
-            Map1 = index_by_output(IndexBy, Key),
-            Map2 = covered_fields_output(CoveredFields, Bin),
-            [maps:merge(Map1, Map2) | Acc];
+            Map1 = build_output(IndexBy, Key, Map0),
+            Map2 = build_output(CoveredFields, Bin, Map1),
+            [Map2 | Acc];
 
         ({Key, set}, Set, Acc) when Cardinality == many ->
-            Map1 = index_by_output(IndexBy, Key),
+            Map1 = build_output(IndexBy, Key, Map0),
             ordsets:fold(
                 fun(Bin, IAcc) ->
-                    Map2 = covered_fields_output(CoveredFields, Bin),
-                    [maps:merge(Map1, Map2) | IAcc]
+                    Map2 = build_output(CoveredFields, Bin, Map1),
+                    [Map2 | IAcc]
                 end,
                 Acc,
                 Set
             )
     end,
-    orddict:fold(Fun, [], Result);
-
-match_output(_, _, CoveredFields, one, Bin) when is_binary(Bin) ->
-    [covered_fields_output(CoveredFields, Bin)];
-
-match_output(false, _IndexBy, CoveredFields, many, Result)
-when is_list(Result) ->
-    Fun = fun
-        (Bin, Acc)  ->
-            Map = covered_fields_output(CoveredFields, Bin),
-            [Map| Acc]
-    end,
-    lists:foldl(Fun, [], Result).
+    orddict:fold(Fun, [], Result).
 
 
 %% @private
-index_by_output(IndexBy, Key) ->
-    maps:from_list(lists:zip(IndexBy, binary:split(Key, <<$\31>>))).
+build_output([], undefined) ->
+    #{};
+
+build_output(Keys, Bin) when is_binary(Bin) ->
+    build_output(Keys, Bin, #{}).
 
 
 %% @private
-covered_fields_output(CoveredFields, Bin) when is_binary(Bin) ->
-    maps:from_list(lists:zip(CoveredFields, binary:split(Bin, <<$\31>>))).
+build_output(Keys, Bin, Acc) when is_binary(Bin) ->
+    build_output(Keys, binary:split(Bin, <<$\31>>), Acc);
+
+
+build_output([X | Xs], [Y | Ys], Acc) when is_list(X) ->
+    build_output(Xs, Ys, babel_key_value:put(X, Y, Acc));
+
+build_output([X | Xs], [Y | Ys], Acc) ->
+    build_output(Xs, Ys, maps:put(X, Y, Acc));
+
+build_output([], [], Acc) ->
+    Acc.

@@ -498,7 +498,6 @@ index_6_test(_) ->
     ok.
 
 distinguished_key_paths_1_test(_) ->
-
     Conf = #{
         name => <<"users_by_email">>,
         bucket_type => <<"index_data">>,
@@ -552,7 +551,7 @@ accounts_by_id_create(_) ->
     end,
     case babel:workflow(Cleanup) of
         {true, #{work_ref := WorkRef1}} ->
-            {ok, _} = babel:yield(WorkRef1, 5000),
+            {ok, _} = babel:yield(WorkRef1, 25000),
             ok;
         _ ->
             ok
@@ -586,7 +585,7 @@ accounts_by_id_create(_) ->
         ok
     end,
     {true, #{work_ref := WorkRef2, result := ok}} = babel:workflow(Create),
-    {ok, _} = babel:yield(WorkRef2, 5000),
+    {ok, _} = babel:yield(WorkRef2, 25000),
 
     Update = fun() ->
         Actions = [
