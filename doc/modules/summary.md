@@ -18,6 +18,7 @@
 <tr><td><a href="https://gitlab.com/leapsight/babel/blob/develop/doc/babel_index.md" class="module">babel_index</a></td></tr>
 <tr><td><a href="https://gitlab.com/leapsight/babel/blob/develop/doc/babel_index_collection.md" class="module">babel_index_collection</a></td></tr>
 <tr><td><a href="https://gitlab.com/leapsight/babel/blob/develop/doc/babel_index_partition.md" class="module">babel_index_partition</a></td></tr>
+<tr><td><a href="https://gitlab.com/leapsight/babel/blob/develop/doc/babel_index_utils.md" class="module">babel_index_utils</a></td></tr>
 <tr><td><a href="https://gitlab.com/leapsight/babel/blob/develop/doc/babel_key_value.md" class="module">babel_key_value</a></td></tr>
 <tr><td><a href="https://gitlab.com/leapsight/babel/blob/develop/doc/babel_manager.md" class="module">babel_manager</a></td></tr>
 <tr><td><a href="https://gitlab.com/leapsight/babel/blob/develop/doc/babel_map.md" class="module">babel_map</a></td></tr>

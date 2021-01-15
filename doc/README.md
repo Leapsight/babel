@@ -1,6 +1,10 @@
 # Babel - Riak Datatypes and Secondary Indexing
 
-Babel is an Erlang OTP application that allows you to work with Riak KV conflict-free replicated datatypes (CRDTs) and also maintain application-managed secondary indices.
+> Babel is an Erlang OTP application that allows you to work with Riak KV conflict-free replicated datatypes (CRDTs) and also maintain application-managed secondary indices.
+
+## Documentation
+
+THe documentation is available [here](https://leapsight.gitlab.io/babel).
 
 
 ## Required Riak KV configuration
@@ -16,3 +20,4 @@ riak-admin bucket-type activate index_collection
 riak-admin bucket-type create index_data '{"props":{"datatype":"map", "n_val":3, "pw":"quorum", "pr":"quorum", "notfound_ok":false, "basic_quorum":true}}'
 riak-admin bucket-type activate index_data
 ```
+
