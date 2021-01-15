@@ -467,7 +467,7 @@ partition_identifier(KeyValue, Config) ->
 
     %% We collect the partition keys from the key value object and build a
     %% binary key that we then use to hash to the partition.
-    try gen_key(Keys, KeyValue, Config) of
+    try babel_index_utils:gen_key(Keys, KeyValue, Config) of
         PKey ->
             Bucket = babel_consistent_hashing:bucket(PKey, N, Algo),
             %% Bucket is zero-based
@@ -526,14 +526,14 @@ update_partition([], Partition, _) ->
 
 update_partition({delete, Data}, Partition, Config) ->
     Cardinality = cardinality(Config),
-    IndexKey = gen_key(index_by(Config), Data, Config),
-    Value = gen_key(covered_fields(Config), Data, Config),
+    IndexKey = babel_index_utils:gen_key(index_by(Config), Data, Config),
+    Value = babel_index_utils:gen_key(covered_fields(Config), Data, Config),
 
     case aggregate_by(Config) of
         [] ->
             delete_data(IndexKey, Value, Cardinality, Partition);
         Fields ->
-            AggregateKey = gen_key(Fields, Data, Config),
+            AggregateKey = babel_index_utils:gen_key(Fields, Data, Config),
             delete_data({AggregateKey, IndexKey}, Value, Cardinality, Partition)
     end;
 
@@ -542,8 +542,8 @@ update_partition({insert, Data}, Partition, Config) ->
     AggregateBy = aggregate_by(Config),
     IndexBy = index_by(Config),
 
-    IndexKey = gen_key(IndexBy, Data, Config),
-    Value = gen_key(covered_fields(Config), Data, Config),
+    IndexKey = babel_index_utils:gen_key(IndexBy, Data, Config),
+    Value = babel_index_utils:gen_key(covered_fields(Config), Data, Config),
 
     case AggregateBy of
         [] ->
@@ -551,7 +551,7 @@ update_partition({insert, Data}, Partition, Config) ->
         IndexBy ->
             update_data({IndexKey, IndexKey}, Value, Cardinality, Partition);
         AggregateBy ->
-            AggregateKey = gen_key(AggregateBy, Data, Config),
+            AggregateKey = babel_index_utils:gen_key(AggregateBy, Data, Config),
             update_data({AggregateKey, IndexKey}, Value, Cardinality, Partition)
     end.
 
@@ -563,9 +563,9 @@ update_partition({insert, Data}, Partition, Config) ->
 match(Pattern, Partition, Config) ->
     Cardinality = cardinality(Config),
     IndexBy = index_by(Config),
-    IndexKey = safe_gen_key(IndexBy, Pattern, Config),
+    IndexKey = babel_index_utils:safe_gen_key(IndexBy, Pattern, Config),
     AggregateBy = aggregate_by(Config),
-    AggregateKey = safe_gen_key(AggregateBy, Pattern, Config),
+    AggregateKey = babel_index_utils:safe_gen_key(AggregateBy, Pattern, Config),
 
     Result = case {AggregateKey, IndexKey} of
         {error, error} ->
@@ -608,7 +608,7 @@ match(Pattern, Partition, Config) ->
             )
     end,
     Covered = covered_fields(Config),
-    Acc = build_output(AggregateBy, AggregateKey),
+    Acc = babel_index_utils:build_output(AggregateBy, AggregateKey),
     IsAggregate = AggregateKey /= undefined,
     match_output(IsAggregate, IndexBy, Covered, Cardinality, Result, Acc).
 
@@ -712,44 +712,6 @@ gen_partition_identifiers(Prefix, N) ->
 %% @private
 gen_identifier(Prefix, N) ->
     <<Prefix/binary, $_, (integer_to_binary(N))/binary>>.
-
-
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc Collects keys `Keys' from key value data `Data' and joins them using a
-%% separator.
-%% We do this as Riak does not support list and sets are ordered.
-%% @end
-%% -----------------------------------------------------------------------------
-gen_key(Keys, Data, #{case_sensitive := true}) ->
-    binary_utils:join(babel_key_value:collect(Keys, Data));
-
-gen_key(Keys, Data, #{case_sensitive := false}) ->
-    L = [
-        string:lowercase(X) || X <- babel_key_value:collect(Keys, Data)
-    ],
-    binary_utils:join(L).
-
-
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc Collects keys `Keys' from key value data `Data' and joins them using a
-%% separator.
-%% We do this as Riak does not support list and sets are ordered.
-%% The diff between this function and gen_key/2 is that this one catches
-%% exceptions and returns a value.
-%% @end
-%% -----------------------------------------------------------------------------
-safe_gen_key([], _, _) ->
-    undefined;
-
-safe_gen_key(Keys, Data, Config) ->
-    try
-        gen_key(Keys, Data, Config)
-    catch
-        error:{badkey, _} ->
-            error
-    end.
 
 
 %% @private
@@ -1031,13 +993,13 @@ match_output(_, _, _, _, nomatch, _) ->
     [];
 
 match_output(false, _, CoveredFields, one, Bin, Map0) when is_binary(Bin) ->
-    [build_output(CoveredFields, Bin, Map0)];
+    [babel_index_utils:build_output(CoveredFields, Bin, Map0)];
 
 match_output(false, _IndexBy, CoveredFields, many, Result, Map0)
 when is_list(Result) ->
     Fun = fun
         (Bin, Acc)  ->
-            Map = build_output(CoveredFields, Bin, Map0),
+            Map = babel_index_utils:build_output(CoveredFields, Bin, Map0),
             [Map| Acc]
     end,
     lists:foldl(Fun, [], Result);
@@ -1046,15 +1008,15 @@ match_output(true, IndexBy, CoveredFields, Cardinality, Result, Map0)
 when is_list(Result) ->
     Fun = fun
         ({Key, register}, Bin, Acc) when Cardinality == one ->
-            Map1 = build_output(IndexBy, Key, Map0),
-            Map2 = build_output(CoveredFields, Bin, Map1),
+            Map1 = babel_index_utils:build_output(IndexBy, Key, Map0),
+            Map2 = babel_index_utils:build_output(CoveredFields, Bin, Map1),
             [Map2 | Acc];
 
         ({Key, set}, Set, Acc) when Cardinality == many ->
-            Map1 = build_output(IndexBy, Key, Map0),
+            Map1 = babel_index_utils:build_output(IndexBy, Key, Map0),
             ordsets:fold(
                 fun(Bin, IAcc) ->
-                    Map2 = build_output(CoveredFields, Bin, Map1),
+                    Map2 = babel_index_utils:build_output(CoveredFields, Bin, Map1),
                     [Map2 | IAcc]
                 end,
                 Acc,
@@ -1063,25 +1025,3 @@ when is_list(Result) ->
     end,
     orddict:fold(Fun, [], Result).
 
-
-%% @private
-build_output([], undefined) ->
-    #{};
-
-build_output(Keys, Bin) when is_binary(Bin) ->
-    build_output(Keys, Bin, #{}).
-
-
-%% @private
-build_output(Keys, Bin, Acc) when is_binary(Bin) ->
-    build_output(Keys, binary:split(Bin, <<$\31>>), Acc);
-
-
-build_output([X | Xs], [Y | Ys], Acc) when is_list(X) ->
-    build_output(Xs, Ys, babel_key_value:put(X, Y, Acc));
-
-build_output([X | Xs], [Y | Ys], Acc) ->
-    build_output(Xs, Ys, maps:put(X, Y, Acc));
-
-build_output([], [], Acc) ->
-    Acc.

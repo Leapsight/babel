@@ -314,7 +314,7 @@ partition_identifier(KeyValue, Config) ->
     %% We collect the partition keys from the key value object and build a
     %% binary key that we use as id for the partition i.e. we use as key in
     %% Riak KV.
-    try gen_key(Keys, KeyValue, Config) of
+    try babel_index_utils:gen_key(Keys, KeyValue, Config) of
         PKey -> gen_identifier(Prefix, PKey)
     catch
         error:{badkey, Key} ->
@@ -366,7 +366,7 @@ update_partition([], Partition, _) ->
     Partition;
 
 update_partition({delete, Data}, Partition, Config) ->
-    Value = gen_key(covered_fields(Config), Data, Config),
+    Value = babel_index_utils:gen_key(covered_fields(Config), Data, Config),
 
     babel_index_partition:update_data(
         fun(Set) -> riakc_set:del_element(Value, Set) end,
@@ -374,7 +374,7 @@ update_partition({delete, Data}, Partition, Config) ->
     );
 
 update_partition({insert, Data}, Partition, Config) ->
-    Value = gen_key(covered_fields(Config), Data, Config),
+    Value = babel_index_utils:gen_key(covered_fields(Config), Data, Config),
 
     babel_index_partition:update_data(
         fun(Set) -> riakc_set:add_element(Value, Set) end,
@@ -388,7 +388,7 @@ update_partition({insert, Data}, Partition, Config) ->
 %% -----------------------------------------------------------------------------
 match(Pattern, Partition, Config) ->
     IndexBy = index_by(Config),
-    IndexKey = safe_gen_key(IndexBy, Pattern, Config),
+    IndexKey = babel_index_utils:safe_gen_key(IndexBy, Pattern, Config),
 
     case IndexKey of
         error ->
@@ -410,7 +410,10 @@ match(Pattern, Partition, Config) ->
                     [];
                 Results ->
                     Covered = covered_fields(Config),
-                    [covered_fields_output(Covered, Bin) || Bin <- Results]
+                    [
+                        babel_index_utils:build_output(Covered, Bin)
+                        || Bin <- Results
+                    ]
             end
 
     end.
@@ -490,44 +493,6 @@ gen_identifier(Prefix, IndexKey) ->
 
 %% -----------------------------------------------------------------------------
 %% @private
-%% @doc Collects keys `Keys' from key value data `Data' and joins them using a
-%% separator.
-%% We do this as Riak does not support list and sets are ordered.
-%% @end
-%% -----------------------------------------------------------------------------
-gen_key(Keys, Data, #{case_sensitive := true}) ->
-    binary_utils:join(babel_key_value:collect(Keys, Data));
-
-gen_key(Keys, Data, #{case_sensitive := false}) ->
-    L = [
-        string:lowercase(X) || X <- babel_key_value:collect(Keys, Data)
-    ],
-    binary_utils:join(L).
-
-
-%% -----------------------------------------------------------------------------
-%% @private
-%% @doc Collects keys `Keys' from key value data `Data' and joins them using a
-%% separator.
-%% We do this as Riak does not support list and sets are ordered.
-%% The diff between this function and gen_key/2 is that this one catches
-%% exceptions and returns a value.
-%% @end
-%% -----------------------------------------------------------------------------
-safe_gen_key([], _, _) ->
-    undefined;
-
-safe_gen_key(Keys, Data, Config) ->
-    try
-        gen_key(Keys, Data, Config)
-    catch
-        error:{badkey, _} ->
-            error
-    end.
-
-
-%% -----------------------------------------------------------------------------
-%% @private
 %% @doc We encode the term in JSON for interoperability with clients in other
 %% programming languages.
 %% @end
@@ -552,8 +517,3 @@ decode_fields(Data) ->
         end
         || X <- jsone:decode(Data, [{object_format, proplist}])
     ].
-
-
-%% @private
-covered_fields_output(CoveredFields, Bin) when is_binary(Bin) ->
-    maps:from_list(lists:zip(CoveredFields, binary:split(Bin, <<$\31>>))).
