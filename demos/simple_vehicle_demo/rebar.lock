@@ -5,7 +5,7 @@
   2},
  {<<"babel">>,
   {git,"https://gitlab.com/leapsight/babel.git",
-       {ref,"e5f6c8c3cb9e2e3fd452ffa348ee146e5a28096d"}},
+       {ref,"097efd3753e4cc29726cc58e516c02d33cebe2e1"}},
   0},
  {<<"backoff">>,{pkg,<<"backoff">>,<<"1.1.6">>},2},
  {<<"base62">>,
