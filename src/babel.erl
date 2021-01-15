@@ -1098,6 +1098,9 @@ do_create_index(Index, Collection) ->
         Collection, Index, Partitions, lazy
     ),
 
+    length(Partitions) == length(PartitionItems)
+        orelse error({invalid_number_of_partitions}),
+
     %% We add the index to the collection and schedule the update of the
     %% collection in the database
     NewCollection = babel_index_collection:add_index(Index, Collection),
