@@ -28,6 +28,7 @@
 -export([gen_key/3]).
 -export([safe_gen_key/3]).
 -export([build_output/2]).
+-export([build_output/3]).
 
 
 
