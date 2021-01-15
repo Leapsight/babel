@@ -664,7 +664,9 @@ match(Pattern, Index, Opts) ->
     Result = babel_index_partition:lookup(TypeBucket, PartitionId, GetOpts),
     Partition = case Result of
         {ok, Value} -> Value;
-        {error, not_found} -> maybe_init_partition(Mod, PartitionId, Config)
+        {error, not_found} ->
+            %% TODO this is wrong. Review it
+            maybe_init_partition(Mod, PartitionId, Config)
     end,
 
     %% The actual match is performed by the index subtype
