@@ -92,10 +92,18 @@ build_output(Keys, Bin) when is_binary(Bin) ->
     build_output(Keys, Bin, #{}).
 
 
-%% @private
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec build_output([babel_key_value:key()], binary() | undefined, map()) ->
+    map().
+
+build_output([], undefined, Acc) ->
+    Acc;
+
 build_output(Keys, Bin, Acc) when is_binary(Bin) ->
     build_output(Keys, binary:split(Bin, <<$\31>>), Acc);
-
 
 build_output([X | Xs], [Y | Ys], Acc) when is_list(X) ->
     build_output(Xs, Ys, babel_key_value:put(X, Y, Acc));
