@@ -992,7 +992,7 @@ iterator_sort_ordering(#{sort_ordering := Value}, _) ->
 match_output(_, _, _, _, nomatch, _) ->
     [];
 
-match_output(false, _, CoveredFields, one, Bin, Map0) when is_binary(Bin) ->
+match_output(_, _, CoveredFields, one, Bin, Map0) when is_binary(Bin) ->
     [babel_index_utils:build_output(CoveredFields, Bin, Map0)];
 
 match_output(false, _IndexBy, CoveredFields, many, Result, Map0)
