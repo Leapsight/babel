@@ -35,7 +35,7 @@
  {<<"prometheus">>,{pkg,<<"prometheus">>,<<"4.6.0">>},1},
  {<<"reliable">>,
   {git,"https://gitlab.com/leapsight/reliable.git",
-       {ref,"7391afd24305623b5eee7678c6be4a36065dc5f2"}},
+       {ref,"28c613ee4676d582fe2036742867472fa581b14a"}},
   0},
  {<<"riak_pb">>,
   {git,"https://github.com/basho/riak_pb",
