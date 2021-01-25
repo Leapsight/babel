@@ -30,6 +30,23 @@
 %%
 %% This object is immutable.
 %%
+%% Properties:
+%%
+%% * case_sensitive - controls wether the index terms are case sensitive or
+%% not. If true all index terms are constructed by performing a
+%% string:lowercase/1 on the values.
+%% * sort_ordering - (NOT BEING USED YET)
+%% * number_of_partitions - the number of partitions the index has. Each
+%% partition is an instance of {@link babel_index_partition} and store in Riak
+%% KV as a CRDT (the location is defined by the {@link babel_index} module
+%% properties).
+%% * partition_algorithm - the hashing algorithm used for calculating the
+%% parition for a given `partition_by' definition. At th moment this property
+%% only accepts `jch` i.e. jump consistent hashing.
+%% * partition_by - the list of keys or key paths on the target object to
+%% extract the values used for partitioning.
+%% * index_by - the list of keys or key paths on the target object to
+%% extract the values used for partitioning.
 %% @end
 %% -----------------------------------------------------------------------------
 -module(babel_hash_partitioned_index).
