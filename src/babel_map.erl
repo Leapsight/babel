@@ -147,6 +147,7 @@
 -export([get/3]).
 -export([get_value/2]).
 -export([get_value/3]).
+-export([has_changes/1]).
 -export([increment/2]).
 -export([increment/3]).
 -export([is_type/1]).
@@ -432,6 +433,17 @@ keys(#babel_map{values = Values}) ->
 
 keys(Term) ->
     badtype(map, Term).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns `true' if at least one property of the map has been updated (or
+%% inserted) or removed and `false' otherwise.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec has_changes(Map :: t()) -> boolean().
+
+has_changes(#babel_map{updates = [], removes = []}) -> false;
+has_changes(#babel_map{}) -> true.
 
 
 %% -----------------------------------------------------------------------------
