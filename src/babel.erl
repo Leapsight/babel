@@ -248,6 +248,8 @@ get(TypedBucket, Key, Spec, Opts0) ->
     Spec :: type_spec(),
     Opts :: put_opts()) ->
     ok
+    | {ok, babel:datatype()}
+    | {ok, binary(), babel:datatype()}
     | {true | false, reliable:wf_result()}
     | {error, Reason :: any()}
     | no_return().
