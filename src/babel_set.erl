@@ -68,6 +68,12 @@
 -export([to_riak_op/2]).
 -export([type/0]).
 -export([value/1]).
+-export([subtract/2]).
+% -export([union/1]).
+% -export([union/2]).
+% -export([intersection/1]).
+% -export([intersection/2]).
+% -export([is_subset/2]).
 
 
 
@@ -385,6 +391,28 @@ is_element(Element, #babel_set{values = V, adds = A, removes = R}) ->
 is_original_element(Element, #babel_set{values = V}) ->
     ordsets:is_element(Element, V).
 
+
+%% -----------------------------------------------------------------------------
+%% @doc Returns a copy of Set1 containing only the elements of Set1 that are
+%% not also elements of Set2.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec subtract(Set1 :: t(), Set2 :: t()) -> Set3 :: t().
+
+subtract(#babel_set{} = Set1, #babel_set{} = Sets2) ->
+    U = ordsets:union(Sets2#babel_set.values, Sets2#babel_set.adds),
+    Values = ordsets:subtract(Set1#babel_set.values, U),
+    Adds = ordsets:subtract(Set1#babel_set.adds, U),
+    Size =
+        ordsets:size(Values)
+        + ordsets:size(Adds)
+        - ordsets:size(Set1#babel_set.removes),
+
+    Set1#babel_set{
+        values = Values,
+        adds = Adds,
+        size = Size
+    }.
 
 
 %% =============================================================================
