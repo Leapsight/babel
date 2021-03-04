@@ -128,6 +128,7 @@
 -export([status/1]).
 -export([status/2]).
 -export([update_all_indices/3]).
+-export([update_indices/3]).
 -export([update_indices/4]).
 -export([workflow/1]).
 -export([workflow/2]).
@@ -658,6 +659,7 @@ rebuild_index(_IndexName, _Collection, _Opts) ->
     {error, not_implemented}.
 
 
+
 %% -----------------------------------------------------------------------------
 %% @doc Updates all the indices in the collection with the provided Actions and
 %% schedules the update of the relevant index partitions in the database i.e.
@@ -671,15 +673,15 @@ rebuild_index(_IndexName, _Collection, _Opts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec update_indices(
-    Actions :: [babel_index:update_action()],
-    IdxNames :: [binary()],
+    ActionsByIdxName :: {[babel_index:update_action()], binary()},
     Collection :: babel_index_collection:t(),
     Opts :: babel_index:update_opts()) ->
     {true | false, reliable:wf_result()}
     | {error, Reason :: any()}
     | no_return().
 
-update_indices(Actions, IdxNames, Collection, Opts) when is_list(Actions) ->
+update_indices(ActionsByIdxName, Collection, Opts)
+when is_list(ActionsByIdxName) ->
     Fun = fun() ->
         CollectionId = babel_index_collection:id(Collection),
 
@@ -688,7 +690,7 @@ update_indices(Actions, IdxNames, Collection, Opts) when is_list(Actions) ->
         ok = ensure_not_deleted(CollectionId),
 
         Updated = lists:foldl(
-            fun(Name, Acc) ->
+            fun({Actions, Name}, Acc) ->
                 Index = babel_index_collection:index(Name, Collection),
                 Partitions = babel_index:update(Actions, Index, Opts),
 
@@ -715,20 +717,47 @@ update_indices(Actions, IdxNames, Collection, Opts) when is_list(Actions) ->
                         reliable:add_workflow_precedence(
                             CollectionId, [Id || {Id, _} <- Items]
                         ),
-                        [Name | Acc];
+                        maps:put(Name, true, Acc);
                     false ->
                         Acc
                 end
 
             end,
-            [],
-            IdxNames
+            maps:new(),
+            ActionsByIdxName
         ),
 
         %% We return the index names that have been updated.
-        Updated
+        maps:keys(Updated)
+
     end,
     workflow(Fun, Opts).
+
+
+%% -----------------------------------------------------------------------------
+%% @doc Updates all the indices in the collection with the provided Actions and
+%% schedules the update of the relevant index partitions in the database i.e.
+%% persisting the index changes.
+%%
+%% The names of the updated indices is returned under the key `result' of the
+%% `reliable:wf_result()'.
+%%
+%% ?> This function uses a workflow, see {@link workflow/2} for an explanation
+%% of the possible return values.
+%% @end
+%% -----------------------------------------------------------------------------
+-spec update_indices(
+    Actions :: [babel_index:update_action()],
+    IdxNames :: [binary()],
+    Collection :: babel_index_collection:t(),
+    Opts :: babel_index:update_opts()) ->
+    {true | false, reliable:wf_result()}
+    | {error, Reason :: any()}
+    | no_return().
+
+update_indices(Actions, IdxNames, Collection, Opts) when is_list(Actions) ->
+    ActionsByIdxName = [{Actions, IdxName} || IdxName <- IdxNames],
+    update_indices(ActionsByIdxName, Collection, Opts).
 
 
 %% -----------------------------------------------------------------------------
