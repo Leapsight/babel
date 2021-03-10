@@ -972,9 +972,9 @@ do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
             {ok, to_babel_datatype(Type, Object, Spec)};
         {ok, Key, Object} ->
             {ok, Key, to_babel_datatype(Type, Object, Spec)};
-        {error, _Reason} = Error ->
+        {error, _} = Error ->
             %% TODO Retries, deadlines, backoff, etc
-            Error
+            tidy_error(Error)
     end.
 
 
@@ -1215,3 +1215,14 @@ partition_update_items(Collection, Index, Partitions, Mode) ->
         end || P <- Partitions
     ].
 
+
+
+%% @private
+tidy_error({error, <<"Operation type is", _/binary>>}) ->
+    {error, datatype_mismatch};
+
+tidy_error({error, <<"overload">>}) ->
+    {error, overload};
+
+tidy_error(Error) ->
+    Error.
