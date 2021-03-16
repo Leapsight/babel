@@ -46,7 +46,11 @@
 -define(GET_OPTS_SPEC, #{
     connection => #{
         required => false,
-        datatype => [pid, function]
+        datatype => pid
+    },
+    connection_pool => #{
+        required => false,
+        datatype => atom
     },
     r => #{
         alias => <<"r">>,
@@ -135,7 +139,11 @@
 -define(PUT_OPTS_SPEC, #{
     connection => #{
         required => false,
-        datatype => [pid, function]
+        datatype => pid
+    },
+    connection_pool => #{
+        required => false,
+        datatype => atom
     },
     w => #{
         alias => <<"w">>,
@@ -229,7 +237,11 @@
 -define(DELETE_OPTS_SPEC, #{
     connection => #{
         required => false,
-        datatype => [pid, function]
+        datatype => pid
+    },
+    connection_pool => #{
+        required => false,
+        datatype => atom
     },
     r => #{
         alias => <<"r">>,

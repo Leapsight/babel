@@ -266,22 +266,28 @@ update_data(Fun, #babel_index_partition{type = Type} = Partition) ->
 
 store(TypedBucket, Key, Partition, Opts0) ->
     Opts = babel:validate_opts(put, Opts0),
-    Conn = babel:get_connection(Opts),
+    Poolname = maps:get(connection_pool, Opts, undefined),
     PutOpts0 = babel:opts_to_riak_opts(Opts),
 
-    %% We retrieve the merged object so that we can update caches
-    PutOpts = maps:put(return_body, true, PutOpts0),
+    Fun = fun(Pid) ->
+        %% We retrieve the merged object so that we can update caches
+        PutOpts = maps:put(return_body, true, PutOpts0),
+        Op = riakc_map:to_op(to_riak_object(Partition)),
 
-    Op = riakc_map:to_op(to_riak_object(Partition)),
+        case riakc_pb_socket:update_type(Pid, TypedBucket, Key, Op, PutOpts) of
+            {ok, Object} ->
+                Updated = from_riak_object(Object),
+                ok = cache_put({TypedBucket, Key}, Updated),
+                ok = on_update(TypedBucket, Key),
+                ok;
+            {error, _} = Error ->
+                Error
+        end
+    end,
 
-    case riakc_pb_socket:update_type(Conn, TypedBucket, Key, Op, PutOpts) of
-        {ok, Object} ->
-            Updated = from_riak_object(Object),
-            ok = cache_put({TypedBucket, Key}, Updated),
-            ok = on_update(TypedBucket, Key),
-            ok;
-        {error, _} = Error ->
-            Error
+    case babel:execute(Poolname, Fun, Opts) of
+        {ok, Result} -> Result;
+        {error, _} = Error -> Error
     end.
 
 
@@ -309,7 +315,7 @@ store(BucketType, BucketPrefix, Key, Partition, Opts0) ->
 -spec fetch(
     TypedBucket :: {binary(), binary()},
     Key :: binary(),
-    RiakOpts :: babel:get_opts()) ->
+    ROpts :: babel:get_opts()) ->
     t() | no_return().
 
 fetch(TypedBucket, Key, Opts) ->
@@ -327,7 +333,7 @@ fetch(TypedBucket, Key, Opts) ->
     BucketType :: binary(),
     BucketPrefix :: binary(),
     Key :: binary(),
-    RiakOpts :: babel:opts()) ->
+    ROpts :: babel:opts()) ->
     t() | no_return().
 
 fetch(BucketType, BucketPrefix, Key, Opts) ->
@@ -367,9 +373,9 @@ lookup(TypedBucket, Key, Opts) ->
     Opts :: babel:get_opts()) ->
     {ok, t()} | {error, not_found | term()}.
 
-lookup(BucketType, BucketPrefix, Key, RiakOpts) ->
+lookup(BucketType, BucketPrefix, Key, ROpts) ->
     TypedBucket = typed_bucket(BucketType, BucketPrefix),
-    lookup(TypedBucket, Key, RiakOpts).
+    lookup(TypedBucket, Key, ROpts).
 
 
 %% -----------------------------------------------------------------------------
@@ -386,20 +392,30 @@ lookup(BucketType, BucketPrefix, Key, RiakOpts) ->
 delete(BucketType, BucketPrefix, Key, Opts0) ->
     TypedBucket = typed_bucket(BucketType, BucketPrefix),
     Opts = babel:validate_opts(delete, Opts0),
-    Conn = babel:get_connection(Opts),
-    RiakOpts = babel:opts_to_riak_opts(Opts),
+    Poolname = maps:get(connection_pool, Opts, undefined),
 
-    ok = cache_delete({TypedBucket, Key}),
+    Fun = fun(Pid) ->
+        ROpts = babel:opts_to_riak_opts(Opts),
+        ok = cache_delete({TypedBucket, Key}),
+        case riakc_pb_socket:delete(Pid, TypedBucket, Key, ROpts) of
+            ok ->
+                ok = on_delete(TypedBucket, Key),
+                ok;
+            {error, {notfound, map}} ->
+                {error, not_found};
+            {error, _} = Error ->
+                Error
+        end
 
-    case riakc_pb_socket:delete(Conn, TypedBucket, Key, RiakOpts) of
-        ok ->
-            ok = on_delete(TypedBucket, Key),
-            ok;
-        {error, {notfound, map}} ->
-            {error, not_found};
-        {error, _} = Error ->
-            Error
+    end,
+
+    case babel:execute(Poolname, Fun, Opts) of
+        {ok, Result} -> Result;
+        {error, _} = Error -> Error
     end.
+
+
+
 
 
 
@@ -442,20 +458,28 @@ typed_bucket(Type, Prefix) ->
 %% @private
 maybe_lookup(TypedBucket, Key, Opts0, undefined) ->
     Opts = babel:validate_opts(get, Opts0),
-    Conn = babel:get_connection(Opts),
-    GetOpts = babel:opts_to_riak_opts(Opts),
+    Poolname = maps:get(connection_pool, Opts, undefined),
 
-    case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, GetOpts) of
-        {ok, Object} ->
-            Partition = from_riak_object(Object),
-            ok = cache_put({TypedBucket, Key}, Partition),
-            {ok, Partition};
+    Fun = fun(Pid) ->
+        GetOpts = babel:opts_to_riak_opts(Opts),
 
-        {error, {notfound, map}} ->
-            {error, not_found};
+        case riakc_pb_socket:fetch_type(Pid, TypedBucket, Key, GetOpts) of
+            {ok, Object} ->
+                Partition = from_riak_object(Object),
+                ok = cache_put({TypedBucket, Key}, Partition),
+                {ok, Partition};
 
-        {error, _} = Error ->
-            Error
+            {error, {notfound, map}} ->
+                {error, not_found};
+
+            {error, _} = Error ->
+                Error
+        end
+    end,
+
+    case babel:execute(Poolname, Fun, Opts) of
+        {ok, Result} -> Result;
+        {error, _} = Error -> Error
     end;
 
 maybe_lookup(_, _, _, Partition) ->

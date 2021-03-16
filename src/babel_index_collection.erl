@@ -407,19 +407,25 @@ fold(Fun, Acc, Collection) ->
 
 store(Collection, Opts0) ->
     Opts = babel:validate_opts(put, Opts0),
-    Conn = babel:get_connection(Opts),
-    RiakOpts = babel:opts_to_riak_opts(Opts),
+    Poolname = maps:get(connection_pool, Opts, undefined),
 
-    Key = Collection#babel_index_collection.id,
-    Object = Collection#babel_index_collection.object,
-    TypeBucket = typed_bucket(Collection),
-    Op = riakc_map:to_op(Object),
+    Fun = fun(Pid) ->
+        ROpts = babel:opts_to_riak_opts(Opts),
+        Key = Collection#babel_index_collection.id,
+        Object = Collection#babel_index_collection.object,
+        TypeBucket = typed_bucket(Collection),
+        Op = riakc_map:to_op(Object),
 
-    case riakc_pb_socket:update_type(Conn, TypeBucket, Key, Op, RiakOpts) of
-        {error, _} = Error ->
-            Error;
-        _ ->
-            ok
+        case riakc_pb_socket:update_type(Pid, TypeBucket, Key, Op, ROpts) of
+            {error, _} = Error ->
+                Error;
+            _ ->
+                ok
+        end
+    end,
+    case babel:execute(Poolname, Fun, Opts) of
+        {ok, Result} -> Result;
+        {error, _} = Error -> Error
     end.
 
 
@@ -452,16 +458,27 @@ fetch(BucketPrefix, Key, Opts) ->
 
 lookup(BucketPrefix, Key, Opts0)
 when is_binary(BucketPrefix) andalso is_binary(Key) ->
-    TypeBucket = typed_bucket(BucketPrefix),
     Opts = babel:validate_opts(get, Opts0),
-    Conn = babel:get_connection(Opts),
-    RiakOpts = babel:opts_to_riak_opts(Opts),
+    Poolname = maps:get(connection_pool, Opts, undefined),
 
-    case riakc_pb_socket:fetch_type(Conn, TypeBucket, Key, RiakOpts) of
-        {ok, Object} -> {ok, from_riak_object(Object)};
-        {error, {notfound, _}} -> {error, not_found};
+    Fun = fun(Pid) ->
+        TypeBucket = typed_bucket(BucketPrefix),
+        ROpts = babel:opts_to_riak_opts(Opts),
+
+        case riakc_pb_socket:fetch_type(Pid, TypeBucket, Key, ROpts) of
+            {ok, Object} -> {ok, from_riak_object(Object)};
+            {error, {notfound, _}} -> {error, not_found};
+            {error, _} = Error -> Error
+        end
+
+    end,
+    case babel:execute(Poolname, Fun, Opts) of
+        {ok, Result} -> Result;
         {error, _} = Error -> Error
     end.
+
+
+
 
 
 %% -----------------------------------------------------------------------------
@@ -476,16 +493,28 @@ when is_binary(BucketPrefix) andalso is_binary(Key) ->
 
 delete(BucketPrefix, Key, Opts0)
 when is_binary(BucketPrefix) andalso is_binary(Key) ->
-    TypeBucket = typed_bucket(BucketPrefix),
     Opts = babel:validate_opts(delete, Opts0),
-    Conn = babel:get_connection(Opts),
-    RiakOpts = babel:opts_to_riak_opts(Opts),
+    Poolname = maps:get(connection_pool, Opts, undefined),
 
-    case riakc_pb_socket:delete(Conn, TypeBucket, Key, RiakOpts) of
-        ok -> ok;
-        {error, {notfound, _}} -> {error, not_found};
+    Fun = fun(Pid) ->
+        TypeBucket = typed_bucket(BucketPrefix),
+        ROpts = babel:opts_to_riak_opts(Opts),
+
+        case riakc_pb_socket:delete(Pid, TypeBucket, Key, ROpts) of
+            ok -> ok;
+            {error, {notfound, _}} -> {error, not_found};
+            {error, _} = Error -> Error
+        end
+    end,
+
+    case babel:execute(Poolname, Fun, Opts) of
+        {ok, Result} -> Result;
         {error, _} = Error -> Error
     end.
+
+
+
+
 
 
 

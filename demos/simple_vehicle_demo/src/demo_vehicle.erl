@@ -194,8 +194,8 @@ riak_put() ->
         #{max_retries => 0}
     ),
     case Result of
-        {false, Value} -> error(Value);
-        {true, Res} -> Res
+        {ok, Res} -> Res;
+        {error, Value} -> error(Value)
     end.
 
 

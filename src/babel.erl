@@ -50,7 +50,8 @@
 -type opts()            ::  get_opts() | put_opts() | delete_opts().
 
 -type get_opts()        ::  #{
-    connection => pid() | fun(() -> pid()),
+    connection => pid(),
+    connection_pool => atom(),
     r => quorum(),
     pr => quorum(),
     if_modified => binary(),
@@ -65,7 +66,8 @@
 }.
 
 -type put_opts()       ::  #{
-    connection => pid() | fun(() -> pid()),
+    connection => pid(),
+    connection_pool => atom(),
     w => quorum(),
     dw => quorum(),
     pw => quorum(),
@@ -81,7 +83,8 @@
 }.
 
 -type delete_opts()    ::  #{
-    connection => pid() | fun(() -> pid()),
+    connection => pid(),
+    connection_pool => atom(),
     r => quorum(),
     pr => quorum(),
     w => quorum(),
@@ -107,7 +110,6 @@
 -export([execute/3]).
 -export([get/4]).
 -export([get_connection/0]).
--export([get_connection/1]).
 -export([module/1]).
 -export([opts_to_riak_opts/1]).
 -export([put/5]).
@@ -217,18 +219,27 @@ module(_) ->
 
 get(TypedBucket, Key, Spec, Opts0) ->
     Opts = validate_opts(get, Opts0),
-    Conn = get_connection(Opts),
-    RiakOpts = opts_to_riak_opts(Opts),
+    Poolname = maps:get(connection_pool, Opts, undefined),
 
-    case riakc_pb_socket:fetch_type(Conn, TypedBucket, Key, RiakOpts) of
-        {ok, Object} ->
-            Type = riak_type(Object),
-            {ok, to_babel_datatype(Type, Object, Spec)};
-        {error, {notfound, _}} ->
-            {error, not_found};
-        {error, _} = Error ->
-            Error
+    Fun = fun(Pid) ->
+        RiakOpts = opts_to_riak_opts(Opts),
+
+        case riakc_pb_socket:fetch_type(Pid, TypedBucket, Key, RiakOpts) of
+            {ok, Object} ->
+                Type = riak_type(Object),
+                {ok, to_babel_datatype(Type, Object, Spec)};
+            {error, {notfound, _}} ->
+                {error, not_found};
+            {error, _} = Error ->
+                Error
+        end
+    end,
+    case execute(Poolname, Fun, Opts) of
+        {ok, Result} -> Result;
+        {error, _} = Error -> Error
     end.
+
+
 
 
 %% -----------------------------------------------------------------------------
@@ -287,21 +298,26 @@ delete(TypedBucket, Key, Opts) ->
     end.
 
 
+
 %% -----------------------------------------------------------------------------
 %% @doc Executes a number of operations using the same Riak client connection
 %% provided by riak_pool app.
-%% `Poolname' must be an already started pool.
+%% `Poolname' must be an already started pool or the atom `undefined'.
+%% In case of the latter the map `Options' should have an entry for the
+%% `connection' key.
 %%
 %% Options:
 %%
 %% * timeout - time to get a connection from the pool
+%% * connection - the pid to use instead of getting a new one from the pool
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec execute(
     Poolname :: atom(),
     Fun :: fun((RiakConn :: pid()) -> Result :: any()),
     Opts :: riak_pool:opts()) ->
-    {true, Result :: any()} | {false, Reason :: any()} | no_return().
+    {ok, Result :: any()} | {error, Reason :: any()} | no_return().
 
 execute(Poolname, Fun, Opts)  ->
     riak_pool:execute(Poolname, Fun, Opts).
@@ -322,27 +338,20 @@ get_connection() ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
-get_connection(#{connection := Pid}) when is_pid(Pid) ->
-    Pid;
+validate_connection(#{connection := _} = Opts) ->
+    Opts;
 
-get_connection(#{connection := Get}) when is_function(Get, 0) ->
-    Get();
+validate_connection(#{connection_pool := _} = Opts) ->
+    %% We assume the poolname exists
+    Opts;
 
-get_connection(Opts) ->
-    case get_connection() of
+validate_connection(Opts) ->
+    %% Neither a value for connection nor for poolname
+    case babel_config:get(default_pool, undefined) of
         undefined ->
-            case babel_config:get(default_pool, undefined) of
-                undefined ->
-                    error(no_connection_provided);
-                Poolname ->
-                    Timeout = maps:get(timeout, Opts, 5000),
-                    case riak_pool:checkout(Poolname, #{timeout => Timeout}) of
-                        {ok, Pid} -> Pid;
-                        {error, Reason} -> error(Reason)
-                    end
-            end;
-        Pid when is_pid(Pid) ->
-            Pid
+            error(no_default_connection_pool);
+        Poolname ->
+            maps:put(connection_pool, Poolname, Opts)
     end.
 
 
@@ -381,7 +390,9 @@ validate_opts(Op, Opts, Mode) ->
     Flag = Mode == relaxed orelse false,
     Spec = spec(Op),
     Opts1 = maps_utils:validate(Opts, Spec, #{keep_unknown => Flag}),
-    flag_validated(Op, Opts1).
+    Opts2 = validate_connection(Opts1),
+    flag_validated(Op, Opts2).
+
 
 
 %% -----------------------------------------------------------------------------
@@ -959,22 +970,27 @@ drop_all_indices(Collection, Opts) ->
 %% @private
 do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
     Opts = validate_opts(put, Opts0),
-    Conn = get_connection(Opts),
-    RiakOpts = opts_to_riak_opts(Opts),
+    Poolname = maps:get(connection_pool, Opts, undefined),
 
-    Type = type(Datatype),
-    Op = datatype_to_op(Type, Datatype, Spec),
+    Fun = fun(Pid) ->
+        Type = type(Datatype),
+        Op = datatype_to_op(Type, Datatype, Spec),
+        ROpts = opts_to_riak_opts(Opts),
 
-    case riakc_pb_socket:update_type(Conn, TypedBucket, Key, Op, RiakOpts) of
-        ok ->
-            ok;
-        {ok, Object} ->
-            {ok, to_babel_datatype(Type, Object, Spec)};
-        {ok, Key, Object} ->
-            {ok, Key, to_babel_datatype(Type, Object, Spec)};
-        {error, _} = Error ->
-            %% TODO Retries, deadlines, backoff, etc
-            tidy_error(Error)
+        case riakc_pb_socket:update_type(Pid, TypedBucket, Key, Op, ROpts) of
+            ok ->
+                ok;
+            {ok, Object} ->
+                {ok, to_babel_datatype(Type, Object, Spec)};
+            {ok, Key, Object} ->
+                {ok, Key, to_babel_datatype(Type, Object, Spec)};
+            {error, _} = Error ->
+                tidy_error(Error)
+        end
+    end,
+    case execute(Poolname, Fun, Opts) of
+        {ok, Result} -> Result;
+        {error, _} = Error -> Error
     end.
 
 
@@ -993,16 +1009,19 @@ schedule_put(TypedBucket, Key, Datatype, Spec, _Opts0) ->
 %% @private
 do_delete(TypedBucket, Key, Opts0) ->
     Opts = validate_opts(delete, Opts0),
-    Conn = get_connection(Opts),
-    RiakOpts = opts_to_riak_opts(Opts),
+    Poolname = maps:get(connection_pool, Opts, undefined),
 
-    case riakc_pb_socket:delete(Conn, TypedBucket, Key, RiakOpts) of
-        ok ->
-            ok;
-        {error, _Reason} = Error ->
-            %% TODO Retries, deadlines, backoff, etc
-            Error
+    Fun = fun(Pid) ->
+        ROpts = opts_to_riak_opts(Opts),
+        riakc_pb_socket:delete(Pid, TypedBucket, Key, ROpts)
+    end,
+
+    case execute(Poolname, Fun, Opts) of
+        {ok, Result} -> Result;
+        {error, _} = Error -> Error
     end.
+
+
 
 
 %% @private
