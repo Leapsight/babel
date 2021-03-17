@@ -219,7 +219,7 @@ module(_) ->
 
 get(TypedBucket, Key, Spec, Opts0) ->
     Opts = validate_opts(get, Opts0),
-    Poolname = maps:get(connection_pool, Opts, undefined),
+    Poolname = maps:get(connection_pool, Opts),
 
     Fun = fun(Pid) ->
         RiakOpts = opts_to_riak_opts(Opts),
@@ -334,26 +334,6 @@ get_connection() ->
     riak_pool:get_connection().
 
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
-validate_connection(#{connection := _} = Opts) ->
-    Opts;
-
-validate_connection(#{connection_pool := _} = Opts) ->
-    %% We assume the poolname exists
-    Opts;
-
-validate_connection(Opts) ->
-    %% Neither a value for connection nor for poolname
-    case babel_config:get(default_pool, undefined) of
-        undefined ->
-            error(no_default_connection_pool);
-        Poolname ->
-            maps:put(connection_pool, Poolname, Opts)
-    end.
-
 
 %% -----------------------------------------------------------------------------
 %% @doc Validates the options `Opts' for an operation `Op'.
@@ -390,8 +370,9 @@ validate_opts(Op, Opts, Mode) ->
     Flag = Mode == relaxed orelse false,
     Spec = spec(Op),
     Opts1 = maps_utils:validate(Opts, Spec, #{keep_unknown => Flag}),
-    Opts2 = validate_connection(Opts1),
-    flag_validated(Op, Opts2).
+    Opts2 = validate_connection_pool(Opts1),
+    Opts3 = validate_connection(Opts2),
+    flag_validated(Op, Opts3).
 
 
 
@@ -970,7 +951,7 @@ drop_all_indices(Collection, Opts) ->
 %% @private
 do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
     Opts = validate_opts(put, Opts0),
-    Poolname = maps:get(connection_pool, Opts, undefined),
+    Poolname = maps:get(connection_pool, Opts),
 
     Fun = fun(Pid) ->
         Type = type(Datatype),
@@ -1009,7 +990,7 @@ schedule_put(TypedBucket, Key, Datatype, Spec, _Opts0) ->
 %% @private
 do_delete(TypedBucket, Key, Opts0) ->
     Opts = validate_opts(delete, Opts0),
-    Poolname = maps:get(connection_pool, Opts, undefined),
+    Poolname = maps:get(connection_pool, Opts),
 
     Fun = fun(Pid) ->
         ROpts = opts_to_riak_opts(Opts),
@@ -1129,6 +1110,29 @@ flag_validated(put, Opts) -> Opts#{'$put_validated' => true};
 flag_validated(delete, Opts) -> Opts#{'$delete_validated' => true}.
 
 
+%% @private
+validate_connection_pool(#{connection_pool := Name} = Opts)
+when Name =/= undefined ->
+    %% We assume a pool for this name exists
+    Opts;
+
+validate_connection_pool(Opts) ->
+    Opts#{connection_pool => babel_config:get(default_pool, undefined)}.
+
+
+%% @private
+validate_connection(#{connection := _} = Opts) ->
+    Opts;
+
+validate_connection(#{connection_pool := Name} = Opts)
+when Name =/= undefined ->
+    %% We assume a pool for this name exists
+    Opts;
+
+validate_connection(_) ->
+    error(no_default_connection_pool).
+
+
 
 %% =============================================================================
 %% PRIVATE: INDEX OPERATIONS
@@ -1169,16 +1173,6 @@ do_create_index(Index, Collection) ->
     ),
 
     NewCollection.
-
-
-
-% maybe_already_exists(Id) ->
-%     case reliable:find_workflow_item(Id) of
-%         {ok, _} ->
-%             throw({already_exists, Id});
-%         error ->
-%             ok
-%     end.
 
 
 %% -----------------------------------------------------------------------------
@@ -1233,7 +1227,6 @@ partition_update_items(Collection, Index, Partitions, Mode) ->
 
         end || P <- Partitions
     ].
-
 
 
 %% @private

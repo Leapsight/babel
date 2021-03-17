@@ -49,8 +49,10 @@
         datatype => pid
     },
     connection_pool => #{
-        required => false,
-        datatype => atom
+        required => true,
+        allow_undefined => true,
+        datatype => atom,
+        default => undefined
     },
     r => #{
         alias => <<"r">>,
@@ -142,8 +144,10 @@
         datatype => pid
     },
     connection_pool => #{
-        required => false,
-        datatype => atom
+        required => true,
+        allow_undefined => true,
+        datatype => atom,
+        default => undefined
     },
     w => #{
         alias => <<"w">>,
@@ -240,8 +244,10 @@
         datatype => pid
     },
     connection_pool => #{
-        required => false,
-        datatype => atom
+        required => true,
+        allow_undefined => true,
+        datatype => atom,
+        default => undefined
     },
     r => #{
         alias => <<"r">>,
