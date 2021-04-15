@@ -166,6 +166,13 @@ maybe_add_pool() ->
                                 ok;
                             {error, {already_exists, Config}} ->
                                 ok;
+                            {error, {already_exists, Existing} = Reason} ->
+                                ?LOG_ERROR(#{
+                                    message => <<"Error while creating Riak KV connection pool">>,
+                                    existing_config => Existing,
+                                    config => Config
+                                }),
+                                throw(Reason);
                             {error, Reason} ->
                                 throw(Reason)
                         end;
