@@ -164,6 +164,8 @@ maybe_add_pool() ->
                                     config => Pool
                                 }),
                                 ok;
+                            {error, {already_exists, Config}} ->
+                                ok;
                             {error, Reason} ->
                                 throw(Reason)
                         end;

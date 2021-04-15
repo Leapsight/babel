@@ -374,14 +374,7 @@ create_collection() ->
         end
     end,
 
-    case babel:execute(default, Fun, #{}) of
-        {false, Reason} ->
-            {error, Reason};
-        {true, {error, _} = Error} ->
-            Error;
-        {true, NewCollection} ->
-            {ok, NewCollection}
-    end.
+    babel:execute(default, Fun, #{}).
 
 
 
