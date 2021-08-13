@@ -1965,13 +1965,15 @@ do_remove(_, Term, _) ->
 
 
 %% @private
-%% TODO this clause is wrong or we need to have copied the root context to the
-%% internal maps to avoid being here
-do_update(_, undefined, #babel_map{context = undefined} = Acc, _) ->
-    Acc;
-
 do_update(Key, undefined, Acc, _) ->
-    remove(Key, Acc);
+    %% If context is undefined remove will fail,
+    %% so we do not handle that case here
+    try
+        remove(Key, Acc)
+    catch
+        error:context_required ->
+            Acc
+    end;
 
 do_update(Key, Value, Acc, {register, _}) ->
     %% We simply replace the existing register

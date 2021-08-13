@@ -31,7 +31,9 @@ all() ->
         set_undefined_test_2,
         update_counter_value_roundtrip,
         update_set_value_roundtrip,
-        concurrent_set_update
+        concurrent_set_update,
+        nested_update,
+        nested_update_1
     ].
 
 
@@ -151,13 +153,32 @@ update_1_test(_) ->
     ).
 
 update_2_test(_) ->
-    T1 = babel_map:new(data1(), spec()),
+    Data = data1(),
+    Number = maps:get(<<"identification_number">>, Data),
+
+    T1 = babel_map:new(Data, spec()),
 
     T2 = babel_map:update(
         #{<<"identification_number">> => undefined}, T1,  spec()
     ),
+
+    ?assertError(
+        badkey,
+        babel_map:get_value(<<"identification_number">>, T2),
+        "Key must have been removed even without context because we added the field in data1()"
+    ),
+
+    %% We remove the field to produce an error
+    T3 = babel_map:new(
+        maps:without([<<"identification_number">>], data1()), spec()
+    ),
+
     ?assertEqual(
-        <<"874920948">>, babel_map:get_value(<<"identification_number">>, T2)
+        T3,
+        babel_map:update(
+            #{<<"identification_number">> => undefined}, T3,  spec()
+        ),
+        "No effect as update catches the 'context_required' exception"
     ).
 
 update_3_test(_) ->
@@ -737,4 +758,26 @@ concurrent_set_update(_) ->
         babel_map:get_value(<<"s">>, Map5)
     ).
 
-% S = {babel_set, [], [1,2,3], [1,3], 5,<<131,108,0,0,0,1,104,2,109,0,0,0,12,55,106,25,171,64,247,210,174,0,0,0,19,97,1,106>>}.
+
+nested_update(_) ->
+    Data0 = #{<<"AAAAA">> => 1, <<"BBBBB">> => 2},
+    Map = babel_map:new(Data0),
+    Data1 = #{<<"AAAAA">> => undefined, <<"BBBBB">> => 3},
+    Spec = #{'_' => {register, binary}},
+    Result1 = babel_map:update(Data1, Map, Spec),
+    ?assertEqual(
+        #{<<"BBBBB">> => 3},
+        babel_map:value(Result1)
+    ).
+
+
+nested_update_1(_) ->
+    Spec = #{'_' => {register, integer}},
+    Data0 = #{<<"AAAAA">> => 1, <<"BBBBB">> => 2},
+    Map = babel_map:new(Data0, Spec),
+    Data1 = #{<<"AAAAA">> => undefined, <<"BBBBB">> => 3},
+    Result1 = babel_map:update(Data1, Map),
+    ?assertEqual(
+        #{<<"BBBBB">> => 3},
+        babel_map:value(Result1)
+    ).
