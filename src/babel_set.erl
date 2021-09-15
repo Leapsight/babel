@@ -28,7 +28,8 @@
     adds = []           ::  ordsets:ordset(any()),
     removes = []        ::  ordsets:ordset(any()),
     size = 0            ::  non_neg_integer(),
-    context             ::  babel_context()
+    context             ::  babel_context(),
+    type_spec           ::  type_spec()
 }).
 
 -opaque t()             ::  #babel_set{}.
@@ -57,6 +58,7 @@
 -export([is_element/2]).
 -export([is_original_element/2]).
 -export([is_type/1]).
+-export([type_spec/1]).
 -export([is_valid_type_spec/1]).
 -export([new/0]).
 -export([new/1]).
@@ -186,8 +188,18 @@ type() -> set.
 %% -----------------------------------------------------------------------------
 -spec is_type(Term :: any()) -> boolean().
 
-is_type(Term) ->
-    is_record(Term, babel_set).
+is_type(#babel_set{}) -> true;
+is_type(_) -> false.
+
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec type_spec(Term :: any()) -> type_spec() | undefined.
+
+type_spec(#babel_set{type_spec = Val}) ->
+    Val.
 
 
 %% -----------------------------------------------------------------------------
@@ -288,7 +300,19 @@ add_element(Element, T) ->
 -spec add_elements(Elements :: [any()], T :: t()) -> t().
 
 add_elements(Elements, #babel_set{adds = A0, size = S0} = T) ->
-    A1 = lists:foldl(fun ordsets:add_element/2, A0, Elements),
+    TypeSpec = T#babel_set.type_spec,
+
+    A1 = lists:foldl(
+        fun
+            (Element, Acc) when TypeSpec == undefined ->
+                ordsets:add_element(Element, Acc);
+            (Element, Acc) ->
+                ordsets:add_element(from_term(Element, TypeSpec), Acc)
+        end,
+        A0,
+        Elements
+    ),
+
     S1 = S0 + ordsets:size(A1) - ordsets:size(A0),
 
     T#babel_set{
