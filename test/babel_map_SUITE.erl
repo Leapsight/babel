@@ -8,6 +8,7 @@
 
 all() ->
     [
+        huge_nested_update,
         create_test,
         create_test_2,
         put_1_test,
@@ -174,12 +175,11 @@ update_2_test(_) ->
         maps:without([<<"identification_number">>], data1()), spec()
     ),
 
-    ?assertEqual(
-        T3,
+    ?assertError(
+        context_required,
         babel_map:update(
             #{<<"identification_number">> => undefined}, T3,  spec()
-        ),
-        "No effect as update catches the 'context_required' exception"
+        )
     ).
 
 update_3_test(_) ->
@@ -510,9 +510,8 @@ set_test_1(_) ->
 
 set_undefined_test_1(_) ->
     T1 = babel_map:new(#{<<"a">> => 1}, #{<<"a">> => {register, integer}}),
-    %% No context, so nop
     T2 = babel_map:set(<<"a">>, undefined, T1),
-    ?assertEqual([<<"a">>], babel_map:keys(T2)).
+    ?assertEqual([], babel_map:keys(T2)).
 
 
 set_undefined_test_2(_) ->
@@ -805,6 +804,367 @@ nested_update_1(_) ->
         babel_map:value(Result1)
     ).
 
+
+huge_nested_update(_) ->
+    Map0 = {babel_map,
+    #{<<"account_id">> =>
+    <<"mrn:account:business:2e677a54-70a0-4d7a-aba1-d6399f2c202a">>,
+    <<"config">> =>
+    {babel_map,
+    #{<<"mileage_base">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629496719126,
+    <<"timestamp">> => 1629496719126,<<"value">> => 0},
+    [],[],undefined,
+    {type_spec_ref,103621203}},
+    <<"rebase_mileage">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629496719126,
+    <<"timestamp">> => 1629496719126,
+    <<"value">> => {babel_flag,false,disable,undefined}},
+    [],[],undefined,
+    {type_spec_ref,110194771}},
+    <<"service_plan">> =>
+    {babel_map,
+    #{<<"name">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629496719126,
+    <<"timestamp">> => 1629496719126,
+    <<"value">> => <<"STRIX FLOTAS LOGISTICA CON RECUPERO">>},
+    [],[],undefined,
+    {type_spec_ref,113665}},
+    <<"status">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629496719126,
+    <<"timestamp">> => 1629496719126,<<"value">> => <<"active">>},
+    [],[],undefined,
+    {type_spec_ref,113665}}},
+    [],[],undefined,
+    {type_spec_ref,47253445}},
+    <<"services">> =>
+    {babel_map,
+    #{<<"mrn:service:dual_sim_cl">> =>
+    {babel_map,
+    #{<<"status">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629814299997,
+      <<"timestamp">> => 1629814299997,
+      <<"value">> => <<"active">>},
+    [],[],undefined,
+    {type_spec_ref,113665}}},
+    [],[],undefined,
+    {type_spec_ref,110377532}},
+    <<"mrn:service:dual_sim_uy">> =>
+    {babel_map,
+    #{<<"status">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629814299997,
+      <<"timestamp">> => 1629814299997,
+      <<"value">> => <<"active">>},
+    [],[],undefined,
+    {type_spec_ref,113665}}},
+    [],[],undefined,
+    {type_spec_ref,110377532}},
+    <<"mrn:service:gps_recovery">> =>
+    {babel_map,
+    #{<<"status">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629496719126,
+      <<"timestamp">> => 1629814299997,
+      <<"value">> => <<"active">>},
+    [],[],undefined,
+    {type_spec_ref,113665}}},
+    [],[],undefined,
+    {type_spec_ref,110377532}},
+    <<"mrn:service:gps_roaming">> =>
+    {babel_map,
+    #{<<"status">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629496719126,
+      <<"timestamp">> => 1629814299997,
+      <<"value">> => <<"active">>},
+    [],[],undefined,
+    {type_spec_ref,113665}}},
+    [],[],undefined,
+    {type_spec_ref,110377532}},
+    <<"mrn:service:live_tracking">> =>
+    {babel_map,
+    #{<<"status">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629496719126,
+      <<"timestamp">> => 1629814299997,
+      <<"value">> => <<"active">>},
+    [],[],undefined,
+    {type_spec_ref,113665}}},
+    [],[],undefined,
+    {type_spec_ref,110377532}},
+    <<"mrn:service:recovery">> =>
+    {babel_map,
+    #{<<"status">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629496719126,
+      <<"timestamp">> => 1629814299997,
+      <<"value">> => <<"active">>},
+    [],[],undefined,
+    {type_spec_ref,113665}}},
+    [],[],undefined,
+    {type_spec_ref,110377532}},
+    <<"mrn:service:vlu_recovery">> =>
+    {babel_map,
+    #{<<"status">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629496719126,
+      <<"timestamp">> => 1629814299997,
+      <<"value">> => <<"active">>},
+    [],[],undefined,
+    {type_spec_ref,113665}}},
+    [],[],undefined,
+    {type_spec_ref,110377532}}},
+    [],[],undefined,
+    {type_spec_ref,72946098}}},
+    [],[],undefined,
+    {type_spec_ref,32197808}},
+    <<"created_by">> => <<"mrn:person:5f201f21-c29e-4eb7-aaae-68fa159f29dc">>,
+    <<"created_timestamp">> => 1629496719126,
+    <<"id">> => <<"mrn:thing:vehicle:8f276b10-85bc-4e2d-90ed-ebe521ce6c35">>,
+    <<"info">> =>
+    {babel_map,
+    #{<<"chassis_number">> => <<"123456789">>,<<"color">> => <<"ROJO">>,
+    <<"domain">> => <<"JWT002">>,<<"engine_number">> => <<"123456789">>,
+    <<"label">> => <<"Test Vehicle 2">>,<<"make">> => <<"FORD">>,
+    <<"mileage_reading">> => 0,<<"model">> => <<"T">>,
+    <<"subtype">> => <<"car">>,<<"year">> => 2020},
+    [],[],undefined,
+    {type_spec_ref,37069971}},
+    <<"last_modified_by">> =>
+    <<"mrn:person:5f201f21-c29e-4eb7-aaae-68fa159f29dc">>,
+    <<"last_modified_timestamp">> => 1629814299997,
+    <<"private">> =>
+    {babel_map,
+    #{<<"unsaved_offsets">> => {babel_set,[],[],[],0,inherited}},
+    [<<"unsaved_offsets">>],
+    [],
+    <<131,108,0,0,0,3,104,2,109,0,0,0,8,156,58,204,30,155,9,147,50,97,46,104,
+    2,109,0,0,0,8,156,58,204,30,155,9,147,203,97,99,104,2,109,0,0,0,12,156,
+    58,204,30,155,9,148,43,0,0,195,81,97,217,106>>,
+    {type_spec_ref,112287443}},
+    <<"reported_state">> =>
+    {babel_map,
+    #{<<"mileage">> =>
+    {babel_map,
+    #{<<"since_timestamp">> => 1629496719126,
+    <<"timestamp">> => 1629496719126,<<"value">> => 0},
+    [],[],undefined,
+    {type_spec_ref,103621203}}},
+    [],[],undefined,
+    {type_spec_ref,102274909}},
+    <<"type">> => <<"mrn:thing:vehicle">>},
+    [<<"private">>],
+    [],
+    <<131,108,0,0,0,3,104,2,109,0,0,0,8,156,58,204,30,155,9,147,50,97,46,104,2,
+    109,0,0,0,8,156,58,204,30,155,9,147,203,97,99,104,2,109,0,0,0,12,156,58,204,
+    30,155,9,148,43,0,0,195,81,97,217,106>>,
+    {type_spec_ref,90706316}
+    },
+
+    Spec = #{
+        '$validated' => true,
+    <<"account_id">> => {register,binary},
+    <<"config">> =>
+    {map,
+    #{<<"mileage_base">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,integer}}},
+    <<"rebase_mileage">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {flag,boolean}}},
+    <<"reporting_frequency">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,integer}}},
+    <<"service_plan">> =>
+    {map,
+    #{<<"name">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,binary}}},
+    <<"status">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,binary}}}}},
+    <<"services">> =>
+    {map,
+    #{'_' =>
+    {map,
+    #{<<"expiry_date">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,binary}}},
+    <<"status">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,binary}}}}}}}}},
+    <<"created_by">> => {register,binary},
+    <<"created_timestamp">> => {register,integer},
+    <<"desired_state">> =>
+    {map,
+    #{<<"fuel_cut_off">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {flag,boolean}}}}},
+    <<"id">> => {register,binary},
+    <<"info">> =>
+    {map,
+    #{<<"category">> => {register,binary},
+    <<"chassis_number">> => {register,binary},
+    <<"color">> => {register,binary},
+    <<"domain">> => {register,binary},
+    <<"engine_number">> => {register,binary},
+    <<"label">> => {register,binary},
+    <<"make">> => {register,binary},
+    <<"mileage_reading">> => {register,integer},
+    <<"model">> => {register,binary},
+    <<"subtype">> => {register,binary},
+    <<"user_info">> => {map,#{'_' => {register,binary}}},
+    <<"year">> => {register,integer}}},
+    <<"is_deleted">> => {register,boolean},
+    <<"last_modified_by">> => {register,binary},
+    <<"last_modified_timestamp">> => {register,integer},
+    <<"parent_id">> => {register,binary},
+    <<"private">> =>
+    {map,
+    #{<<"commands">> => {map,#{'_' => {register,binary}}},
+    <<"group">> => {register,binary},
+    <<"last_sent">> => {map,#{'_' => {register,integer}}},
+    <<"offset">> => {register,integer},
+    <<"offset_queue">> => {set,integer},
+    <<"offset_queue_length">> => {register,integer},
+    <<"partition_id">> => {register,integer},
+    <<"signal_id">> => {register,binary},
+    <<"topic">> => {register,binary},
+    <<"unsaved_offsets">> => {set,integer}}},
+    <<"reported_state">> =>
+    {map,
+    #{<<"altitude">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,float}}},
+    <<"contact_on">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {flag,boolean}}},
+    <<"event_name">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,binary}}},
+    <<"fuel_cut_off">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {flag,boolean}}},
+    <<"heading">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,integer}}},
+    <<"horizontal_accuracy">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,float}}},
+    <<"in_motion">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {flag,boolean}}},
+    <<"latitude">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,float}}},
+    <<"longitude">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,float}}},
+    <<"main_power_on">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,boolean}}},
+    <<"mileage">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,integer}}},
+    <<"odometer">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,integer}}},
+    <<"speed">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,integer}}},
+    <<"towing">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {flag,boolean}}},
+    <<"vertical_accuracy">> =>
+    {map,
+    #{<<"since_timestamp">> => {register,integer},
+    <<"timestamp">> => {register,integer},
+    <<"value">> => {register,float}}}}},
+    <<"things">> => {set,binary},
+    <<"type">> => {register,binary},
+    <<"version">> => {register,binary}
+    },
+
+    Path = [<<"config">>, <<"services">>, <<"mrn:service:dual_sim_cl">>],
+
+    ?assertEqual(
+        true,
+        is_tuple(babel_map:get(Path, Map0))
+    ),
+
+    ?assertError(
+        badkey,
+        babel_map:get(Path, babel_map:remove(Path, Map0))
+    ),
+
+    Map1 = babel_map:update(
+        #{
+            <<"config">> => #{
+                <<"services">> => #{
+                    <<"mrn:service:dual_sim_cl">> => undefined
+                }
+            }
+        },
+        Map0,
+        Spec
+    ),
+    ?assertError(
+        badkey,
+        babel_map:get(
+            [<<"config">>, <<"services">>, <<"mrn:service:dual_sim_cl">>],
+            Map1
+        )
+    ).
 
 update_type_check(_) ->
     Spec = #{'_' => {register, binary}},
