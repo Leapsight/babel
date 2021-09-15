@@ -15,7 +15,7 @@ all() ->
         to_riak_op_test,
         babel_put_test,
         babel_get_test,
-        update_1_test,
+        % update_1_test,
         update_2_test,
         update_3_test,
         update_4_test,
@@ -33,7 +33,8 @@ all() ->
         update_set_value_roundtrip,
         concurrent_set_update,
         nested_update,
-        nested_update_1
+        nested_update_1,
+        update_type_check
     ].
 
 
@@ -130,7 +131,7 @@ modify_test(_) ->
 
 
 
-update_1_test(_) ->
+babel_test(_) ->
     T1 = babel_map:new(data1(), spec()),
     T2 = babel_map:update(data2(), T1, spec()),
     ?assertEqual(
@@ -231,6 +232,8 @@ update_5_test(_) ->
     ).
 
 
+
+
 update_6_test(_) ->
     Spec = #{
         <<"mapping">> => {map, #{
@@ -245,10 +248,31 @@ update_6_test(_) ->
             }
         }
     },
-    Map = babel_map:update(Data, babel_map:new(), Spec),
+    Map0 = babel_map:update(Data, babel_map:new(#{}, Spec)),
     ?assertEqual(
         Data,
-        babel_map:value(Map)
+        babel_map:value(Map0)
+    ),
+
+    Map1 = babel_map:update(
+        #{
+            <<"mapping">> => #{
+                <<"foo">> => #{
+                    <<"key2">> => undefined
+                }
+            }
+        },
+        Map0
+    ),
+    ?assertEqual(
+        #{
+            <<"mapping">> => #{
+                <<"foo">> => #{
+                    <<"key1">> => <<"value1">>
+                }
+            }
+        },
+        babel_map:value(Map1)
     ).
 
 
@@ -498,7 +522,6 @@ set_undefined_test_2(_) ->
     ),
     T2 = babel_map:set(<<"a">>, undefined, T1),
     ?assertEqual([], babel_map:keys(T2)).
-
 
 
 %% =============================================================================
@@ -781,3 +804,73 @@ nested_update_1(_) ->
         #{<<"BBBBB">> => 3},
         babel_map:value(Result1)
     ).
+
+
+update_type_check(_) ->
+    Spec = #{'_' => {register, binary}},
+    M1 = babel_map:update(
+        #{<<"foo">> => 3},
+        babel_map:new(#{<<"foo">> => 1}),
+        Spec
+    ),
+    ?assertEqual(
+        #{<<"foo">> => 3},
+        babel_map:value(M1)
+    ),
+
+    ?assertError(
+        {badkeytype, 1, {register, binary}},
+        babel_map:new(#{<<"foo">> => 1}, Spec)
+    ),
+
+    M2 = babel_map:update(
+        #{<<"foo">> => 3},
+        babel_map:new(#{<<"foo">> => <<"1">>}, Spec)
+    ),
+    ?assertEqual(
+        #{<<"foo">> => 3},
+        babel_map:value(M2)
+    ).
+
+
+
+
+all_types_map_spec() ->
+    #{
+
+        <<"counter">> => {counter, integer},
+        <<"flag">> => {flag, boolean},
+        <<"register-atom">> => {register, atom},
+        <<"register-existing_atom">> => {register, existing_atom},
+        <<"register-boolean">> => {register, boolean},
+        <<"register-integer">> => {register, integer},
+        <<"register-float">> => {register, float},
+        <<"register-binary">> => {register, binary},
+        <<"register-list">> => {register, list},
+        <<"register-fun">> => {register, fun
+            ({encode, X}) ->
+                term_to_binary(X);
+            ({decode, X}) ->
+                binary_to_term(X)
+        end},
+        <<"set-atom">> => {set, atom},
+        <<"set-existing_atom">> => {set, existing_atom},
+        <<"set-boolean">> => {set, boolean},
+        <<"set-integer">> => {set, integer},
+        <<"set-float">> => {set, float},
+        <<"set-binary">> => {set, binary},
+        <<"set-list">> => {set, list},
+        <<"set-fun">> => {set, fun
+            ({encode, X}) ->
+                term_to_binary(X);
+            ({decode, X}) ->
+                binary_to_term(X)
+        end}
+    }.
+
+
+all_types_spec() ->
+    #{
+        <<"map-generic">> => {map, #{'_' => {register, binary}}},
+        <<"map">> => {map, all_types_map_spec()}
+    }.

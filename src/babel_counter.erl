@@ -239,11 +239,14 @@ decrement(Amount, #babel_counter{} = T) ->
 %% -----------------------------------------------------------------------------
 -spec set(integer(), t()) -> t().
 
-set(Amount, #babel_counter{value = Value} = T) when Value == Amount ->
+set(Amount, #babel_counter{value = Value} = T)
+when is_integer(Amount) andalso Value == Amount ->
     T#babel_counter{increment = undefined};
 
-set(Amount, #babel_counter{value = Value} = T) when Value < Amount ->
+set(Amount, #babel_counter{value = Value} = T)
+when is_integer(Amount) andalso Value < Amount ->
     T#babel_counter{increment = Amount - Value};
 
-set(Amount, #babel_counter{value = Value} = T) when Value > Amount ->
+set(Amount, #babel_counter{value = Value} = T)
+when is_integer(Amount) andalso Value > Amount ->
     T#babel_counter{increment = - abs(Amount - Value)}.

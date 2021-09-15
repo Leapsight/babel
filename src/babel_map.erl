@@ -1093,7 +1093,13 @@ set_elements(Key, Values, Map) ->
             end;
         (error) ->
             Ctxt = inherited_context(Map#babel_map.context),
-            babel_set:set_context(Ctxt, babel_set:new(Values))
+
+            case babel_set:is_type(Values) of
+                true ->
+                    babel_set:set_context(Ctxt, Values);
+                false ->
+                    babel_set:set_context(Ctxt, babel_set:new(Values))
+            end
     end,
     mutate(Key, Fun, Map).
 
@@ -1140,7 +1146,10 @@ update(Values, #babel_map{} = T, MapSpec0) when is_map(MapSpec0) ->
     Fun = fun(Key0, Value, Acc) ->
             Key = to_key(Key0),
             case maps:find(Key, MapSpec) of
-                {ok, TypeSpec} ->
+                {ok, TypeSpec} when Value == undefined ->
+                    do_update(Key, Value, Acc, TypeSpec);
+                {ok, {Datatype, SpecOrType} = TypeSpec} ->
+                    ok = validate_type(Value, TypeSpec),
                     do_update(Key, Value, Acc, TypeSpec);
                 error ->
                     error({missing_spec, Key})
@@ -1460,6 +1469,48 @@ from_map(Map, {{type_spec_ref, _} = Ref, Spec}, Ctxt) when is_map(Spec) ->
         context = Ctxt,
         type_spec_ref = Ref
     }.
+
+
+%% @private
+validate_type(Term, {map, _}) when is_map(Term) ->
+    ok;
+
+validate_type(Term, {set, _}) when is_list(Term) ->
+    %% Chcking Term elements will be done by babel_set
+    ok;
+
+validate_type(Term, {counter, integer}) when is_integer(Term) ->
+    ok;
+
+validate_type(Term, {flag, boolean}) when is_boolean(Term) ->
+    ok;
+
+validate_type(Term, {register, atom}) when is_atom(Term) ->
+    ok;
+
+validate_type(Term, {register, existing_atom}) when is_atom(Term) ->
+    ok;
+
+validate_type(Term, {register, boolean}) when is_boolean(Term) ->
+    ok;
+
+validate_type(Term, {register, integer}) when is_integer(Term) ->
+    ok;
+
+validate_type(Term, {register, float}) when is_float(Term) ->
+    ok;
+
+validate_type(Term, {register, binary}) when is_binary(Term) ->
+    ok;
+
+validate_type(Term, {register, integer}) when is_integer(Term) ->
+    ok;
+
+validate_type(Term, {register, Fun}) when is_function(Fun, 2) ->
+    ok;
+
+validate_type(Term, {_, _} = Spec) ->
+    error({badkeytype, Term, Spec}).
 
 
 %% @private
@@ -1966,12 +2017,12 @@ do_remove(_, Term, _) ->
 
 %% @private
 do_update(Key, undefined, Acc, _) ->
-    %% If context is undefined remove will fail,
-    %% so we do not handle that case here
     try
         remove(Key, Acc)
     catch
         error:context_required ->
+            %% no context, so for this operation we just drop the update request
+            %% and carry on
             Acc
     end;
 
@@ -1985,80 +2036,93 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {map, Spec}) ->
             %% We update the inner map recursively and replace
             set(Key, update(Value, Inner, Spec), Acc);
         _ ->
+            %% The existing value was not found or is not a map, but it
+            %% should be according to spec, so we replace by a new map
             Ctxt = inherited_context(Acc#babel_map.context),
             case is_type(Value) of
                 true ->
+                    %% Value is a babel_map
                     set(Key, set_context(Ctxt, Value), Acc);
                 false ->
-                    %% The existing value was not found or is not a map, but it
-                    %% should be according to spec, so we replace by a new map
                     New = babel_map:new(Value, Spec, Ctxt),
                     set(Key, New, Acc)
             end
     end;
 
-do_update(Key, Value, Acc, {set, _}) when is_list(Value) ->
+do_update(Key, Value, Acc, {set, _}) ->
     try
         set_elements(Key, Value, Acc)
     catch
         throw:context_required ->
-            %% We have a brand new set (not in Riak yet) so we just replace it
+            %% We have a brand new set (not in Riak yet)
             Ctxt = inherited_context(Acc#babel_map.context),
-            Set = babel_set:set_context(Ctxt, babel_set:new(Value)),
-            set(Key, Set, Acc)
+
+            case babel_set:is_type(Value) of
+                true ->
+                    Set = babel_set:set_context(Ctxt, Value),
+                    set(Key, Set, Acc);
+                false when is_list(Value) ->
+                    Set = babel_set:set_context(Ctxt, babel_set:new(Value)),
+                    set(Key, Set, Acc);
+                false ->
+                    badtype(set, Value)
+            end
     end;
 
 do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}) ->
+    IsCounter = babel_counter:is_type(Value),
+
+    %% Fail if not a valid type
+    IsCounter orelse is_integer(Value) orelse badtype(counter, Value),
+
     case maps:find(Key, V) of
         {ok, Term} ->
-            case babel_counter:is_type(Term) of
-                true ->
-                    %% We update the counter
+            case {IsCounter, babel_counter:is_type(Term)} of
+                {true, true} ->
+                    %% We replace counter with anotehr counter
+                    set(Key, Value, Acc);
+                {true, false} ->
+                    %% The existing value is not a counter, but it should be
+                    %% according to spec, so we replace it
+                    set(Key, Value, Acc);
+                {false, true} ->
+                    %% We update the existing counter
                     set(Key, babel_counter:set(Value, Term), Acc);
-                false ->
+                {false, false} ->
                     %% The existing value is not a counter, but it should be
                     %% according to spec, so we replace by a new one
                     set(Key, babel_counter:new(Value), Acc)
             end;
-        _ ->
-            %% The existing value was not found so create a new one
-            case babel_counter:is_type(Value) of
-                true ->
-                    set(Key, Value, Acc);
-                false ->
-                    set(Key, babel_counter:new(Value), Acc)
-            end
+        error when IsCounter == true ->
+            set(Key, Value, Acc);
+        error ->
+            set(Key, babel_counter:new(Value), Acc)
     end;
 
 do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
     Ctxt = inherited_context(Acc#babel_map.context),
+    IsFlag = babel_flag:is_type(Value),
 
     case maps:find(Key, V) of
+        {ok, Term} when IsFlag == true ->
+            Flag =
+                try
+                    babel_flag:set(Value, Term)
+                catch
+                    throw:context_required ->
+                        %% We have a brand new flag (not in Riak yet) so we
+                        %% just replace it
+                        babel_flag:new(Value, Ctxt)
+                end,
+            set(Key, Flag, Acc);
         {ok, Term} ->
-            case babel_flag:is_type(Term) of
-                true ->
-                    Flag = try
-                        babel_flag:set(Value, Term)
-                    catch
-                        throw:context_required ->
-                            %% We have a brand new flag (not in Riak yet) so we
-                            %% just replace it
-                            babel_flag:new(Value, Ctxt)
-                    end,
-                    set(Key, Flag, Acc);
-                false ->
-                    %% The existing value is not a counter, but it should be
-                    %% according to spec, so we replace by a new one
-                    set(Key, babel_flag:new(Value, Ctxt), Acc)
-            end;
-        _ ->
-            %% The existing value was not found so create a new one
-            case babel_flag:is_type(Value) of
-                true ->
-                    set(Key, babel_flag:set_context(Ctxt, Value), Acc);
-                false ->
-                    set(Key, babel_flag:new(Value, Ctxt), Acc)
-            end
+            %% The existing value is not a counter, but it should be
+            %% according to spec, so we replace by a new one
+            set(Key, babel_flag:new(Value, Ctxt), Acc);
+        error when IsFlag == true ->
+            set(Key, babel_flag:set_context(Ctxt, Value), Acc);
+        error ->
+            set(Key, babel_flag:new(Value, Ctxt), Acc)
     end.
 
 
