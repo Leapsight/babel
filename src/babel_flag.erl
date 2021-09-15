@@ -31,7 +31,7 @@
 -record(babel_flag, {
     value = false       ::  boolean(),
     %% RiakC uses undefined but this causes Riak to never record a flag
-    %% initilised with 'false'.
+    %% initilised with 'false' i.e. the flag is treated as null
     op = disable        ::  enable | disable | undefined,
     context             ::  babel_context()
 }).
@@ -142,7 +142,6 @@ to_riak_op(#babel_flag{op = O}, _) ->
 type() -> flag.
 
 
-
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -151,7 +150,6 @@ type() -> flag.
 
 is_type(Term) ->
     is_record(Term, babel_flag).
-
 
 
 %% -----------------------------------------------------------------------------
