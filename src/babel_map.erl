@@ -954,7 +954,8 @@ collect_values(Keys, Map, Opts0) ->
     NewMap :: maybe_no_return(t()).
 
 set(Key, Value, Map) ->
-    mutate(Key, Value, Map).
+    Ctxt = inherited_context(Map#babel_map.context),
+    mutate(Key, Value, Map, Ctxt).
 
 
 %% -----------------------------------------------------------------------------
@@ -965,7 +966,8 @@ set(Key, Value, Map) ->
     NewMap :: maybe_no_return(t()).
 
 put(Key, Value, Map) ->
-    mutate(Key, Value, Map).
+    Ctxt = inherited_context(Map#babel_map.context),
+    mutate(Key, Value, Map, Ctxt).
 
 
 %% -----------------------------------------------------------------------------
@@ -1011,19 +1013,8 @@ add_element(Key, Value, Map) ->
     NewMap :: maybe_no_return(t()).
 
 add_elements(Key, Values, Map) ->
-    Fun = fun
-        ({ok, Term}) ->
-            case babel_set:is_type(Term) of
-                true ->
-                    babel_set:add_elements(Values, Term);
-                false ->
-                    badtype(set, Term)
-            end;
-        (error) ->
-            Ctxt = inherited_context(Map#babel_map.context),
-            babel_set:set_context(Ctxt, babel_set:new(Values))
-    end,
-    mutate(Key, Fun, Map).
+    Ctxt = inherited_context(Map#babel_map.context),
+    do_add_elements(Key, Values, Map, Ctxt).
 
 
 %% -----------------------------------------------------------------------------
@@ -1047,19 +1038,8 @@ add_elements(Key, Values, Map) ->
     NewMap :: maybe_no_return(t()).
 
 del_element(Key, Value, Map) ->
-    Fun = fun
-        ({ok, Term}) ->
-            case babel_set:is_type(Term) of
-                true ->
-                    babel_set:del_element(Value, Term);
-                false ->
-                    badtype(set, Term)
-            end;
-        (error) ->
-            Ctxt = inherited_context(Map#babel_map.context),
-            babel_set:set_context(Ctxt, babel_set:new(Value))
-    end,
-    mutate(Key, Fun, Map).
+    Ctxt = inherited_context(Map#babel_map.context),
+    do_del_element(Key, Value, Map, Ctxt).
 
 
 %% -----------------------------------------------------------------------------
@@ -1083,25 +1063,9 @@ del_element(Key, Value, Map) ->
     NewMap :: maybe_no_return(t()).
 
 set_elements(Key, Values, Map) ->
-    Fun = fun
-        ({ok, Term}) ->
-            case babel_set:is_type(Term) of
-                true ->
-                    babel_set:set_elements(Values, Term);
-                false ->
-                    badtype(set, Term)
-            end;
-        (error) ->
-            Ctxt = inherited_context(Map#babel_map.context),
+    Ctxt = inherited_context(Map#babel_map.context),
+    do_set_elements(Key, Values, Map, Ctxt).
 
-            case babel_set:is_type(Values) of
-                true ->
-                    babel_set:set_context(Ctxt, Values);
-                false ->
-                    babel_set:set_context(Ctxt, babel_set:new(Values))
-            end
-    end,
-    mutate(Key, Fun, Map).
 
 
 %% -----------------------------------------------------------------------------
@@ -1134,29 +1098,9 @@ update(_, _) ->
 -spec update(Values :: babel_key_value:t(), T :: t(), Spec :: type_spec()) ->
     NewT :: t().
 
-update(Values, #babel_map{} = T, #{'_' := TypeSpec}) ->
-    Fun = fun(Key0, Value, Acc) ->
-        Key = to_key(Key0),
-        do_update(Key, Value, Acc, TypeSpec)
-    end,
-    babel_key_value:fold(Fun, T, Values);
-
-update(Values, #babel_map{} = T, MapSpec0) when is_map(MapSpec0) ->
-    MapSpec = validate_type_spec(MapSpec0),
-    Fun = fun(Key0, Value, Acc) ->
-            Key = to_key(Key0),
-            case maps:find(Key, MapSpec) of
-                {ok, TypeSpec} when Value == undefined ->
-                    do_update(Key, Value, Acc, TypeSpec);
-                {ok, {Datatype, SpecOrType} = TypeSpec} ->
-                    ok = validate_type(Value, TypeSpec),
-                    do_update(Key, Value, Acc, TypeSpec);
-                error ->
-                    error({missing_spec, Key})
-            end
-
-    end,
-    babel_key_value:fold(Fun, T, Values).
+update(Values, #babel_map{} = T, Spec) ->
+    Ctxt = inherited_context(T#babel_map.context),
+    do_update(Values, T, Spec, Ctxt).
 
 
 %% -----------------------------------------------------------------------------
@@ -1194,7 +1138,7 @@ patch(_, _) ->
 patch(ActionList, #babel_map{} = T, Spec0) ->
     Spec = validate_type_spec(Spec0),
     Fun = fun(Action, Acc) ->
-        patch_eval(Action, Acc, Spec)
+        patch_eval(Action, Acc, Spec, T#babel_map.context)
     end,
     lists:foldl(Fun, T, ActionList);
 
@@ -1224,18 +1168,8 @@ remove(Key, T) ->
 -spec enable(Key :: key_path(), T :: t()) -> NewT :: t().
 
 enable(Key, Map) ->
-    Fun = fun
-        ({ok, Term}) ->
-            case babel_flag:is_type(Term) of
-                true ->
-                    babel_flag:enable(Term);
-                false ->
-                    badtype(flag, Term)
-            end;
-        (error) ->
-            babel_flag:new(true, Map#babel_map.context)
-    end,
-    mutate(Key, Fun, Map).
+    Ctxt = inherited_context(Map#babel_map.context),
+    do_enable(Key, Map, Ctxt).
 
 
 %% -----------------------------------------------------------------------------
@@ -1245,18 +1179,8 @@ enable(Key, Map) ->
 -spec disable(Key :: key_path(), T :: t()) -> NewT :: t().
 
 disable(Key, Map) ->
-    Fun = fun
-        ({ok, Term}) ->
-            case babel_flag:is_type(Term) of
-                true ->
-                    babel_flag:disable(Term);
-                false ->
-                    badtype(flag, Term)
-            end;
-        (error) ->
-            babel_flag:new(false, Map#babel_map.context)
-    end,
-    mutate(Key, Fun, Map).
+    Ctxt = inherited_context(Map#babel_map.context),
+    do_disable(Key, Map, Ctxt).
 
 
 %% -----------------------------------------------------------------------------
@@ -1287,7 +1211,7 @@ increment(Key, Value, Map) ->
         (error) ->
             babel_counter:increment(Value, babel_counter:new())
     end,
-    mutate(Key, Fun, Map).
+    mutate(Key, Fun, Map, undefined).
 
 
 %% -----------------------------------------------------------------------------
@@ -1318,7 +1242,7 @@ decrement(Key, Value, Map) ->
         (error) ->
             babel_counter:decrement(Value, babel_counter:new())
     end,
-    mutate(Key, Fun, Map).
+    mutate(Key, Fun, Map, undefined).
 
 
 %% -----------------------------------------------------------------------------
@@ -1506,7 +1430,7 @@ validate_type(Term, {register, binary}) when is_binary(Term) ->
 validate_type(Term, {register, integer}) when is_integer(Term) ->
     ok;
 
-validate_type(Term, {register, Fun}) when is_function(Fun, 2) ->
+validate_type(_, {register, Fun}) when is_function(Fun, 2) ->
     ok;
 
 validate_type(Term, {_, _} = Spec) ->
@@ -1605,27 +1529,6 @@ when is_map(Spec) ->
         context = Context,
         type_spec_ref = Ref
     }.
-
-
-
-%% init_values(Spec, Acc0) ->
-%%     %% We only set the missing container values
-%%     Fun = fun
-%%         ('$validated', _, Acc) ->
-%%             Acc;
-
-%%         (_, {register, _}, Acc) ->
-%%             Acc;
-
-%%         (Key, {map, KeySpec}, Acc) when is_map(KeySpec) ->
-%%             maps:put(Key, new(#{}, KeySpec), Acc);
-
-%%         (Key, {Type, _}, Acc) ->
-%%             Mod = type_to_mod(Type),
-%%             Mod /= undefined andalso Mod /= error orelse error({badtype, Type}),
-%%             maps:put(Key, Mod:new(), Acc)
-%%     end,
-%%     maps:fold(Fun, Acc0, Spec).
 
 
 %% @private
@@ -1860,46 +1763,47 @@ prepare_remove_ops(T, Spec) ->
 %% no context assigned.
 %% @end
 %% -----------------------------------------------------------------------------
--spec mutate(Key :: key_path(), Value :: value() | function(), Map :: t()) ->
-    NewMap :: maybe_no_return(t()).
+-spec mutate(
+    Key :: key_path(),
+    Value :: value() | function(),
+    Map :: t(),
+    Ctxt :: babel_context()) -> NewMap :: maybe_no_return(t()).
 
-mutate(_, undefined, #babel_map{context = undefined} = Map) ->
-    %% We do nothing
-    Map;
+mutate(Key, undefined, Map, Ctxt) ->
+    do_remove(Key, Map, Ctxt);
 
-mutate(Key, undefined, Map) ->
-    remove(Key, Map);
+mutate([H|[]], Value, Map, Ctxt) ->
+    mutate(H, Value, Map, Ctxt);
 
-mutate([H|[]], Value, Map) ->
-    mutate(H, Value, Map);
-
-mutate([H|T], Value, #babel_map{values = V, context = C} = Map) ->
+mutate([H|T], Value, #babel_map{values = V} = Map, Ctxt) ->
     case maps:find(H, V) of
         {ok, #babel_map{} = HMap} ->
             Map#babel_map{
-                values = maps:put(H, mutate(T, Value, HMap), V),
+                values = maps:put(H, mutate(T, Value, HMap, Ctxt), V),
                 updates = ordsets:add_element(H, Map#babel_map.updates)
             };
         {ok, Term} ->
             badtype(map, Term);
         error ->
             Map#babel_map{
-                values = maps:put(H, mutate(T, Value, new(#{}, #{}, C)), V),
+                values = maps:put(
+                    H, mutate(T, Value, new(#{}, #{}, Ctxt), Ctxt), V
+                ),
                 updates = ordsets:add_element(H, Map#babel_map.updates)
             }
     end;
 
-mutate(Key, Term, #babel_map{} = Map) when is_binary(Key) ->
+mutate(Key, Term, #babel_map{} = Map, _) when is_binary(Key) ->
     Value = mutate_eval(Key, Term, Map),
     Map#babel_map{
         values = maps:put(Key, Value, Map#babel_map.values),
         updates = ordsets:add_element(Key, Map#babel_map.updates)
     };
 
-mutate(Key, _, #babel_map{}) when not is_binary(Key) ->
+mutate(Key, _, #babel_map{}, _) when not is_binary(Key) ->
     error({badkey, Key});
 
-mutate(_, _, Map) ->
+mutate(_, _, Map, _) ->
     badtype(map, Map).
 
 
@@ -2016,60 +1920,86 @@ do_remove(_, Term, _) ->
 
 
 %% @private
-do_update(Key, undefined, Acc, _) ->
-    try
-        remove(Key, Acc)
-    catch
-        error:context_required ->
-            %% no context, so for this operation we just drop the update request
-            %% and carry on
-            Acc
-    end;
+do_update(Values, #babel_map{} = T, #{'_' := TypeSpec}, Ctxt) ->
+    Fun = fun(Key0, Value, Acc) ->
+        Key = to_key(Key0),
+        do_update(Key, Value, Acc, TypeSpec, Ctxt)
+    end,
+    babel_key_value:fold(Fun, T, Values);
 
-do_update(Key, Value, Acc, {register, _}) ->
+do_update(Values, #babel_map{} = T, MapSpec0, Ctxt) when is_map(MapSpec0) ->
+    MapSpec = validate_type_spec(MapSpec0),
+
+    Fun = fun(Key0, Value, Acc) ->
+            Key = to_key(Key0),
+            case maps:find(Key, MapSpec) of
+                {ok, TypeSpec} when Value == undefined ->
+                    do_update(Key, Value, Acc, TypeSpec, Ctxt);
+                {ok, {_, _} = TypeSpec} ->
+                    ok = validate_type(Value, TypeSpec),
+                    do_update(Key, Value, Acc, TypeSpec, Ctxt);
+                error ->
+                    error({missing_spec, Key})
+            end
+
+    end,
+    babel_key_value:fold(Fun, T, Values).
+
+
+%% @private
+do_update(Key, undefined, Acc, _, Ctxt) ->
+    do_remove(Key, Acc, Ctxt);
+
+    % try
+    %     do_remove(Key, Acc, Ctxt)
+    % catch
+    %     error:context_required ->
+    %         %% no context, so for this operation we just drop the update request
+    %         %% and carry on
+    %         Acc
+    % end;
+
+do_update(Key, Value, Acc, {register, _}, Ctxt) ->
     %% We simply replace the existing register
-    set(Key, Value, Acc);
+    mutate(Key, Value, Acc, Ctxt);
 
-do_update(Key, Value, #babel_map{values = V} = Acc, {map, Spec}) ->
+do_update(Key, Value, #babel_map{values = V} = Acc, {map, Spec}, Ctxt) ->
     case maps:find(Key, V) of
         {ok, #babel_map{} = Inner} ->
             %% We update the inner map recursively and replace
-            set(Key, update(Value, Inner, Spec), Acc);
+            mutate(Key, do_update(Value, Inner, Spec, Ctxt), Acc, Ctxt);
         _ ->
             %% The existing value was not found or is not a map, but it
             %% should be according to spec, so we replace by a new map
-            Ctxt = inherited_context(Acc#babel_map.context),
             case is_type(Value) of
                 true ->
                     %% Value is a babel_map
-                    set(Key, set_context(Ctxt, Value), Acc);
+                    mutate(Key, set_context(Ctxt, Value), Acc, Ctxt);
                 false ->
                     New = babel_map:new(Value, Spec, Ctxt),
-                    set(Key, New, Acc)
+                    mutate(Key, New, Acc, Ctxt)
             end
     end;
 
-do_update(Key, Value, Acc, {set, _}) ->
+do_update(Key, Value, Acc, {set, _}, Ctxt) ->
     try
         set_elements(Key, Value, Acc)
     catch
         throw:context_required ->
             %% We have a brand new set (not in Riak yet)
-            Ctxt = inherited_context(Acc#babel_map.context),
-
             case babel_set:is_type(Value) of
                 true ->
                     Set = babel_set:set_context(Ctxt, Value),
-                    set(Key, Set, Acc);
+                    mutate(Key, Set, Acc, Ctxt);
                 false when is_list(Value) ->
                     Set = babel_set:set_context(Ctxt, babel_set:new(Value)),
-                    set(Key, Set, Acc);
+                    mutate(Key, Set, Acc, Ctxt);
                 false ->
                     badtype(set, Value)
             end
     end;
 
-do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}) ->
+do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}, Ctxt) ->
     IsCounter = babel_counter:is_type(Value),
 
     %% Fail if not a valid type
@@ -2080,27 +2010,26 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}) ->
             case {IsCounter, babel_counter:is_type(Term)} of
                 {true, true} ->
                     %% We replace counter with anotehr counter
-                    set(Key, Value, Acc);
+                    mutate(Key, Value, Acc, Ctxt);
                 {true, false} ->
                     %% The existing value is not a counter, but it should be
                     %% according to spec, so we replace it
-                    set(Key, Value, Acc);
+                    mutate(Key, Value, Acc, Ctxt);
                 {false, true} ->
                     %% We update the existing counter
-                    set(Key, babel_counter:set(Value, Term), Acc);
+                    mutate(Key, babel_counter:set(Value, Term), Acc, Ctxt);
                 {false, false} ->
                     %% The existing value is not a counter, but it should be
                     %% according to spec, so we replace by a new one
-                    set(Key, babel_counter:new(Value), Acc)
+                    mutate(Key, babel_counter:new(Value), Acc, Ctxt)
             end;
         error when IsCounter == true ->
-            set(Key, Value, Acc);
+            mutate(Key, Value, Acc, Ctxt);
         error ->
-            set(Key, babel_counter:new(Value), Acc)
+            mutate(Key, babel_counter:new(Value), Acc, Ctxt)
     end;
 
-do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
-    Ctxt = inherited_context(Acc#babel_map.context),
+do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}, Ctxt) ->
     IsFlag = babel_flag:is_type(Value),
 
     case maps:find(Key, V) of
@@ -2114,16 +2043,102 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}) ->
                         %% just replace it
                         babel_flag:new(Value, Ctxt)
                 end,
-            set(Key, Flag, Acc);
-        {ok, Term} ->
-            %% The existing value is not a counter, but it should be
+            mutate(Key, Flag, Acc, Ctxt);
+        {ok, _Term} ->
+            %% The existing value is not a flag, but it should be
             %% according to spec, so we replace by a new one
-            set(Key, babel_flag:new(Value, Ctxt), Acc);
+            mutate(Key, babel_flag:new(Value, Ctxt), Acc, Ctxt);
         error when IsFlag == true ->
-            set(Key, babel_flag:set_context(Ctxt, Value), Acc);
+            mutate(Key, babel_flag:set_context(Ctxt, Value), Acc, Ctxt);
         error ->
-            set(Key, babel_flag:new(Value, Ctxt), Acc)
+            mutate(Key, babel_flag:new(Value, Ctxt), Acc, Ctxt)
     end.
+
+
+
+%% @private
+do_set_elements(Key, Values, Map, Ctxt) ->
+    Fun = fun
+        ({ok, Term}) ->
+            case babel_set:is_type(Term) of
+                true ->
+                    babel_set:set_elements(Values, Term);
+                false ->
+                    badtype(set, Term)
+            end;
+        (error) ->
+
+            case babel_set:is_type(Values) of
+                true ->
+                    babel_set:set_context(Ctxt, Values);
+                false ->
+                    babel_set:set_context(Ctxt, babel_set:new(Values))
+            end
+    end,
+    mutate(Key, Fun, Map, Ctxt).
+
+
+%% @private
+do_add_elements(Key, Values, Map, Ctxt) ->
+    Fun = fun
+        ({ok, Term}) ->
+            case babel_set:is_type(Term) of
+                true ->
+                    babel_set:add_elements(Values, Term);
+                false ->
+                    badtype(set, Term)
+            end;
+        (error) ->
+            babel_set:set_context(Ctxt, babel_set:new(Values))
+    end,
+    mutate(Key, Fun, Map, Ctxt).
+
+
+%% @private
+do_del_element(Key, Value, Map, Ctxt) ->
+    Fun = fun
+        ({ok, Term}) ->
+            case babel_set:is_type(Term) of
+                true ->
+                    babel_set:del_element(Value, Term);
+                false ->
+                    badtype(set, Term)
+            end;
+        (error) ->
+            babel_set:set_context(Ctxt, babel_set:new(Value))
+    end,
+    mutate(Key, Fun, Map, Ctxt).
+
+%% @private
+do_enable(Key, Map, Ctxt) ->
+    Fun = fun
+        ({ok, Term}) ->
+            case babel_flag:is_type(Term) of
+                true ->
+                    babel_flag:enable(Term);
+                false ->
+                    badtype(flag, Term)
+            end;
+        (error) ->
+            babel_flag:new(true, Ctxt)
+    end,
+    mutate(Key, Fun, Map, Ctxt).
+
+
+%% @private
+do_disable(Key, Map, Ctxt) ->
+    Fun = fun
+        ({ok, Term}) ->
+            case babel_flag:is_type(Term) of
+                true ->
+                    babel_flag:disable(Term);
+                false ->
+                    badtype(flag, Term)
+            end;
+        (error) ->
+            babel_flag:new(false, Map#babel_map.context)
+    end,
+    mutate(Key, Fun, Map, Ctxt).
 
 
 %% @private
@@ -2156,51 +2171,53 @@ changed_key_paths(
 
 
 %% @private
-patch_eval(A, Map, Spec) when is_map(Spec) ->
+patch_eval(A, Map, Spec, Ctxt) when is_map(Spec) ->
     Path = patch_path(A),
-    patch_eval(A, Map, path_type(Path, Spec), Path).
+    patch_eval(A, Map, path_type(Path, Spec), Path, Ctxt).
 
 
 %% @private
 patch_eval(
-    #{<<"value">> := V, <<"action">> := <<"update">>}, Map, _, Path) ->
-    set(Path, V, Map);
-
-patch_eval(#{<<"value">> := V, <<"action">> := <<"set">>}, Map, _, Path) ->
-    set(Path, V, Map);
+    #{<<"value">> := V, <<"action">> := <<"update">>}, Map, _, Path, Ctxt) ->
+    mutate(Path, V, Map, Ctxt);
 
 patch_eval(
-    #{<<"value">> := V, <<"action">> := <<"remove">>}, Map, set, Path) ->
-    del_element(Path, V, Map);
+    #{<<"value">> := V, <<"action">> := <<"set">>}, Map, _, Path, Ctxt) ->
+    mutate(Path, V, Map, Ctxt);
 
 patch_eval(
-    #{<<"value">> := V, <<"action">> := <<"append">>}, Map, set, Path) ->
-    add_element(Path, V, Map);
+    #{<<"value">> := V, <<"action">> := <<"remove">>}, Map, set, Path, Ctxt) ->
+    do_del_element(Path, V, Map, Ctxt);
 
 patch_eval(
-    #{<<"value">> := V, <<"action">> := <<"add_element">>}, Map, set, Path) ->
-    add_element(Path, V, Map);
+    #{<<"value">> := V, <<"action">> := <<"append">>}, Map, set, Path, Ctxt) ->
+    do_add_elements(Path, [V], Map, Ctxt);
 
 patch_eval(
-    #{<<"value">> := V, <<"action">> := <<"del_element">>}, Map, set, Path) ->
-    del_element(Path, V, Map);
+    #{<<"value">> := V, <<"action">> := <<"add_element">>}, Map, set, Path, Ctxt) ->
+    do_add_elements(Path, [V], Map, Ctxt);
 
-patch_eval(#{<<"action">> := <<"remove">>}, Map, _, Path) ->
-    remove(Path, Map);
+patch_eval(
+    #{<<"value">> := V, <<"action">> := <<"del_element">>},
+    Map, set, Path, Ctxt) ->
+    do_del_element(Path, V, Map, Ctxt);
 
-patch_eval(#{<<"action">> := <<"enable">>}, Map, flag, Path) ->
-    enable(Path, Map);
+patch_eval(#{<<"action">> := <<"remove">>}, Map, _, Path, Ctxt) ->
+    do_remove(Path, Map, Ctxt);
 
-patch_eval(#{<<"action">> := <<"disable">>}, Map, flag, Path) ->
-    disable(Path, Map);
+patch_eval(#{<<"action">> := <<"enable">>}, Map, flag, Path, Ctxt) ->
+    do_enable(Path, Map, Ctxt);
 
-patch_eval(#{<<"action">> := <<"increment">>}, Map, counter, Path) ->
+patch_eval(#{<<"action">> := <<"disable">>}, Map, flag, Path, Ctxt) ->
+    do_disable(Path, Map, Ctxt);
+
+patch_eval(#{<<"action">> := <<"increment">>}, Map, counter, Path, _) ->
     increment(Path, Map);
 
-patch_eval(#{<<"action">> := <<"decrement">>}, Map, counter, Path) ->
+patch_eval(#{<<"action">> := <<"decrement">>}, Map, counter, Path, _) ->
     decrement(Path, Map);
 
-patch_eval(Action, _, _, _) ->
+patch_eval(Action, _, _, _, _) ->
     error({badaction, Action}).
 
 
