@@ -11,7 +11,7 @@
  {<<"cache">>,{pkg,<<"cache">>,<<"2.3.3">>},0},
  {<<"eunit_formatters">>,
   {git,"git://github.com/seancribbs/eunit_formatters",
-       {ref,"6818dc14fe5d90d2561b1fa8ab8aea523a900128"}},
+       {ref,"473e0cd89bf5608e97886a3bdf9047a16edc88f0"}},
   1},
  {<<"gproc">>,{pkg,<<"gproc">>,<<"0.9.0">>},0},
  {<<"jsone">>,{pkg,<<"jsone">>,<<"1.6.1">>},0},
@@ -55,7 +55,7 @@
   0},
  {<<"utils">>,
   {git,"https://gitlab.com/leapsight/utils.git",
-       {ref,"b2608c83e8d87b90c3f881b79e92846fc15bec65"}},
+       {ref,"fff38e16db767bd6ceb45b96714ea5164c805eb4"}},
   0}]}.
 [
 {pkg_hash,[

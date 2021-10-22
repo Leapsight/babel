@@ -108,7 +108,7 @@ new() ->
 -spec new(Data :: ordsets:ordset(any())) -> t().
 
 new(Data) when is_list(Data) ->
-    #babel_set{adds = ordeset:from_list(Data), size = ordsets:size(Data)}.
+    #babel_set{adds = ordsets:from_list(Data), size = ordsets:size(Data)}.
 
 
 %% -----------------------------------------------------------------------------
