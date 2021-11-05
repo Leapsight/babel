@@ -1775,30 +1775,40 @@ mutate(Key, undefined, Map, Ctxt) ->
 mutate([H|[]], Value, Map, Ctxt) ->
     mutate(H, Value, Map, Ctxt);
 
-mutate([H|T], Value, #babel_map{values = V} = Map, Ctxt) ->
-    case maps:find(H, V) of
+mutate([H|T], Value, #babel_map{values = V0} = Map, Ctxt) ->
+    case maps:find(H, V0) of
         {ok, #babel_map{} = HMap} ->
-            Map#babel_map{
-                values = maps:put(H, mutate(T, Value, HMap, Ctxt), V),
-                updates = ordsets:add_element(H, Map#babel_map.updates)
-            };
+            case maps:put(H, mutate(T, Value, HMap, Ctxt), V0) of
+                V0 ->
+                    Map;
+                V1 ->
+                    Map#babel_map{
+                        values = V1,
+                        updates = ordsets:add_element(H, Map#babel_map.updates)
+                    }
+            end;
         {ok, Term} ->
             badtype(map, Term);
         error ->
             Map#babel_map{
                 values = maps:put(
-                    H, mutate(T, Value, new(#{}, #{}, Ctxt), Ctxt), V
+                    H, mutate(T, Value, new(#{}, #{}, Ctxt), Ctxt), V0
                 ),
                 updates = ordsets:add_element(H, Map#babel_map.updates)
             }
     end;
 
-mutate(Key, Term, #babel_map{} = Map, _) when is_binary(Key) ->
+mutate(Key, Term, #babel_map{values = V0} = Map, _) when is_binary(Key) ->
     Value = mutate_eval(Key, Term, Map),
-    Map#babel_map{
-        values = maps:put(Key, Value, Map#babel_map.values),
-        updates = ordsets:add_element(Key, Map#babel_map.updates)
-    };
+    case maps:put(Key, Value, V0) of
+        V0 ->
+            Map;
+        V1 ->
+            Map#babel_map{
+                values = V1,
+                updates = ordsets:add_element(Key, Map#babel_map.updates)
+            }
+    end;
 
 mutate(Key, _, #babel_map{}, _) when not is_binary(Key) ->
     error({badkey, Key});
