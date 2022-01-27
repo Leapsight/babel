@@ -98,6 +98,9 @@ new(false) ->
 new(Value, undefined) when is_boolean(Value) ->
     new(Value);
 
+new(true, Ctxt) ->
+    #babel_flag{value = true, op = enable, context = Ctxt};
+
 new(Value, Ctxt) when is_boolean(Value) ->
     #babel_flag{value = Value, op = undefined, context = Ctxt}.
 
