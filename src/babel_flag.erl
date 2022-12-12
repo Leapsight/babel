@@ -98,8 +98,11 @@ new(false) ->
 new(Value, undefined) when is_boolean(Value) ->
     new(Value);
 
-new(Value, Ctxt) when is_boolean(Value) ->
-    #babel_flag{value = Value, op = undefined, context = Ctxt}.
+new(true, Ctxt) ->
+    #babel_flag{value = true, op = enable, context = Ctxt};
+
+new(false, Ctxt) ->
+    #babel_flag{value = false, op = disable, context = Ctxt}.
 
 
 %% -----------------------------------------------------------------------------
@@ -113,7 +116,7 @@ new(Value, Ctxt) when is_boolean(Value) ->
     maybe_no_return(t()).
 
 from_riak_flag(Value, Ctxt, boolean) when is_boolean(Value) ->
-    new(Value, Ctxt);
+    #babel_flag{value = Value, op = undefined, context = Ctxt};
 
 from_riak_flag(RiakFlag, Ctxt, boolean) ->
     from_riak_flag(riakc_flag:value(RiakFlag), Ctxt, boolean).
