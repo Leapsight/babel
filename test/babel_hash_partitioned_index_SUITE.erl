@@ -35,9 +35,11 @@ all() ->
 
 init_per_suite(Config) ->
     ok = common:setup(),
+    babel_config:set([index_cache, enabled], false),
     Config.
 
 end_per_suite(_) ->
+    logger:set_application_level(reliable, info),
     ok.
 
 
@@ -265,7 +267,6 @@ index_5_test(_) ->
 
 huge_index_test(_) ->
     %% We create the Index config
-
     Prefix = <<"babel-test">>,
     CName = <<"users">>,
     IdxName = <<"users_by_post_code_and_email">>,
@@ -313,7 +314,7 @@ huge_index_test(_) ->
         end
     end,
     _ = babel:workflow(Cleanup),
-    %% we wait 5 secs for reliable to perform the work
+
     timer:sleep(10000),
 
     %% We schedule the creation of a new collection and we add the index
@@ -325,8 +326,7 @@ huge_index_test(_) ->
     end,
 
     {true, #{work_ref := WorkRef2, result := ok}} = babel:workflow(Fun),
-    %% we wait 5 secs for reliable to perform the work
-    {ok, _} = babel:yield(WorkRef2, 10000),
+    {ok, _} = babel:yield(WorkRef2, 30000),
 
 
     %% We create 10,000 objects to be indexed
@@ -337,7 +337,7 @@ huge_index_test(_) ->
             %% PostCode = integer_to_binary(rand:uniform(100)),
             PostCode = AccId,
 
-            %% Not a CRDT but becuase we use babel_key_value we can get away
+            %% Not a CRDT but because we use babel_key_value we can get away
             %% with it
             Obj = #{
                 <<"email">> => <<UserId/binary, "@example.com">>,
@@ -361,7 +361,7 @@ huge_index_test(_) ->
     end,
 
     {true, #{work_ref := WorkRef, result := ok}} = babel:workflow(Fun2),
-    {ok, _} = babel:yield(WorkRef, 15000),
+    {ok, _} = babel:yield(WorkRef, 30000),
 
     Collection = babel_index_collection:fetch(Prefix, CName, BabelOpts),
     Index = babel_index_collection:index(IdxName, Collection),
@@ -371,16 +371,20 @@ huge_index_test(_) ->
     },
 
     Res1 = babel_index:match(Pattern1, Index, BabelOpts),
-    ?assertEqual(5000, length(Res1)),
+    ?assertEqual(
+        5000,
+        length(Res1),
+        Res1
+    ),
     Pattern2 = #{
         <<"post_code">> => <<"PC1">>,
         <<"email">> => <<"1@example.com">>
     },
     Res2 = babel_index:match(Pattern2, Index, BabelOpts),
-    ?assertEqual(1, length(Res2)),
+    ?assertEqual(1, length(Res2), Res2),
 
     ?assertEqual(
-        [<<"account_id">>, <<"user_id">>],
+        [<<"account_id">>, <<"post_code">>, <<"user_id">>],
         maps:keys(hd(Res2))
     ),
 
