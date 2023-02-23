@@ -166,13 +166,8 @@ maybe_add_pool() ->
                                 ok;
                             {error, {already_exists, Config}} ->
                                 ok;
-                            {error, {already_exists, Existing} = Reason} ->
-                                ?LOG_ERROR(#{
-                                    message => <<"Error while creating Riak KV connection pool">>,
-                                    existing_config => Existing,
-                                    config => Config
-                                }),
-                                throw(Reason);
+                            {error, {already_exists, Config0}} ->
+                                assert_matches_config(Config, Config0);
                             {error, Reason} ->
                                 throw(Reason)
                         end;
@@ -182,3 +177,20 @@ maybe_add_pool() ->
                 Pools
             )
     end.
+
+
+assert_matches_config(Config, Config0) ->
+    case Config == maps:with(maps:keys(Config), Config0) of
+        true ->
+            ok;
+        false ->
+            ?LOG_ERROR(#{
+                message => <<"Error while creating Riak KV connection pool">>,
+                existing_config => Config0,
+                config => Config
+            }),
+            throw({already_exists, Config0})
+    end.
+
+
+
