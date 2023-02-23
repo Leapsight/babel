@@ -68,7 +68,7 @@
 %% -----------------------------------------------------------------------------
 %% @doc Returns value `Value' associated with `Key' if `KVTerm' contains `Key'.
 %% `Key' can be an atom, a binary or a path represented as a list of atoms and/
-%% or binaries, or as a tuple of atoms and/or binaries.
+%% or binaries.
 %%
 %% The call fails with a {badarg, `KVTerm'} exception if `KVTerm' is not a
 %% property list, map or Riak CRDT Map.
