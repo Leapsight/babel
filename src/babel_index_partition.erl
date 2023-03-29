@@ -25,7 +25,12 @@
 
 -define(BUCKET_SUFFIX, "index_data").
 -define(CACHE, babel_index_partition_cache).
-
+-define(OBJ_CTXT(O),
+    begin
+        {map, _, _, _, Ctxt} = O,
+        Ctxt
+    end
+).
 -record(babel_index_partition, {
     id                      ::  binary(),
     created_ts              ::  non_neg_integer(),
@@ -277,7 +282,7 @@ store(TypedBucket, Key, Partition, Opts0) ->
         case riakc_pb_socket:update_type(Pid, TypedBucket, Key, Op, PutOpts) of
             {ok, Object} ->
                 Updated = from_riak_object(Object),
-                ok = cache_put({TypedBucket, Key}, Updated),
+                ok = cache_put({TypedBucket, Key}, Updated, Opts),
                 ok = on_update(TypedBucket, Key),
                 ok;
             {error, _} = Error ->
@@ -353,11 +358,11 @@ fetch(BucketType, BucketPrefix, Key, Opts) ->
 -spec lookup(
     TypedBucket :: {binary(), binary()},
     Key :: binary(),
-    Opts :: babel:opts()) ->
+    Opts :: babel:get_opts()) ->
     {ok, t()} | {error, not_found | term()}.
 
 lookup(TypedBucket, Key, Opts) ->
-    Result = cache_get({TypedBucket, Key}),
+    Result = cache_get({TypedBucket, Key}, Opts),
     maybe_lookup(TypedBucket, Key, Opts, Result).
 
 
@@ -396,7 +401,7 @@ delete(BucketType, BucketPrefix, Key, Opts0) ->
 
     Fun = fun(Pid) ->
         ROpts = babel:opts_to_riak_opts(Opts),
-        ok = cache_delete({TypedBucket, Key}),
+        ok = cache_delete({TypedBucket, Key}, Opts),
         case riakc_pb_socket:delete(Pid, TypedBucket, Key, ROpts) of
             ok ->
                 ok = on_delete(TypedBucket, Key),
@@ -424,25 +429,52 @@ delete(BucketType, BucketPrefix, Key, Opts0) ->
 %% =============================================================================
 
 
-cache_get({_, _} = PrefixedKey) ->
-    case babel_config:get([index_cache, enabled], false) of
+-spec cache_get({bucket_and_type(), binary()}, babel:get_opts()) ->
+    undefined | {vclock, binary()} | t().
+
+cache_get({_, _} = PrefixedKey, Opts) ->
+    UseCache =
+        babel_config:get([index_cache, enabled], false)
+            andalso key_value:get(cache, Opts, true),
+
+    case UseCache of
         true ->
-            cache:get(?CACHE, PrefixedKey);
+            case key_value:get(cache_force_refresh, Opts, true) of
+                true ->
+                    case cache:get(?CACHE, {vclock, PrefixedKey}) of
+                        VClock when is_binary(VClock) ->
+                            {vclock, VClock};
+                        undefined ->
+                            undefined
+                    end;
+                false ->
+                    cache:get(?CACHE, PrefixedKey)
+            end;
+
         false ->
             undefined
     end.
 
-cache_delete({_, _} = PrefixedKey) ->
+
+cache_delete({_, _} = PrefixedKey, _) ->
     case babel_config:get([index_cache, enabled], false) of
         true ->
+            cache:delete(?CACHE, {vclock, PrefixedKey}),
             cache:delete(?CACHE, PrefixedKey);
         false ->
             ok
     end.
 
-cache_put({_, _} = PrefixedKey, Partition) ->
-    case babel_config:get([index_cache, enabled], false) of
+cache_put({_, _} = PrefixedKey, Partition, Opts) ->
+    UseCache =
+        babel_config:get([index_cache, enabled], false)
+            andalso key_value:get(cache, Opts, true),
+
+    case UseCache of
         true ->
+            Obj = Partition#babel_index_partition.object,
+            VClock = ?OBJ_CTXT(Obj),
+            cache:put(?CACHE, {vclock, PrefixedKey}, VClock),
             cache:put(?CACHE, PrefixedKey, Partition);
         false ->
             ok
@@ -456,6 +488,14 @@ typed_bucket(Type, Prefix) ->
 
 
 %% @private
+
+maybe_lookup(_, _, _, #babel_index_partition{} = Partition) ->
+    {ok, Partition};
+
+maybe_lookup(TypedBucket, Key, Opts0, {vclock, _VClock}) ->
+    %% Disable for now
+    maybe_lookup(TypedBucket, Key, Opts0, undefined);
+
 maybe_lookup(TypedBucket, Key, Opts0, undefined) ->
     Opts = babel:validate_opts(get, Opts0),
     Poolname = maps:get(connection_pool, Opts, undefined),
@@ -466,7 +506,7 @@ maybe_lookup(TypedBucket, Key, Opts0, undefined) ->
         case riakc_pb_socket:fetch_type(Pid, TypedBucket, Key, GetOpts) of
             {ok, Object} ->
                 Partition = from_riak_object(Object),
-                ok = cache_put({TypedBucket, Key}, Partition),
+                ok = cache_put({TypedBucket, Key}, Partition, Opts),
                 {ok, Partition};
 
             {error, {notfound, map}} ->
@@ -480,11 +520,7 @@ maybe_lookup(TypedBucket, Key, Opts0, undefined) ->
     case babel:execute(Poolname, Fun, Opts) of
         {ok, Result} -> Result;
         {error, _} = Error -> Error
-    end;
-
-maybe_lookup(_, _, _, Partition) ->
-    %% We return from cache
-    {ok, Partition}.
+    end.
 
 
 %% @private

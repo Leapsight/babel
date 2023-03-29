@@ -144,7 +144,10 @@ match_1_test(_) ->
     ),
     Index = babel_index_collection:index(<<"users_by_email">>, Collection),
     Res = babel_index:match(
-        #{{<<"email">>, register} => <<"johndoe@me.com">>}, Index, BabelOpts),
+        #{{<<"email">>, register} => <<"johndoe@me.com">>},
+        Index,
+        BabelOpts
+    ),
     Expected = [
         #{
             {<<"user_id">>, register} => <<"mrn:user:1">>,

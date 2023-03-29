@@ -57,6 +57,7 @@
 
 -compile({no_auto_import, [get/1]}).
 
+-eqwalizer({nowarn_function, fold/3}).
 
 
 %% =============================================================================
@@ -103,6 +104,7 @@ get([H|[]], KVTerm, Default) ->
     get(H, KVTerm, Default);
 
 get([H|T], KVTerm, Default) when is_list(KVTerm) ->
+    %% eqwalizer:ignore KVTerm
     case lists:keyfind(H, 1, KVTerm) of
         {H, Child} ->
             get(T, Child, Default);
@@ -111,6 +113,7 @@ get([H|T], KVTerm, Default) when is_list(KVTerm) ->
     end;
 
 get([H|T], KVTerm, Default) when is_map(KVTerm) ->
+    %% eqwalizer:ignore KVTerm
     case maps:find(H, KVTerm) of
         {ok, Child} ->
             get(T, Child, Default);
@@ -121,8 +124,10 @@ get([H|T], KVTerm, Default) when is_map(KVTerm) ->
 get([{_, _} = H|T], KVTerm, Default) ->
     riakc_map:is_type(KVTerm) orelse error(badarg),
 
+    %% eqwalizer:ignore KVTerm
     case riakc_map:find(H, KVTerm) of
         {ok, Child} ->
+            %% eqwalizer:ignore Child
             get(T, Child, Default);
         error ->
             maybe_badkey(Default)
@@ -130,6 +135,7 @@ get([{_, _} = H|T], KVTerm, Default) ->
 
 get(Path, KVTerm, Default) when is_list(Path) ->
     babel_map:is_type(KVTerm) orelse error(badarg),
+    %% eqwalizer:ignore Path
     babel_map:get_value(Path, KVTerm, Default);
 
 get(Key, KVTerm, Default) when is_map(KVTerm) ->
@@ -166,7 +172,8 @@ get(Key, KVTerm, Default) ->
 
 collect(Keys, KVTerm) ->
     %% TODO this is not efficient as we traverse the tree from root for
-    %% every key. We should implement collect_map/2 (which should be optimised)%% and then return the values for the Keys.
+    %% every key. We should implement collect_map/2 (which should be
+    %% optimised) and then return the values for the Keys.
     collect(Keys, KVTerm, ?BADKEY).
 
 
@@ -210,17 +217,24 @@ set([H|[]], Value, KVTerm) ->
 
 set([H|T], Value, KVTerm)
 when (is_atom(H) orelse is_binary(H)) andalso is_list(KVTerm)->
-    InnerTerm = set(T, Value, get(H, KVTerm, [])),
+    InnerTerm0 = get(H, KVTerm, []),
+    %% eqwalizer:ignore InnerTerm0
+    InnerTerm = set(T, Value, InnerTerm0),
+    %% eqwalizer:ignore KVTerm
     lists:keystore(H, 1, KVTerm, {H, InnerTerm});
 
 set([H|T], Value, KVTerm)
 when (is_atom(H) orelse is_binary(H)) andalso is_map(KVTerm)->
-    InnerTerm = set(T, Value, get(H, KVTerm, #{})),
+    InnerTerm0 = get(H, KVTerm, #{}),
+    %% eqwalizer:ignore InnerTerm0
+    InnerTerm = set(T, Value, InnerTerm0),
+    %% eqwalizer:ignore KVTerm
     maps:put(H, InnerTerm, KVTerm);
 
 set([H|T] = L, Value, KVTerm) ->
     case babel_map:is_type(KVTerm) of
         true ->
+            %% eqwalizer:ignore L
             babel_map:set(L, Value, KVTerm);
         false ->
             case riakc_map:is_type(KVTerm) of
@@ -244,7 +258,7 @@ when (is_atom(Key) orelse is_binary(Key)) andalso is_map(KVTerm) ->
     maps:put(Key, Value, KVTerm);
 
 set({_, Type} = Key, Value, KVTerm) ->
-    riakc_map:is_type(KVTerm) orelse error(badarg),
+    riakc_map:is_type(KVTerm) orelse error({badarg, [Key, Value, KVTerm]}),
     riakc_map:update(Key, riak_update_fun(Type, Value), KVTerm);
 
 set(Key, Value, KVTerm) ->

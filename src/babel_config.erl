@@ -39,6 +39,7 @@
 -export([set/2]).
 
 
+-eqwalizer({nowarn_function, apply_reliable_config/0}).
 
 %% =============================================================================
 %% API

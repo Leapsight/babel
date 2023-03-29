@@ -110,7 +110,7 @@ to_integer(Unwrapped::binary() | <a href="riakc_register.md#type-register">riakc
 ### type/1 ###
 
 <pre><code>
-type(Object::<a href="riakc_dataatype.md#type-datatype">riakc_dataatype:datatype()</a>) -&gt; atom()
+type(Object::<a href="riakc_datatype.md#type-datatype">riakc_datatype:datatype()</a>) -&gt; atom()
 </code></pre>
 <br />
 

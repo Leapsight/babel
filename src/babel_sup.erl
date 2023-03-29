@@ -27,12 +27,12 @@
 
 
 -define(CACHE_OPTS, #{
-    segments => 10,
-    ttl => 600,
-    size => 10000,
+    check => 60,
     memory => 1073741824, % 1GB
     policy => lru,
-    check => 60
+    segments => 10,
+    size => 10000,
+    ttl => 600
 }).
 
 

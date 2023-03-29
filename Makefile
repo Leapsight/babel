@@ -7,3 +7,9 @@ docs:
 test:
 	. test/setup_riak.sh
 	rebar3 ct
+
+
+check: eqwalize
+
+eqwalize:
+	elp eqwalize-all

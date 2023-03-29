@@ -229,7 +229,7 @@ map_entry(map, Field, Values) when is_list(Values) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec type(riakc_dataatype:datatype()) -> atom().
+-spec type(riakc_datatype:datatype()) -> atom().
 
 type(Object) ->
     type_for_module(riakc_datatype:module_for_term(Object)).

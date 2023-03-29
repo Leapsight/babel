@@ -54,6 +54,8 @@
     connection_pool => atom(),
     r => quorum(),
     pr => quorum(),
+    cache => boolean(),
+    cache_force_refresh => boolean(),
     if_modified => binary(),
     notfound_ok => boolean(),
     n_val => non_neg_integer(),
@@ -68,6 +70,7 @@
 -type put_opts()       ::  #{
     connection => pid(),
     connection_pool => atom(),
+    cache => boolean(),
     w => quorum(),
     dw => quorum(),
     pw => quorum(),

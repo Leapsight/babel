@@ -54,6 +54,16 @@
         datatype => atom,
         default => undefined
     },
+    cache => #{
+        required => false,
+        allow_undefined => false,
+        datatype => boolean
+    },
+    cache_force_refresh => #{
+        required => false,
+        allow_undefined => false,
+        datatype => boolean
+    },
     r => #{
         alias => <<"r">>,
         key => r,
@@ -148,6 +158,11 @@
         allow_undefined => true,
         datatype => atom,
         default => undefined
+    },
+    cache => #{
+        required => false,
+        allow_undefined => false,
+        datatype => boolean
     },
     w => #{
         alias => <<"w">>,
