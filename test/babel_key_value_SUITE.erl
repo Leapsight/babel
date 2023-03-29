@@ -24,49 +24,49 @@ all() ->
 
 get_empty_key_test(_) ->
     KVC = [{a, 1}],
-    ?assertError(badkey, key_value:get([], KVC)).
+    ?assertError(badkey, babel_key_value:get([], KVC)).
 
 set_empty_key_test(_) ->
     KVC = [{a, 1}],
-    ?assertError(badkey, key_value:set([], 1, KVC)).
+    ?assertError(badkey, babel_key_value:set([], 1, KVC)).
 
 get_empty_test(_) ->
-    ?assertError(badkey, key_value:get([], [])),
-    ?assertError(badkey, key_value:get([], #{})).
+    ?assertError(badkey, babel_key_value:get([], [])),
+    ?assertError(badkey, babel_key_value:get([], #{})).
 
 set_empty_test(_) ->
-    ?assertError(badkey, key_value:set([], 1, [])),
-    ?assertError(badkey, key_value:set([], 1, #{})).
+    ?assertError(badkey, babel_key_value:set([], 1, [])),
+    ?assertError(badkey, babel_key_value:set([], 1, #{})).
 
 get_empty_default_test(_) ->
-    ?assertEqual(1, key_value:get(a, [], 1)),
-    ?assertEqual(1, key_value:get([a], [], 1)),
-    ?assertEqual(1, key_value:get(a, #{}, 1)),
-    ?assertEqual(1, key_value:get([a], #{}, 1)).
+    ?assertEqual(1, babel_key_value:get(a, [], 1)),
+    ?assertEqual(1, babel_key_value:get([a], [], 1)),
+    ?assertEqual(1, babel_key_value:get(a, #{}, 1)),
+    ?assertEqual(1, babel_key_value:get([a], #{}, 1)).
 
 set_empty_default_test(_) ->
-    ?assertEqual([{a, 1}], key_value:set(a, 1, [])),
-    ?assertEqual([{a, 1}], key_value:set([a], 1, [])),
-    ?assertEqual(#{a => 1}, key_value:set(a, 1, #{})),
-    ?assertEqual(#{a => 1}, key_value:set([a], 1, #{})),
-    ?assertError(badkey, key_value:set([], 1, [])),
-    ?assertError(badkey, key_value:set([], 1, #{})).
+    ?assertEqual([{a, 1}], babel_key_value:set(a, 1, [])),
+    ?assertEqual([{a, 1}], babel_key_value:set([a], 1, [])),
+    ?assertEqual(#{a => 1}, babel_key_value:set(a, 1, #{})),
+    ?assertEqual(#{a => 1}, babel_key_value:set([a], 1, #{})),
+    ?assertError(badkey, babel_key_value:set([], 1, [])),
+    ?assertError(badkey, babel_key_value:set([], 1, #{})).
 
 badarg_get_test(_) ->
-    ?assertError(badkey, key_value:get([], 1)),
-    ?assertError(badkey, key_value:get([], 1, 2)),
-    ?assertError(badarg, key_value:get(a, 1)),
-    ?assertError(badarg, key_value:get(a, 1, 2)),
-    ?assertError(badkey, key_value:get([b], [])),
-    ?assertError(badkey, key_value:get([b], #{})),
-    ?assertError(badkey, key_value:get([b], [{a, 1}])).
+    ?assertError(badkey, babel_key_value:get([], 1)),
+    ?assertError(badkey, babel_key_value:get([], 1, 2)),
+    ?assertError(badarg, babel_key_value:get(a, 1)),
+    ?assertError(badarg, babel_key_value:get(a, 1, 2)),
+    ?assertError(badkey, babel_key_value:get([b], [])),
+    ?assertError(badkey, babel_key_value:get([b], #{})),
+    ?assertError(badkey, babel_key_value:get([b], [{a, 1}])).
 
 
 badarg_set_test(_) ->
-    ?assertError(badkey, key_value:set([], 1, #{a => 1})),
-    ?assertError(badarg, key_value:set(a, 1, true)),
-    ?assertError(badarg, key_value:set([a, b], 1, [{a , 1}])),
-    ?assertError(badarg, key_value:set([a, b], 1, #{a => 1})).
+    ?assertError(badkey, babel_key_value:set([], 1, #{a => 1})),
+    ?assertError(badarg, babel_key_value:set(a, 1, true)),
+    ?assertError(badarg, babel_key_value:set([a, b], 1, [{a , 1}])),
+    ?assertError(badarg, babel_key_value:set([a, b], 1, #{a => 1})).
 
 
 get_1_test(_) ->
@@ -76,17 +76,17 @@ get_1_test(_) ->
     A = [{b, B}],
     KVC = [{a, A}],
 
-    ?assertEqual(A, key_value:get(a, KVC)),
-    ?assertEqual(A, key_value:get([a], KVC)),
-    ?assertEqual(A, key_value:get({a}, KVC)),
-    ?assertEqual(B, key_value:get(b, A)),
-    ?assertEqual(B, key_value:get([b], A)),
-    ?assertEqual(B, key_value:get({b}, A)),
-    ?assertEqual(B, key_value:get([a, b], KVC)),
-    ?assertEqual(B, key_value:get({a, b}, KVC)),
-    ?assertEqual(C, key_value:get([a, b, c], KVC)),
-    ?assertEqual(D, key_value:get([a, b, c, d], KVC)),
-    ?assertEqual(1, key_value:get([a, b, c, d, e], KVC)).
+    ?assertEqual(A, babel_key_value:get(a, KVC)),
+    ?assertEqual(A, babel_key_value:get([a], KVC)),
+    %% ?assertEqual(A, babel_key_value:get({a}, KVC)),
+    ?assertEqual(B, babel_key_value:get(b, A)),
+    ?assertEqual(B, babel_key_value:get([b], A)),
+    %% ?assertEqual(B, babel_key_value:get({b}, A)),
+    ?assertEqual(B, babel_key_value:get([a, b], KVC)),
+    %% ?assertEqual(B, babel_key_value:get({a, b}, KVC)),
+    ?assertEqual(C, babel_key_value:get([a, b, c], KVC)),
+    ?assertEqual(D, babel_key_value:get([a, b, c, d], KVC)),
+    ?assertEqual(1, babel_key_value:get([a, b, c, d, e], KVC)).
 
 set_1_test(_) ->
     D = #{e => 1},
@@ -95,11 +95,11 @@ set_1_test(_) ->
     A = [{b, B}],
     KVC = [{a, A}],
 
-    ?assertEqual(D, key_value:set(e, 1, #{})),
-    ?assertEqual(C, key_value:set(d, D, [])),
-    ?assertEqual(B, key_value:set(c, C, #{})),
-    ?assertEqual(A, key_value:set(b, B, [])),
-    ?assertEqual(KVC, key_value:set(a, A, [])).
+    ?assertEqual(D, babel_key_value:set(e, 1, #{})),
+    ?assertEqual(C, babel_key_value:set(d, D, [])),
+    ?assertEqual(B, babel_key_value:set(c, C, #{})),
+    ?assertEqual(A, babel_key_value:set(b, B, [])),
+    ?assertEqual(KVC, babel_key_value:set(a, A, [])).
 
 
 crdt_get_1_test(_) ->

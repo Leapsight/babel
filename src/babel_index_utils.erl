@@ -31,6 +31,8 @@
 -export([build_output/3]).
 
 
+-eqwalizer({nowarn_function, build_output/3}).
+
 
 
 %% =============================================================================
@@ -43,17 +45,16 @@
 %% @doc Collects keys `Keys' from key value data `Data' and joins them using a
 %% separator.
 %% We do this as Riak does not support list and sets are ordered.
+%% The values for `Keys' in `Data' must be binary strings.
 %% @end
 %% -----------------------------------------------------------------------------
--spec gen_key([babel_key_value:key()], binary(), map()) -> binary().
+-spec gen_key([babel_key_value:key()], babel_key_value:t(), map()) -> binary().
 
 gen_key(Keys, Data, #{case_sensitive := true}) ->
-    binary_utils:join(babel_key_value:collect(Keys, Data));
+    binary_utils:join(collect(Keys, Data));
 
 gen_key(Keys, Data, #{case_sensitive := false}) ->
-    L = [
-        string:lowercase(X) || X <- babel_key_value:collect(Keys, Data)
-    ],
+    L = [string:lowercase(X) ||  X <- collect(Keys, Data)],
     binary_utils:join(L).
 
 
@@ -65,7 +66,8 @@ gen_key(Keys, Data, #{case_sensitive := false}) ->
 %% exceptions and returns a value.
 %% @end
 %% -----------------------------------------------------------------------------
--spec safe_gen_key([babel_key_value:key()], binary(), map()) -> binary().
+-spec safe_gen_key([babel_key_value:key()], babel_key_value:t(), map()) ->
+    binary() | undefined | error.
 
 safe_gen_key([], _, _) ->
     undefined;
@@ -96,8 +98,11 @@ build_output(Keys, Bin) when is_binary(Bin) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec build_output([babel_key_value:key()], binary() | undefined, map()) ->
-    map().
+-spec build_output(
+    [babel_key_value:key()],
+    [binary()] | binary() | undefined,
+    map()
+    ) -> map().
 
 build_output([], undefined, Acc) ->
     Acc;
@@ -105,11 +110,26 @@ build_output([], undefined, Acc) ->
 build_output(Keys, Bin, Acc) when is_binary(Bin) ->
     build_output(Keys, binary:split(Bin, <<$\31>>), Acc);
 
-build_output([X | Xs], [Y | Ys], Acc) when is_list(X) ->
-    build_output(Xs, Ys, babel_key_value:put(X, Y, Acc));
-
 build_output([X | Xs], [Y | Ys], Acc) ->
     build_output(Xs, Ys, maps:put(X, Y, Acc));
 
 build_output([], [], Acc) ->
     Acc.
+
+
+
+
+%% =============================================================================
+%% PRIVATE
+%% =============================================================================
+
+
+
+%% @private
+-spec collect([babel_key_value:key()], babel_key_value:t()) -> [binary()].
+
+collect(Keys, Data) ->
+    [X || X <- babel_key_value:collect(Keys, Data), is_binary(X)].
+
+
+
