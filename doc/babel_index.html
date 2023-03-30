@@ -1,0 +1,2037 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.29.1">
+    <meta name="project" content="babel v0.3.11">
+
+    <title>babel_index — babel v0.3.11</title>
+    <link rel="stylesheet" href="dist/html-erlang-6FXMBT73.css" />
+
+
+    <script src="dist/handlebars.runtime-NWIB6V2M.js"></script>
+    <script src="dist/handlebars.templates-IV5W3OL2.js"></script>
+    <script src="dist/sidebar_items-87E3B8FB.js"></script>
+
+      <script src="docs_config.js"></script>
+
+    <script async src="dist/html-XN2TSG4M.js"></script>
+
+
+  </head>
+  <body data-type="modules" class="page-behaviour">
+    <script>
+
+      try {
+        var settings = JSON.parse(localStorage.getItem('ex_doc:settings') || '{}');
+
+        if (settings.theme === 'dark' ||
+           ((settings.theme === 'system' || settings.theme == null) &&
+             window.matchMedia('(prefers-color-scheme: dark)').matches)
+           ) {
+          document.body.classList.add('dark')
+        }
+      } catch (error) { }
+    </script>
+
+<div class="main">
+
+<button class="sidebar-button sidebar-toggle" aria-label="toggle sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<section class="sidebar">
+  <form class="sidebar-search" action="search.html">
+    <button type="submit" class="search-button" aria-label="Submit Search">
+      <i class="ri-search-2-line" aria-hidden="true" title="Submit search"></i>
+    </button>
+    <button type="button" tabindex="-1" class="search-close-button" aria-label="Cancel Search">
+      <i class="ri-close-line ri-lg" aria-hidden="true" title="Cancel search"></i>
+    </button>
+    <label class="search-label">
+      <p class="sr-only">Search</p>
+      <input name="q" type="text" class="search-input" placeholder="Search..." aria-label="Input your search terms" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    </label>
+  </form>
+
+  <div class="autocomplete">
+    <div class="autocomplete-results">
+    </div>
+  </div>
+
+  <div class="sidebar-header">
+
+    <div class="sidebar-projectDetails">
+      <a href="readme.html" class="sidebar-projectName" translate="no">
+babel
+      </a>
+      <strong class="sidebar-projectVersion" translate="no">
+        v0.3.11
+      </strong>
+    </div>
+    <ul class="sidebar-listNav">
+      <li><a id="extras-list-link" href="#full-list">Pages</a></li>
+
+        <li><a id="modules-list-link" href="#full-list">Modules</a></li>
+
+
+    </ul>
+  </div>
+
+  <div class="gradient"></div>
+  <ul id="full-list" class="sidebar-fullList"></ul>
+</section>
+
+<section class="content">
+  <output role="status" id="toast"></output>
+  <div class="content-outer">
+    <div id="content" class="content-inner">
+
+<h1>
+<button class="icon-action display-settings">
+  <i class="ri-settings-3-line"></i>
+  <span class="sr-only">Settings</span>
+</button>
+
+
+    <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L34" title="View Source" class="icon-action" rel="help">
+      <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+      <span class="sr-only">View Source</span>
+    </a>
+
+  <span translate="no">babel_index</span> <small>behaviour</small>
+  <small class="app-vsn" translate="no">(babel v0.3.11)</small>
+
+</h1>
+
+
+  <section id="moduledoc">
+<p>An object that specifies the type and configuration of an application maintained index in Riak KV and the location <code>({bucket_type(), bucket()}, key()})</code> of its partitions <a href="babel_index_partition.html"><code>babel_index_partition</code></a> in Riak KV.</p><p>Every Index has one or more partition objects which are modelled as Riak KV maps.</p>An Index is persisted as a read-only CRDT Map as part of an Index Collection <a href="babel_index_collection.html"><code>babel_index_collection</code></a>. An Index Collection aggregates all indices for a domain entity or resource e.g. accounts.
+  </section>
+
+
+  <section id="summary" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#summary">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+      Summary
+    </h1>
+<div class="summary-types summary">
+  <h2>
+    <a href="#types">Types</a>
+  </h2>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:fold_fun/0" translate="no">fold_fun/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:fold_opts/0" translate="no">fold_opts/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:foreach_fun/0" translate="no">foreach_fun/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:index_key/0" translate="no">index_key/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:index_values/0" translate="no">index_values/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:key_value/0" translate="no">key_value/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:local_key/0" translate="no">local_key/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:maybe_no_return/1" translate="no">maybe_no_return/1</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:partition_id/0" translate="no">partition_id/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:partition_key/0" translate="no">partition_key/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:query_opts/0" translate="no">query_opts/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:riak_object/0" translate="no">riak_object/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:t/0" translate="no">t/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:update_action/0" translate="no">update_action/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:update_opts/0" translate="no">update_opts/0</a>
+
+      </div>
+
+    </div>
+
+</div>
+<div class="summary-callbacks summary">
+  <h2>
+    <a href="#callbacks">Callbacks</a>
+  </h2>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:distinguished_key_paths/1" translate="no">distinguished_key_paths/1</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:from_riak_dict/1" translate="no">from_riak_dict/1</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:init/2" translate="no">init/2</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:init_partition/2" translate="no">init_partition/2</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:iterator/3" translate="no">iterator/3</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:iterator_done/1" translate="no">iterator_done/1</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:iterator_key/1" translate="no">iterator_key/1</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:iterator_move/3" translate="no">iterator_move/3</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:iterator_values/1" translate="no">iterator_values/1</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:match/3" translate="no">match/3</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:number_of_partitions/1" translate="no">number_of_partitions/1</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:partition_identifier/2" translate="no">partition_identifier/2</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:partition_identifiers/2" translate="no">partition_identifiers/2</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:to_riak_object/1" translate="no">to_riak_object/1</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#c:update_partition/3" translate="no">update_partition/3</a>
+
+      </div>
+
+    </div>
+
+</div>
+<div class="summary-functions summary">
+  <h2>
+    <a href="#functions">Functions</a>
+  </h2>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#bucket/1" translate="no">bucket(_)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the Riak KV bucket were this index partitions are stored.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#bucket_type/1" translate="no">bucket_type(_)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the Riak KV bucket type associated with this index.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#config/1" translate="no">config(_)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the configuration associated with this index. The configuration depends on the index type <a href="babel.html#type/1"><code>babel:type/1</code></a>.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#create_partitions/1" translate="no">create_partitions(_)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#distinguished_key_paths/1" translate="no">distinguished_key_paths(Index)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the list of the key paths that need to be present in the key value object passed as an action to <a href="#update/3"><code>update/3</code></a>.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#foreach/2" translate="no">foreach(Fun, Index)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#from_riak_object/1" translate="no">from_riak_object(Object)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#match/3" translate="no">match(Index, Pattern, Opts)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns a list of matching index entries</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#name/1" translate="no">name(_)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns name of this index</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#new/1" translate="no">new(IndexData)</a>
+
+      </div>
+
+        <div class="summary-synopsis"><p>Returns a new index based on the specification map. It fails in case the specification in invalid.</p></div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#partition_identifier/2" translate="no">partition_identifier(KeyValue, Index)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the identifier for the index partition assigned for key value object <code>KeyValue</code> when passed as an action to <a href="#update/3"><code>update/3</code></a>.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#partition_identifiers/1" translate="no">partition_identifiers(Index)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the list of Riak KV keys under which the partitions are stored, in ascending order. This is equivalent to the call <code>partition_identifiers(Index, asc)</code>.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#partition_identifiers/2" translate="no">partition_identifiers(Index, Order)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the list of Riak KV keys under which the partitions are stored in a defined order i.e. <code>asc</code> or <code>desc</code>.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#to_delete_task/2" translate="no">to_delete_task(Index, PartitionId)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the representation of this object as a Reliable Delete work item.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#to_riak_object/1" translate="no">to_riak_object(Index)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#to_update_task/2" translate="no">to_update_task(Index, Partition)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the representation of this object as a Reliable Update work item.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#type/1" translate="no">type(_)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the type of this index. A type is a module name implementing the babel_index behaviour i.e. a type of index.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#typed_bucket/1" translate="no">typed_bucket(_)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the Riak KV <code>typed_bucket()</code> associated with this index.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#update/3" translate="no">update(Actions, Index, Opts)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Throws <code>{badaction, update_action()}</code> in case of the action wants to delete a modified map.</div>
+
+    </div>
+
+</div>
+
+  </section>
+
+
+  <section id="types" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#types">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+Types
+    </h1>
+    <div class="types-list">
+<section class="detail" id="t:fold_fun/0">
+
+  <div class="detail-header">
+    <a href="#t:fold_fun/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">fold_fun/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L165" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> fold_fun() :: fun((<a href="#t:index_key/0">index_key</a>(), <a href="#t:index_values/0">index_values</a>(), any()) -> any()).</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:fold_opts/0">
+
+  <div class="detail-header">
+    <a href="#t:fold_opts/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">fold_opts/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L161" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> fold_opts() :: #{first => binary(), sort_ordering => asc | desc}.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:foreach_fun/0">
+
+  <div class="detail-header">
+    <a href="#t:foreach_fun/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">foreach_fun/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L169" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> foreach_fun() :: fun((<a href="#t:index_key/0">index_key</a>(), <a href="#t:index_values/0">index_values</a>()) -> any()).</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:index_key/0">
+
+  <div class="detail-header">
+    <a href="#t:index_key/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">index_key/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L158" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> index_key() :: binary().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:index_values/0">
+
+  <div class="detail-header">
+    <a href="#t:index_values/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">index_values/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L159" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> index_values() :: map().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:key_value/0">
+
+  <div class="detail-header">
+    <a href="#t:key_value/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">key_value/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L157" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> key_value() :: <a href="babel_key_value.html#t:t/0">babel_key_value:t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:local_key/0">
+
+  <div class="detail-header">
+    <a href="#t:local_key/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">local_key/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L151" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> local_key() :: binary().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:maybe_no_return/1">
+
+  <div class="detail-header">
+    <a href="#t:maybe_no_return/1" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">maybe_no_return/1</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L15" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> maybe_no_return(T) :: T | no_return().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:partition_id/0">
+
+  <div class="detail-header">
+    <a href="#t:partition_id/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">partition_id/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L149" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> partition_id() :: binary().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:partition_key/0">
+
+  <div class="detail-header">
+    <a href="#t:partition_key/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">partition_key/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L150" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> partition_key() :: binary().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:query_opts/0">
+
+  <div class="detail-header">
+    <a href="#t:query_opts/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">query_opts/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L173" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> query_opts() ::
+    #{max_results => non_neg_integer() | all,
+      continuation => any(),
+      return_body => any(),
+      timeout => timeout(),
+      pagination_sort => boolean(),
+      stream => boolean()}.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:riak_object/0">
+
+  <div class="detail-header">
+    <a href="#t:riak_object/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">riak_object/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L148" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> riak_object() :: <a href="https://hexdocs.pm/riakc/riakc_map.html#t:crdt_map/0">riakc_map:crdt_map</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:t/0">
+
+  <div class="detail-header">
+    <a href="#t:t/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">t/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L139" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> t() ::
+    #{bucket := binary(),
+      bucket_type := binary(),
+      config := _,
+      name := binary(),
+      type := atom(),
+      request_opts => map()}.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:update_action/0">
+
+  <div class="detail-header">
+    <a href="#t:update_action/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">update_action/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L152" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> update_action() ::
+    {insert | delete, <a href="#t:key_value/0">key_value</a>()} | {update, Old :: <a href="#t:key_value/0">key_value</a>() | undefined, New :: <a href="#t:key_value/0">key_value</a>()}.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:update_opts/0">
+
+  <div class="detail-header">
+    <a href="#t:update_opts/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">update_opts/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L182" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> update_opts() :: #{connection => pid() | fun(() -> pid()), force => boolean}.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
+
+  <section id="callbacks" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#callbacks">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+Callbacks
+    </h1>
+    <div class="callbacks-list">
+<section class="detail" id="c:distinguished_key_paths/1">
+
+  <div class="detail-header">
+    <a href="#c:distinguished_key_paths/1" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">distinguished_key_paths/1</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L263" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> distinguished_key_paths(Config :: map()) -> [<a href="babel_key_value.html#t:path/0">babel_key_value:path</a>()].</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:from_riak_dict/1">
+
+  <div class="detail-header">
+    <a href="#c:from_riak_dict/1" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">from_riak_dict/1</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L248" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> from_riak_dict(Dict :: <a href="https://www.erlang.org/doc/man/orddict.html#type-orddict">orddict:orddict</a>()) -> Config :: map().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:init/2">
+
+  <div class="detail-header">
+    <a href="#c:init/2" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">init/2</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L240" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> init(Name :: binary(), ConfigData :: map()) -> {ok, Config :: map()} | {error, any()}.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:init_partition/2">
+
+  <div class="detail-header">
+    <a href="#c:init_partition/2" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">init_partition/2</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L244" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> init_partition(PartitionId :: binary(), ConfigData :: map()) ->
+                  {ok, <a href="babel_index_partition.html#t:t/0">babel_index_partition:t</a>()} | {error, any()}.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:iterator/3">
+
+  <div class="detail-header">
+    <a href="#c:iterator/3" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">iterator/3</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L268" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> iterator(Index :: <a href="#t:t/0">t</a>(), Config :: map(), Opts :: <a href="babel.html#t:get_opts/0">babel:get_opts</a>()) -> Iterator :: any().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:iterator_done/1">
+
+  <div class="detail-header">
+    <a href="#c:iterator_done/1" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">iterator_done/1</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L275" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> iterator_done(Iterator :: any()) -> boolean().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:iterator_key/1">
+
+  <div class="detail-header">
+    <a href="#c:iterator_key/1" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">iterator_key/1</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L277" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> iterator_key(Iterator :: any()) -> Key :: <a href="#t:index_key/0">index_key</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:iterator_move/3">
+
+  <div class="detail-header">
+    <a href="#c:iterator_move/3" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">iterator_move/3</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L271" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> iterator_move(Action :: iterator_action(), Iterator :: any(), map()) -> any().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:iterator_values/1">
+
+  <div class="detail-header">
+    <a href="#c:iterator_values/1" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">iterator_values/1</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L279" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> iterator_values(Iterator :: any()) -> Key :: <a href="#t:index_values/0">index_values</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:match/3">
+
+  <div class="detail-header">
+    <a href="#c:match/3" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">match/3</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L265" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> match(Pattern :: <a href="#t:key_value/0">key_value</a>(), <a href="babel_index_partition.html#t:t/0">babel_index_partition:t</a>(), map()) -> [map()] | no_return().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:number_of_partitions/1">
+
+  <div class="detail-header">
+    <a href="#c:number_of_partitions/1" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">number_of_partitions/1</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L252" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> number_of_partitions(map()) -> pos_integer() | undefined.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:partition_identifier/2">
+
+  <div class="detail-header">
+    <a href="#c:partition_identifier/2" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">partition_identifier/2</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L254" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> partition_identifier(<a href="#t:key_value/0">key_value</a>(), map()) -> <a href="#t:partition_id/0">partition_id</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:partition_identifiers/2">
+
+  <div class="detail-header">
+    <a href="#c:partition_identifiers/2" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">partition_identifiers/2</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L256" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> partition_identifiers(asc | desc, map()) -> [<a href="#t:partition_id/0">partition_id</a>()].</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:to_riak_object/1">
+
+  <div class="detail-header">
+    <a href="#c:to_riak_object/1" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">to_riak_object/1</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L250" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> to_riak_object(Config :: map()) -> Object :: <a href="#t:riak_object/0">riak_object</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="c:update_partition/3">
+
+  <div class="detail-header">
+    <a href="#c:update_partition/3" class="detail-link" title="Link to this callback">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this callback</span>
+    </a>
+    <h1 class="signature" translate="no">update_partition/3</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L258" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-callback</span> update_partition(Actions :: [<a href="#t:update_action/0">update_action</a>()],
+                 Partition :: <a href="babel_index_partition.html#t:t/0">babel_index_partition:t</a>(),
+                 Config :: map()) ->
+                    UpdatedPartition :: <a href="babel_index_partition.html#t:t/0">babel_index_partition:t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
+
+  <section id="functions" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#functions">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+Functions
+    </h1>
+    <div class="functions-list">
+<section class="detail" id="bucket/1">
+
+  <div class="detail-header">
+    <a href="#bucket/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">bucket(_)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L463" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> bucket(<a href="#t:t/0">t</a>()) -> <a href="#t:maybe_no_return/1">maybe_no_return</a>(binary()).</pre>
+
+      </div>
+
+Returns the Riak KV bucket were this index partitions are stored.
+  </section>
+</section>
+<section class="detail" id="bucket_type/1">
+
+  <div class="detail-header">
+    <a href="#bucket_type/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">bucket_type(_)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L472" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> bucket_type(<a href="#t:t/0">t</a>()) -> <a href="#t:maybe_no_return/1">maybe_no_return</a>(binary()).</pre>
+
+      </div>
+
+Returns the Riak KV bucket type associated with this index.
+  </section>
+</section>
+<section class="detail" id="config/1">
+
+  <div class="detail-header">
+    <a href="#config/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">config(_)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L502" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> config(<a href="#t:t/0">t</a>()) -> <a href="#t:maybe_no_return/1">maybe_no_return</a>(<a href="https://hexdocs.pm/riakc/riakc_map.html#t:crdt_map/0">riakc_map:crdt_map</a>()).</pre>
+
+      </div>
+
+Returns the configuration associated with this index. The configuration depends on the index type <a href="babel.html#type/1"><code>babel:type/1</code></a>.
+  </section>
+</section>
+<section class="detail" id="create_partitions/1">
+
+  <div class="detail-header">
+    <a href="#create_partitions/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">create_partitions(_)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L406" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> create_partitions(<a href="#t:t/0">t</a>()) -> [<a href="babel_index_partition.html#t:t/0">babel_index_partition:t</a>()] | no_return().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="distinguished_key_paths/1">
+
+  <div class="detail-header">
+    <a href="#distinguished_key_paths/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">distinguished_key_paths(Index)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L550" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> distinguished_key_paths(Index :: <a href="#t:t/0">t</a>()) -> [<a href="babel_key_value.html#t:path/0">babel_key_value:path</a>()].</pre>
+
+      </div>
+
+Returns the list of the key paths that need to be present in the key value object passed as an action to <a href="#update/3"><code>update/3</code></a>.
+  </section>
+</section>
+<section class="detail" id="foreach/2">
+
+  <div class="detail-header">
+    <a href="#foreach/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">foreach(Fun, Index)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L642" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> foreach(<a href="#t:foreach_fun/0">foreach_fun</a>(), Index :: <a href="#t:t/0">t</a>()) -> any().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="from_riak_object/1">
+
+  <div class="detail-header">
+    <a href="#from_riak_object/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">from_riak_object(Object)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L338" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> from_riak_object(Object :: <a href="#t:riak_object/0">riak_object</a>()) -> Index :: <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="match/3">
+
+  <div class="detail-header">
+    <a href="#match/3" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">match(Index, Pattern, Opts)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L655" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> match(Index :: <a href="#t:t/0">t</a>(), Pattern :: <a href="babel_index.html#t:key_value/0">babel_index:key_value</a>(), Opts :: <a href="babel.html#t:opts/0">babel:opts</a>()) ->
+         [{<a href="#t:index_key/0">index_key</a>(), <a href="#t:index_values/0">index_values</a>()}] | no_return().</pre>
+
+      </div>
+
+Returns a list of matching index entries
+  </section>
+</section>
+<section class="detail" id="name/1">
+
+  <div class="detail-header">
+    <a href="#name/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">name(_)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L454" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> name(<a href="#t:t/0">t</a>()) -> binary().</pre>
+
+      </div>
+
+Returns name of this index
+  </section>
+</section>
+<section class="detail" id="new/1">
+
+  <div class="detail-header">
+    <a href="#new/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">new(IndexData)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L311" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> new(IndexData :: map()) -> Index :: <a href="#t:t/0">t</a>() | no_return().</pre>
+
+      </div>
+
+<p>Returns a new index based on the specification map. It fails in case the specification in invalid.</p><p>A specification is map with the following fields (required fields are in bold):</p>**name** :: binary() – a unique name for this index within a collection. **bucket_type** :: binary() | atom() – the bucket type used to store the babel_index_partition:t() objects. This bucket type should have a datatype of <code>map`. **bucket** :: binary() | atom() – the bucket name used to store the babel_index_partition:t() objects of this index. Typically the name of an entity in plural form e.g.</code>accounts'. **type** :: atom() – the index type (Erlang module) used by this index. config :: map() – the configuration data for the index type used by this index.
+  </section>
+</section>
+<section class="detail" id="partition_identifier/2">
+
+  <div class="detail-header">
+    <a href="#partition_identifier/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">partition_identifier(KeyValue, Index)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L537" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> partition_identifier(KeyValue :: <a href="#t:key_value/0">key_value</a>(), Index :: <a href="#t:t/0">t</a>()) -> binary().</pre>
+
+      </div>
+
+Returns the identifier for the index partition assigned for key value object <code>KeyValue</code> when passed as an action to <a href="#update/3"><code>update/3</code></a>.
+  </section>
+</section>
+<section class="detail" id="partition_identifiers/1">
+
+  <div class="detail-header">
+    <a href="#partition_identifiers/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">partition_identifiers(Index)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L602" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> partition_identifiers(<a href="#t:t/0">t</a>()) -> <a href="#t:maybe_no_return/1">maybe_no_return</a>([binary()]).</pre>
+
+      </div>
+
+Returns the list of Riak KV keys under which the partitions are stored, in ascending order. This is equivalent to the call <code>partition_identifiers(Index, asc)</code>.
+  </section>
+</section>
+<section class="detail" id="partition_identifiers/2">
+
+  <div class="detail-header">
+    <a href="#partition_identifiers/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">partition_identifiers(Index, Order)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L613" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> partition_identifiers(<a href="#t:t/0">t</a>(), asc | desc) -> <a href="#t:maybe_no_return/1">maybe_no_return</a>([binary()]).</pre>
+
+      </div>
+
+Returns the list of Riak KV keys under which the partitions are stored in a defined order i.e. <code>asc</code> or <code>desc</code>.
+  </section>
+</section>
+<section class="detail" id="to_delete_task/2">
+
+  <div class="detail-header">
+    <a href="#to_delete_task/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">to_delete_task(Index, PartitionId)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L440" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> to_delete_task(Index :: <a href="babel_index.html#t:t/0">babel_index:t</a>(), PartitionId :: binary()) -> reliable:action().</pre>
+
+      </div>
+
+Returns the representation of this object as a Reliable Delete work item.
+  </section>
+</section>
+<section class="detail" id="to_riak_object/1">
+
+  <div class="detail-header">
+    <a href="#to_riak_object/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">to_riak_object(Index)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L371" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> to_riak_object(Index :: <a href="#t:t/0">t</a>()) -> IndexCRDT :: <a href="#t:riak_object/0">riak_object</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="to_update_task/2">
+
+  <div class="detail-header">
+    <a href="#to_update_task/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">to_update_task(Index, Partition)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L422" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> to_update_task(Index :: <a href="babel_index.html#t:t/0">babel_index:t</a>(), Partition :: <a href="babel_index_partition.html#t:t/0">babel_index_partition:t</a>()) ->
+                  reliable:action().</pre>
+
+      </div>
+
+Returns the representation of this object as a Reliable Update work item.
+  </section>
+</section>
+<section class="detail" id="type/1">
+
+  <div class="detail-header">
+    <a href="#type/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">type(_)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L492" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> type(<a href="#t:t/0">t</a>()) -> <a href="#t:maybe_no_return/1">maybe_no_return</a>(module()).</pre>
+
+      </div>
+
+Returns the type of this index. A type is a module name implementing the babel_index behaviour i.e. a type of index.
+  </section>
+</section>
+<section class="detail" id="typed_bucket/1">
+
+  <div class="detail-header">
+    <a href="#typed_bucket/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">typed_bucket(_)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L481" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> typed_bucket(<a href="#t:t/0">t</a>()) -> <a href="#t:maybe_no_return/1">maybe_no_return</a>({binary(), binary()}).</pre>
+
+      </div>
+
+Returns the Riak KV <code>typed_bucket()</code> associated with this index.
+  </section>
+</section>
+<section class="detail" id="update/3">
+
+  <div class="detail-header">
+    <a href="#update/3" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">update(Actions, Index, Opts)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_index.erl#L569" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> update(Actions :: [<a href="#t:update_action/0">update_action</a>()], Index :: <a href="#t:t/0">t</a>(), Opts :: <a href="#t:update_opts/0">update_opts</a>()) ->
+          <a href="#t:maybe_no_return/1">maybe_no_return</a>([<a href="babel_index_partition.html#t:t/0">babel_index_partition:t</a>()]).</pre>
+
+      </div>
+
+Throws <code>{badaction, update_action()}</code> in case of the action wants to delete a modified map.
+  </section>
+</section>
+
+    </div>
+  </section>
+
+      <footer class="footer">
+        <p>
+
+            <span class="line">
+              <a href="https://hex.pm/packages/babel/0.3.11" class="footer-hex-package">Hex Package</a>
+
+              <a href="https://preview.hex.pm/preview/babel/0.3.11">Hex Preview</a>
+
+                (<a href="https://preview.hex.pm/preview/babel/0.3.11/show/src/babel_index.erl">current file</a>)
+
+            </span>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Search HexDocs packages">
+              Search HexDocs
+            </button>
+
+              <a href="babel.epub" title="ePub version">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.29.1) for the
+
+            <a href="https://erlang.org" title="Erlang" target="_blank" translate="no">Erlang programming language</a>
+
+        </p>
+      </footer>
+    </div>
+  </div>
+</section>
+</div>
+
+
+  </body>
+</html>

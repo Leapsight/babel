@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.29.1">
+    <meta name="project" content="babel v0.3.11">
+
+    <title>babel_flag — babel v0.3.11</title>
+    <link rel="stylesheet" href="dist/html-erlang-6FXMBT73.css" />
+
+
+    <script src="dist/handlebars.runtime-NWIB6V2M.js"></script>
+    <script src="dist/handlebars.templates-IV5W3OL2.js"></script>
+    <script src="dist/sidebar_items-87E3B8FB.js"></script>
+
+      <script src="docs_config.js"></script>
+
+    <script async src="dist/html-XN2TSG4M.js"></script>
+
+
+  </head>
+  <body data-type="modules" class="page-module">
+    <script>
+
+      try {
+        var settings = JSON.parse(localStorage.getItem('ex_doc:settings') || '{}');
+
+        if (settings.theme === 'dark' ||
+           ((settings.theme === 'system' || settings.theme == null) &&
+             window.matchMedia('(prefers-color-scheme: dark)').matches)
+           ) {
+          document.body.classList.add('dark')
+        }
+      } catch (error) { }
+    </script>
+
+<div class="main">
+
+<button class="sidebar-button sidebar-toggle" aria-label="toggle sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<section class="sidebar">
+  <form class="sidebar-search" action="search.html">
+    <button type="submit" class="search-button" aria-label="Submit Search">
+      <i class="ri-search-2-line" aria-hidden="true" title="Submit search"></i>
+    </button>
+    <button type="button" tabindex="-1" class="search-close-button" aria-label="Cancel Search">
+      <i class="ri-close-line ri-lg" aria-hidden="true" title="Cancel search"></i>
+    </button>
+    <label class="search-label">
+      <p class="sr-only">Search</p>
+      <input name="q" type="text" class="search-input" placeholder="Search..." aria-label="Input your search terms" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    </label>
+  </form>
+
+  <div class="autocomplete">
+    <div class="autocomplete-results">
+    </div>
+  </div>
+
+  <div class="sidebar-header">
+
+    <div class="sidebar-projectDetails">
+      <a href="readme.html" class="sidebar-projectName" translate="no">
+babel
+      </a>
+      <strong class="sidebar-projectVersion" translate="no">
+        v0.3.11
+      </strong>
+    </div>
+    <ul class="sidebar-listNav">
+      <li><a id="extras-list-link" href="#full-list">Pages</a></li>
+
+        <li><a id="modules-list-link" href="#full-list">Modules</a></li>
+
+
+    </ul>
+  </div>
+
+  <div class="gradient"></div>
+  <ul id="full-list" class="sidebar-fullList"></ul>
+</section>
+
+<section class="content">
+  <output role="status" id="toast"></output>
+  <div class="content-outer">
+    <div id="content" class="content-inner">
+
+<h1>
+<button class="icon-action display-settings">
+  <i class="ri-settings-3-line"></i>
+  <span class="sr-only">Settings</span>
+</button>
+
+
+    <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L28" title="View Source" class="icon-action" rel="help">
+      <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+      <span class="sr-only">View Source</span>
+    </a>
+
+  <span translate="no">babel_flag</span> 
+  <small class="app-vsn" translate="no">(babel v0.3.11)</small>
+
+</h1>
+
+
+  <section id="moduledoc">
+<p>Flags behave much like Boolean values, except that instead of true or false flags have the values enable or disable.</p>Flags cannot be used on their own, i.e. a flag cannot be stored in a bucket/ key by itself. Instead, flags can only be stored within maps. To disable an existing flag, you have to read it or provide a context.
+  </section>
+
+
+  <section id="summary" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#summary">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+      Summary
+    </h1>
+<div class="summary-types summary">
+  <h2>
+    <a href="#types">Types</a>
+  </h2>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:babel_context/0" translate="no">babel_context/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:maybe_no_return/1" translate="no">maybe_no_return/1</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:t/0" translate="no">t/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:type_spec/0" translate="no">type_spec/0</a>
+
+      </div>
+
+    </div>
+
+</div>
+<div class="summary-functions summary">
+  <h2>
+    <a href="#functions">Functions</a>
+  </h2>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#context/1" translate="no">context(T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the Riak KV context</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#disable/1" translate="no">disable(Babel_flag)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Disables the flag, setting its value to false.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#enable/1" translate="no">enable(Babel_flag)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Enables the flag, setting its value to true.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#from_riak_flag/3" translate="no">from_riak_flag(RiakFlag, Ctxt, Type)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#is_type/1" translate="no">is_type(Term)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#is_valid_type_spec/1" translate="no">is_valid_type_spec(_)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#new/0" translate="no">new()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#new/1" translate="no">new(Value)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#new/2" translate="no">new(Value, Ctxt)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#original_value/1" translate="no">original_value(T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the original value of the flag.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#set/2" translate="no">set(_, T)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#set_context/2" translate="no">set_context(Ctxt, T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Sets the context <code>Ctxt</code>.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#to_riak_op/2" translate="no">to_riak_op(Babel_flag, _)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#type/0" translate="no">type()</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the symbolic name of this container.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#value/1" translate="no">value(T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the current value of the flag.</div>
+
+    </div>
+
+</div>
+
+  </section>
+
+
+  <section id="types" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#types">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+Types
+    </h1>
+    <div class="types-list">
+<section class="detail" id="t:babel_context/0">
+
+  <div class="detail-header">
+    <a href="#t:babel_context/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">babel_context/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L18" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> babel_context() :: <a href="https://hexdocs.pm/riakc/riakc_datatype.html#t:context/0">riakc_datatype:context</a>() | undefined | inherited.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:maybe_no_return/1">
+
+  <div class="detail-header">
+    <a href="#t:maybe_no_return/1" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">maybe_no_return/1</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L15" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> maybe_no_return(T) :: T | no_return().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:t/0">
+
+  <div class="detail-header">
+    <a href="#t:t/0" class="detail-link" title="Link to this opaque">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this opaque</span>
+    </a>
+    <h1 class="signature" translate="no">t/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L39" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+      <span class="note">(opaque)</span>
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-opaque</span> t()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:type_spec/0">
+
+  <div class="detail-header">
+    <a href="#t:type_spec/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">type_spec/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L40" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> type_spec() :: boolean.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
+
+  <section id="functions" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#functions">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+Functions
+    </h1>
+    <div class="functions-list">
+<section class="detail" id="context/1">
+
+  <div class="detail-header">
+    <a href="#context/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">context(T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L174" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> context(T :: <a href="#t:t/0">t</a>()) -> <a href="#t:babel_context/0">babel_context</a>().</pre>
+
+      </div>
+
+Returns the Riak KV context
+  </section>
+</section>
+<section class="detail" id="disable/1">
+
+  <div class="detail-header">
+    <a href="#disable/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">disable(Babel_flag)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L238" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> disable(<a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+Disables the flag, setting its value to false.
+  </section>
+</section>
+<section class="detail" id="enable/1">
+
+  <div class="detail-header">
+    <a href="#enable/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">enable(Babel_flag)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L227" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> enable(<a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+Enables the flag, setting its value to true.
+  </section>
+</section>
+<section class="detail" id="from_riak_flag/3">
+
+  <div class="detail-header">
+    <a href="#from_riak_flag/3" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">from_riak_flag(RiakFlag, Ctxt, Type)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L118" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> from_riak_flag(RiakFlag :: riakc_flag:riakc_t() | boolean,
+               Ctxt :: <a href="#t:babel_context/0">babel_context</a>(),
+               Type :: <a href="#t:type_spec/0">type_spec</a>()) ->
+                  <a href="#t:maybe_no_return/1">maybe_no_return</a>(<a href="#t:t/0">t</a>()).</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="is_type/1">
+
+  <div class="detail-header">
+    <a href="#is_type/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">is_type(Term)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L154" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> is_type(Term :: any()) -> boolean().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="is_valid_type_spec/1">
+
+  <div class="detail-header">
+    <a href="#is_valid_type_spec/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">is_valid_type_spec(_)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L164" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> is_valid_type_spec(term()) -> boolean().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="new/0">
+
+  <div class="detail-header">
+    <a href="#new/0" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">new()</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L75" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> new() -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="new/1">
+
+  <div class="detail-header">
+    <a href="#new/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">new(Value)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L85" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> new(Value :: boolean()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="new/2">
+
+  <div class="detail-header">
+    <a href="#new/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">new(Value, Ctxt)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L98" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> new(Value :: boolean(), Ctxt :: <a href="#t:babel_context/0">babel_context</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="original_value/1">
+
+  <div class="detail-header">
+    <a href="#original_value/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">original_value(T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L201" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> original_value(T :: <a href="#t:t/0">t</a>()) -> boolean().</pre>
+
+      </div>
+
+Returns the original value of the flag.
+  </section>
+</section>
+<section class="detail" id="set/2">
+
+  <div class="detail-header">
+    <a href="#set/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">set(_, T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L252" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> set(boolean(), <a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="set_context/2">
+
+  <div class="detail-header">
+    <a href="#set_context/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">set_context(Ctxt, T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L184" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> set_context(Ctxt :: <a href="#t:babel_context/0">babel_context</a>(), T :: <a href="#t:t/0">t</a>()) -> NewT :: <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+Sets the context <code>Ctxt</code>.
+  </section>
+</section>
+<section class="detail" id="to_riak_op/2">
+
+  <div class="detail-header">
+    <a href="#to_riak_op/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">to_riak_op(Babel_flag, _)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L132" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> to_riak_op(<a href="#t:t/0">t</a>(), <a href="#t:type_spec/0">type_spec</a>()) -> <a href="https://hexdocs.pm/riakc/riakc_datatype.html#t:update/1">riakc_datatype:update</a>(riak_flag:flag_op()).</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="type/0">
+
+  <div class="detail-header">
+    <a href="#type/0" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">type()</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L145" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> type() -> flag.</pre>
+
+      </div>
+
+Returns the symbolic name of this container.
+  </section>
+</section>
+<section class="detail" id="value/1">
+
+  <div class="detail-header">
+    <a href="#value/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">value(T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_flag.erl#L211" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> value(T :: <a href="#t:t/0">t</a>()) -> boolean().</pre>
+
+      </div>
+
+Returns the current value of the flag.
+  </section>
+</section>
+
+    </div>
+  </section>
+
+      <footer class="footer">
+        <p>
+
+            <span class="line">
+              <a href="https://hex.pm/packages/babel/0.3.11" class="footer-hex-package">Hex Package</a>
+
+              <a href="https://preview.hex.pm/preview/babel/0.3.11">Hex Preview</a>
+
+                (<a href="https://preview.hex.pm/preview/babel/0.3.11/show/src/babel_flag.erl">current file</a>)
+
+            </span>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Search HexDocs packages">
+              Search HexDocs
+            </button>
+
+              <a href="babel.epub" title="ePub version">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.29.1) for the
+
+            <a href="https://erlang.org" title="Erlang" target="_blank" translate="no">Erlang programming language</a>
+
+        </p>
+      </footer>
+    </div>
+  </div>
+</section>
+</div>
+
+
+  </body>
+</html>

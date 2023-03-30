@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.29.1">
+    <meta name="project" content="babel v0.3.11">
+
+    <title>babel_counter — babel v0.3.11</title>
+    <link rel="stylesheet" href="dist/html-erlang-6FXMBT73.css" />
+
+
+    <script src="dist/handlebars.runtime-NWIB6V2M.js"></script>
+    <script src="dist/handlebars.templates-IV5W3OL2.js"></script>
+    <script src="dist/sidebar_items-87E3B8FB.js"></script>
+
+      <script src="docs_config.js"></script>
+
+    <script async src="dist/html-XN2TSG4M.js"></script>
+
+
+  </head>
+  <body data-type="modules" class="page-module">
+    <script>
+
+      try {
+        var settings = JSON.parse(localStorage.getItem('ex_doc:settings') || '{}');
+
+        if (settings.theme === 'dark' ||
+           ((settings.theme === 'system' || settings.theme == null) &&
+             window.matchMedia('(prefers-color-scheme: dark)').matches)
+           ) {
+          document.body.classList.add('dark')
+        }
+      } catch (error) { }
+    </script>
+
+<div class="main">
+
+<button class="sidebar-button sidebar-toggle" aria-label="toggle sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<section class="sidebar">
+  <form class="sidebar-search" action="search.html">
+    <button type="submit" class="search-button" aria-label="Submit Search">
+      <i class="ri-search-2-line" aria-hidden="true" title="Submit search"></i>
+    </button>
+    <button type="button" tabindex="-1" class="search-close-button" aria-label="Cancel Search">
+      <i class="ri-close-line ri-lg" aria-hidden="true" title="Cancel search"></i>
+    </button>
+    <label class="search-label">
+      <p class="sr-only">Search</p>
+      <input name="q" type="text" class="search-input" placeholder="Search..." aria-label="Input your search terms" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    </label>
+  </form>
+
+  <div class="autocomplete">
+    <div class="autocomplete-results">
+    </div>
+  </div>
+
+  <div class="sidebar-header">
+
+    <div class="sidebar-projectDetails">
+      <a href="readme.html" class="sidebar-projectName" translate="no">
+babel
+      </a>
+      <strong class="sidebar-projectVersion" translate="no">
+        v0.3.11
+      </strong>
+    </div>
+    <ul class="sidebar-listNav">
+      <li><a id="extras-list-link" href="#full-list">Pages</a></li>
+
+        <li><a id="modules-list-link" href="#full-list">Modules</a></li>
+
+
+    </ul>
+  </div>
+
+  <div class="gradient"></div>
+  <ul id="full-list" class="sidebar-fullList"></ul>
+</section>
+
+<section class="content">
+  <output role="status" id="toast"></output>
+  <div class="content-outer">
+    <div id="content" class="content-inner">
+
+<h1>
+<button class="icon-action display-settings">
+  <i class="ri-settings-3-line"></i>
+  <span class="sr-only">Settings</span>
+</button>
+
+
+    <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L25" title="View Source" class="icon-action" rel="help">
+      <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+      <span class="sr-only">View Source</span>
+    </a>
+
+  <span translate="no">babel_counter</span> 
+  <small class="app-vsn" translate="no">(babel v0.3.11)</small>
+
+</h1>
+
+
+  <section id="moduledoc">
+Counters are a bucket-level data type that can be used by themselves, associated with a bucket/key pair, or used within a <a href="babel_map.html"><code>babel_map</code></a>. A counter’s value can only be a positive integer, negative integer, or zero.
+  </section>
+
+
+  <section id="summary" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#summary">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+      Summary
+    </h1>
+<div class="summary-types summary">
+  <h2>
+    <a href="#types">Types</a>
+  </h2>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:babel_context/0" translate="no">babel_context/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:maybe_no_return/1" translate="no">maybe_no_return/1</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:t/0" translate="no">t/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:type_spec/0" translate="no">type_spec/0</a>
+
+      </div>
+
+    </div>
+
+</div>
+<div class="summary-functions summary">
+  <h2>
+    <a href="#functions">Functions</a>
+  </h2>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#context/1" translate="no">context(T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the Riak KV context</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#decrement/1" translate="no">decrement(Babel_counter)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Decrements the counter by 1.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#decrement/2" translate="no">decrement(Amount, Babel_counter)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Decrements the counter by amount <code>Amount</code>.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#from_riak_counter/2" translate="no">from_riak_counter(RiakCounter, Type)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#increment/1" translate="no">increment(Babel_counter)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Increments the counter by 1.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#increment/2" translate="no">increment(Amount, Babel_counter)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Increments the counter by amount <code>Amount</code>.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#is_type/1" translate="no">is_type(Term)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#is_valid_type_spec/1" translate="no">is_valid_type_spec(_)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#new/0" translate="no">new()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#new/1" translate="no">new(Value)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#original_value/1" translate="no">original_value(T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the original value of the counter.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#set/2" translate="no">set(Amount, Babel_counter)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Increments or decrements the counter so that the result of calling <a href="#value/1"><code>value/1</code></a> would be equal to amount <code>Amount</code>.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#set_context/2" translate="no">set_context(Ctxt, T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">This has call has no effect and it is provided for compliance withe the datatype interface.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#to_riak_op/2" translate="no">to_riak_op(Babel_counter, _)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#type/0" translate="no">type()</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the symbolic name of this container.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#value/1" translate="no">value(T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the current value of the counter.</div>
+
+    </div>
+
+</div>
+
+  </section>
+
+
+  <section id="types" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#types">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+Types
+    </h1>
+    <div class="types-list">
+<section class="detail" id="t:babel_context/0">
+
+  <div class="detail-header">
+    <a href="#t:babel_context/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">babel_context/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L18" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> babel_context() :: <a href="https://hexdocs.pm/riakc/riakc_datatype.html#t:context/0">riakc_datatype:context</a>() | undefined | inherited.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:maybe_no_return/1">
+
+  <div class="detail-header">
+    <a href="#t:maybe_no_return/1" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">maybe_no_return/1</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L15" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> maybe_no_return(T) :: T | no_return().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:t/0">
+
+  <div class="detail-header">
+    <a href="#t:t/0" class="detail-link" title="Link to this opaque">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this opaque</span>
+    </a>
+    <h1 class="signature" translate="no">t/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L33" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+      <span class="note">(opaque)</span>
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-opaque</span> t()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:type_spec/0">
+
+  <div class="detail-header">
+    <a href="#t:type_spec/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">type_spec/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L34" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> type_spec() :: integer.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
+
+  <section id="functions" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#functions">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+Functions
+    </h1>
+    <div class="functions-list">
+<section class="detail" id="context/1">
+
+  <div class="detail-header">
+    <a href="#context/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">context(T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L149" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> context(T :: <a href="#t:t/0">t</a>()) -> <a href="#t:babel_context/0">babel_context</a>().</pre>
+
+      </div>
+
+Returns the Riak KV context
+  </section>
+</section>
+<section class="detail" id="decrement/1">
+
+  <div class="detail-header">
+    <a href="#decrement/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">decrement(Babel_counter)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L221" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> decrement(<a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+Decrements the counter by 1.
+  </section>
+</section>
+<section class="detail" id="decrement/2">
+
+  <div class="detail-header">
+    <a href="#decrement/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">decrement(Amount, Babel_counter)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L231" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> decrement(Amount :: integer(), <a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+Decrements the counter by amount <code>Amount</code>.
+  </section>
+</section>
+<section class="detail" id="from_riak_counter/2">
+
+  <div class="detail-header">
+    <a href="#from_riak_counter/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">from_riak_counter(RiakCounter, Type)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L93" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> from_riak_counter(RiakCounter :: <a href="https://hexdocs.pm/riakc/riakc_counter.html#t:counter/0">riakc_counter:counter</a>() | integer, Type :: integer) ->
+                     <a href="#t:maybe_no_return/1">maybe_no_return</a>(<a href="#t:t/0">t</a>()).</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="increment/1">
+
+  <div class="detail-header">
+    <a href="#increment/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">increment(Babel_counter)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L196" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> increment(<a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+Increments the counter by 1.
+  </section>
+</section>
+<section class="detail" id="increment/2">
+
+  <div class="detail-header">
+    <a href="#increment/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">increment(Amount, Babel_counter)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L206" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> increment(Amount :: integer(), <a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+Increments the counter by amount <code>Amount</code>.
+  </section>
+</section>
+<section class="detail" id="is_type/1">
+
+  <div class="detail-header">
+    <a href="#is_type/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">is_type(Term)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L129" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> is_type(Term :: any()) -> boolean().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="is_valid_type_spec/1">
+
+  <div class="detail-header">
+    <a href="#is_valid_type_spec/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">is_valid_type_spec(_)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L139" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> is_valid_type_spec(term()) -> boolean().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="new/0">
+
+  <div class="detail-header">
+    <a href="#new/0" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">new()</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L71" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> new() -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="new/1">
+
+  <div class="detail-header">
+    <a href="#new/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">new(Value)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L81" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> new(Value :: integer()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="original_value/1">
+
+  <div class="detail-header">
+    <a href="#original_value/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">original_value(T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L173" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> original_value(T :: <a href="#t:t/0">t</a>()) -> integer().</pre>
+
+      </div>
+
+Returns the original value of the counter.
+  </section>
+</section>
+<section class="detail" id="set/2">
+
+  <div class="detail-header">
+    <a href="#set/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">set(Amount, Babel_counter)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L242" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> set(integer(), <a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+Increments or decrements the counter so that the result of calling <a href="#value/1"><code>value/1</code></a> would be equal to amount <code>Amount</code>.
+  </section>
+</section>
+<section class="detail" id="set_context/2">
+
+  <div class="detail-header">
+    <a href="#set_context/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">set_context(Ctxt, T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L160" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> set_context(Ctxt :: <a href="#t:babel_context/0">babel_context</a>(), T :: <a href="#t:t/0">t</a>()) -> NewT :: <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+This has call has no effect and it is provided for compliance withe the datatype interface.
+  </section>
+</section>
+<section class="detail" id="to_riak_op/2">
+
+  <div class="detail-header">
+    <a href="#to_riak_op/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">to_riak_op(Babel_counter, _)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L107" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> to_riak_op(<a href="#t:t/0">t</a>(), <a href="#t:type_spec/0">type_spec</a>()) -> <a href="https://hexdocs.pm/riakc/riakc_datatype.html#t:update/1">riakc_datatype:update</a>(riak_counter:coutner_op()).</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="type/0">
+
+  <div class="detail-header">
+    <a href="#type/0" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">type()</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L120" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> type() -> counter.</pre>
+
+      </div>
+
+Returns the symbolic name of this container.
+  </section>
+</section>
+<section class="detail" id="value/1">
+
+  <div class="detail-header">
+    <a href="#value/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">value(T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_counter.erl#L183" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> value(T :: <a href="#t:t/0">t</a>()) -> integer().</pre>
+
+      </div>
+
+Returns the current value of the counter.
+  </section>
+</section>
+
+    </div>
+  </section>
+
+      <footer class="footer">
+        <p>
+
+            <span class="line">
+              <a href="https://hex.pm/packages/babel/0.3.11" class="footer-hex-package">Hex Package</a>
+
+              <a href="https://preview.hex.pm/preview/babel/0.3.11">Hex Preview</a>
+
+                (<a href="https://preview.hex.pm/preview/babel/0.3.11/show/src/babel_counter.erl">current file</a>)
+
+            </span>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Search HexDocs packages">
+              Search HexDocs
+            </button>
+
+              <a href="babel.epub" title="ePub version">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.29.1) for the
+
+            <a href="https://erlang.org" title="Erlang" target="_blank" translate="no">Erlang programming language</a>
+
+        </p>
+      </footer>
+    </div>
+  </div>
+</section>
+</div>
+
+
+  </body>
+</html>
