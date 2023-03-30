@@ -236,7 +236,8 @@ enable(#babel_flag{} = T) ->
 -spec disable(t()) -> t().
 
 disable(#babel_flag{context = undefined}) ->
-    throw(context_required);
+    %% throw(context_required);
+    new();
 
 disable(#babel_flag{} = T) ->
     T#babel_flag{op = disable}.

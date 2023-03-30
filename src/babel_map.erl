@@ -1396,42 +1396,39 @@ from_map(Map, {{type_spec_ref, _} = Ref, Spec}, Ctxt) when is_map(Spec) ->
 
 
 %% @private
-validate_type(Term, {map, _}) when is_map(Term) ->
-    ok;
+validate_type(Term, {map, _}) ->
+    is_map(Term) orelse is_type(Term);
 
-validate_type(Term, {set, _}) when is_list(Term) ->
+validate_type(Term, {set, _}) ->
     %% Chcking Term elements will be done by babel_set
-    ok;
+    is_list(Term) orelse babel_set:is_type(Term);
 
-validate_type(Term, {counter, integer}) when is_integer(Term) ->
-    ok;
+validate_type(Term, {counter, integer}) ->
+    is_integer(Term);
 
-validate_type(Term, {flag, boolean}) when is_boolean(Term) ->
-    ok;
+validate_type(Term, {flag, boolean}) ->
+    is_boolean(Term) orelse babel_flag:is_type(Term);
 
-validate_type(Term, {register, atom}) when is_atom(Term) ->
-    ok;
+validate_type(Term, {register, atom}) ->
+    is_atom(Term);
 
-validate_type(Term, {register, existing_atom}) when is_atom(Term) ->
-    ok;
+validate_type(Term, {register, existing_atom}) ->
+    is_atom(Term);
 
-validate_type(Term, {register, boolean}) when is_boolean(Term) ->
-    ok;
+validate_type(Term, {register, boolean}) ->
+    is_boolean(Term);
 
-validate_type(Term, {register, integer}) when is_integer(Term) ->
-    ok;
+validate_type(Term, {register, integer}) ->
+    is_integer(Term);
 
-validate_type(Term, {register, float}) when is_float(Term) ->
-    ok;
+validate_type(Term, {register, float}) ->
+    is_float(Term);
 
-validate_type(Term, {register, binary}) when is_binary(Term) ->
-    ok;
+validate_type(Term, {register, binary}) ->
+    is_binary(Term);
 
-validate_type(Term, {register, integer}) when is_integer(Term) ->
-    ok;
-
-validate_type(_, {register, Fun}) when is_function(Fun, 2) ->
-    ok;
+validate_type(_, {register, Fun}) ->
+    is_function(Fun, 2);
 
 validate_type(Term, {_, _} = Spec) ->
     error({badkeytype, Term, Spec}).
@@ -1700,32 +1697,39 @@ prepare_update_ops(T, Spec) ->
     %% Spec :: #{Key => {{_, _} = RKey, Spec}}
     FoldFun = fun
         ToOp({{_, map} = RKey, MapSpec}, Map, Acc) ->
-            case to_riak_op(Map, MapSpec) of
-                undefined -> Acc;
-                {_, Op, _} -> [{update, RKey, Op} | Acc]
-            end;
+            Res =  to_riak_op(Map, MapSpec),
+            prepare_remove_ops_acc(RKey, Res, Acc);
+
+        ToOp({{_, set} = RKey, Type}, Term, Acc) when is_list(Term) ->
+            Set = babel_set:new(Term, Type),
+            Res = babel_set:to_riak_op(Set, Type),
+            prepare_remove_ops_acc(RKey, Res, Acc);
 
         ToOp({{_, set} = RKey, Type}, Set, Acc) ->
-            case babel_set:to_riak_op(Set, Type) of
-                undefined -> Acc;
-                {_, Op, _} -> [{update, RKey, Op} | Acc]
-            end;
+            Res = babel_set:to_riak_op(Set, Type),
+            prepare_remove_ops_acc(RKey, Res, Acc);
+
+        ToOp({{_, flag} = RKey, Type}, Term, Acc) when is_boolean(Term) ->
+            Flag = babel_flag:new(Term),
+            Res = babel_flag:to_riak_op(Flag, Type),
+            prepare_remove_ops_acc(RKey, Res, Acc);
+
+        ToOp({{_, flag} = RKey, Type}, Flag, Acc) ->
+            Res = babel_flag:to_riak_op(Flag, Type),
+            prepare_remove_ops_acc(RKey, Res, Acc);
+
+        ToOp({{_, counter} = RKey, Type}, Term, Acc) when is_integer(Term) ->
+            Counter = babel_counter:new(Term),
+            Res = babel_counter:to_riak_op(Counter, Type),
+            prepare_remove_ops_acc(RKey, Res, Acc);
+
+        ToOp({{_, counter} = RKey, Type}, Counter, Acc) ->
+            Res = babel_counter:to_riak_op(Counter, Type),
+            prepare_remove_ops_acc(RKey, Res, Acc);
 
         ToOp({{_, register} = RKey, Type}, Value, Acc) ->
             Bin = to_binary(Value, Type),
-            [{update, RKey, {assign, Bin}} | Acc];
-
-        ToOp({{_, flag} = RKey, Type}, Flag, Acc) ->
-            case babel_flag:to_riak_op(Flag, Type) of
-                undefined -> Acc;
-                {_, Op, _} -> [{update, RKey, Op} | Acc]
-            end;
-
-        ToOp({{_, counter} = RKey, Type}, Counter, Acc) ->
-            case babel_counter:to_riak_op(Counter, Type) of
-                undefined -> Acc;
-                {_, Op, _} -> [{update, RKey, Op} | Acc]
-            end;
+            prepare_remove_ops_acc(RKey, {assign, Bin}, Acc);
 
         ToOp({_, register}, undefined, Acc) ->
             Acc;
@@ -1738,6 +1742,17 @@ prepare_update_ops(T, Spec) ->
 
     Updates = maps:with(T#babel_map.updates, T#babel_map.values),
     maps:fold(FoldFun, [], Updates).
+
+
+%% @private
+prepare_remove_ops_acc(_, undefined , Acc) ->
+    Acc;
+
+prepare_remove_ops_acc(RKey, {_, Op, _} , Acc) ->
+    [{update, RKey, Op} | Acc];
+
+prepare_remove_ops_acc(RKey, {_, _} = Op, Acc) ->
+    [{update, RKey, Op} | Acc].
 
 
 %% @private
@@ -1787,8 +1802,10 @@ mutate([H|T], Value, #babel_map{values = V0} = Map, Ctxt) ->
                         updates = ordsets:add_element(H, Map#babel_map.updates)
                     }
             end;
+
         {ok, Term} ->
             badtype(map, Term);
+
         error ->
             Map#babel_map{
                 values = maps:put(
@@ -1800,6 +1817,7 @@ mutate([H|T], Value, #babel_map{values = V0} = Map, Ctxt) ->
 
 mutate(Key, Term, #babel_map{values = V0} = Map, _) when is_binary(Key) ->
     Value = mutate_eval(Key, Term, Map),
+
     case maps:put(Key, Value, V0) of
         V0 ->
             Map;
@@ -1941,16 +1959,16 @@ do_update(Values, #babel_map{} = T, MapSpec0, Ctxt) when is_map(MapSpec0) ->
     MapSpec = validate_type_spec(MapSpec0),
 
     Fun = fun(Key0, Value, Acc) ->
-            Key = to_key(Key0),
-            case maps:find(Key, MapSpec) of
-                {ok, TypeSpec} when Value == undefined ->
-                    do_update(Key, Value, Acc, TypeSpec, Ctxt);
-                {ok, {_, _} = TypeSpec} ->
-                    ok = validate_type(Value, TypeSpec),
-                    do_update(Key, Value, Acc, TypeSpec, Ctxt);
-                error ->
-                    error({missing_spec, Key})
-            end
+        Key = to_key(Key0),
+        case maps:find(Key, MapSpec) of
+            {ok, TypeSpec} when Value == undefined ->
+                do_update(Key, Value, Acc, TypeSpec, Ctxt);
+            {ok, {_, _} = TypeSpec} ->
+                true = validate_type(Value, TypeSpec),
+                do_update(Key, Value, Acc, TypeSpec, Ctxt);
+            error ->
+                error({missing_spec, Key})
+        end
 
     end,
     babel_key_value:fold(Fun, T, Values).
@@ -2040,30 +2058,42 @@ do_update(Key, Value, #babel_map{values = V} = Acc, {counter, integer}, Ctxt) ->
     end;
 
 do_update(Key, Value, #babel_map{values = V} = Acc, {flag, boolean}, Ctxt) ->
-    IsFlag = babel_flag:is_type(Value),
+    IsFlagValue = babel_flag:is_type(Value),
 
     case maps:find(Key, V) of
-        {ok, Term} when IsFlag == true ->
-            Flag =
-                try
-                    babel_flag:set(Value, Term)
-                catch
-                    throw:context_required ->
-                        %% We have a brand new flag (not in Riak yet) so we
-                        %% just replace it
-                        babel_flag:new(Value, Ctxt)
-                end,
-            mutate(Key, Flag, Acc, Ctxt);
-        {ok, _Term} ->
-            %% The existing value is not a flag, but it should be
-            %% according to spec, so we replace by a new one
-            mutate(Key, babel_flag:new(Value, Ctxt), Acc, Ctxt);
-        error when IsFlag == true ->
+        {ok, Existing} ->
+            case {IsFlagValue, babel_flag:is_type(Existing)} of
+                {true, true} ->
+                    %% Replace existing
+                    mutate(Key, babel_flag:set_context(Ctxt, Value), Acc, Ctxt);
+
+                {false, true} ->
+                    try
+                        mutate(Key, babel_flag:set(Value, Existing), Acc, Ctxt)
+                    catch
+                        throw:context_required ->
+                            %% We have a brand new flag (not in Riak yet)
+                            %% so we just replace it
+                            mutate(Key, babel_flag:new(Value, Ctxt), Acc, Ctxt)
+                    end;
+
+                {true, false} ->
+                    %% Existing is not a flag, but it should be
+                    %% according to spec, so we replace by Value
+                    mutate(Key, babel_flag:set_context(Ctxt, Value), Acc, Ctxt);
+
+                {false, false} ->
+                    %% The existing value is not a flag, but it should be
+                    %% according to spec, so we replace by a new flag
+                    mutate(Key, babel_flag:new(Value, Ctxt), Acc, Ctxt)
+            end;
+
+        error when IsFlagValue == true ->
             mutate(Key, babel_flag:set_context(Ctxt, Value), Acc, Ctxt);
+
         error ->
             mutate(Key, babel_flag:new(Value, Ctxt), Acc, Ctxt)
     end.
-
 
 
 %% @private
