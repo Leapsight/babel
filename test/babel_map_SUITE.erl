@@ -35,7 +35,8 @@ all() ->
         concurrent_set_update,
         nested_update,
         nested_update_1,
-        update_type_check
+        update_type_check,
+        nested_flags
     ].
 
 
@@ -1193,44 +1194,34 @@ update_type_check(_) ->
     ).
 
 
+nested_flags(_) ->
+    Spec = #{
+        <<"f">> => {flag, boolean},
+        <<"m">> => {map, #{
+            <<"f">> => {flag, boolean},
+            <<"m">> => {map, #{
+                <<"f">> => {flag, boolean}
+            }}
+        }}
+    },
+    M0 = babel_map:new(#{}, Spec),
+    M1 = babel_map:put(<<"f">>, false, M0),
+    M2 = babel_map:put([<<"m">>, <<"f">>], false, M1),
+
+    ?assertEqual(false, babel_map:get_value([<<"f">>], M2)),
+    ?assertEqual(false, babel_map:get_value([<<"m">>, <<"f">>], M2)),
+
+    TypedBucket = {<<"index_data">>, <<"test">>},
+    Key = <<"nested_flags">>,
+    {ok, M3} = babel:put(TypedBucket, Key, M2, Spec, #{return_body => true}),
+
+    ?assertEqual(false, babel_map:get_value([<<"f">>], M3)),
+    ?assertEqual(false, babel_map:get_value([<<"m">>, <<"f">>], M3)),
+
+    M4 = babel_map:put(<<"f">>, true, M3),
+    M5 = babel_map:put([<<"m">>, <<"f">>], true, M4),
+
+    ?assertEqual(true, babel_map:get_value([<<"f">>], M5)),
+    ?assertEqual(true, babel_map:get_value([<<"m">>, <<"f">>], M5)).
 
 
-all_types_map_spec() ->
-    #{
-
-        <<"counter">> => {counter, integer},
-        <<"flag">> => {flag, boolean},
-        <<"register-atom">> => {register, atom},
-        <<"register-existing_atom">> => {register, existing_atom},
-        <<"register-boolean">> => {register, boolean},
-        <<"register-integer">> => {register, integer},
-        <<"register-float">> => {register, float},
-        <<"register-binary">> => {register, binary},
-        <<"register-list">> => {register, list},
-        <<"register-fun">> => {register, fun
-            ({encode, X}) ->
-                term_to_binary(X);
-            ({decode, X}) ->
-                binary_to_term(X)
-        end},
-        <<"set-atom">> => {set, atom},
-        <<"set-existing_atom">> => {set, existing_atom},
-        <<"set-boolean">> => {set, boolean},
-        <<"set-integer">> => {set, integer},
-        <<"set-float">> => {set, float},
-        <<"set-binary">> => {set, binary},
-        <<"set-list">> => {set, list},
-        <<"set-fun">> => {set, fun
-            ({encode, X}) ->
-                term_to_binary(X);
-            ({decode, X}) ->
-                binary_to_term(X)
-        end}
-    }.
-
-
-all_types_spec() ->
-    #{
-        <<"map-generic">> => {map, #{'_' => {register, binary}}},
-        <<"map">> => {map, all_types_map_spec()}
-    }.
