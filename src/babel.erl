@@ -213,7 +213,7 @@ module(_) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec get(
-    TypedBucket :: bucket_and_type(),
+    TypedBucket :: typed_bucket(),
     Key :: binary(),
     Spec :: type_spec(),
     Opts :: get_opts()) ->
@@ -257,7 +257,7 @@ get(TypedBucket, Key, Spec, Opts0) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec put(
-    TypedBucket :: bucket_and_type(),
+    TypedBucket :: typed_bucket(),
     Key :: binary(),
     Datatype :: datatype(),
     Spec :: type_spec(),
@@ -284,7 +284,7 @@ put(TypedBucket, Key, Datatype, Spec, Opts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec delete(
-    TypedBucket :: bucket_and_type(),
+    TypedBucket :: typed_bucket(),
     Key :: binary(),
     Opts :: delete_opts()) ->
     ok
@@ -299,7 +299,6 @@ delete(TypedBucket, Key, Opts) ->
         true ->
             schedule_delete(TypedBucket, Key, Opts)
     end.
-
 
 
 %% -----------------------------------------------------------------------------
