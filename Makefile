@@ -1,8 +1,7 @@
 .PHONY: docs test
 
 docs:
-	rebar3 as docs edoc
-	cp README.md doc/README.md
+	rebar3 ex_doc skip_deps=true
 
 test:
 	. test/setup_riak.sh

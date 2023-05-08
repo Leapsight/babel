@@ -429,7 +429,7 @@ delete(BucketType, BucketPrefix, Key, Opts0) ->
 %% =============================================================================
 
 
--spec cache_get({bucket_and_type(), binary()}, babel:get_opts()) ->
+-spec cache_get({typed_bucket(), binary()}, babel:get_opts()) ->
     undefined | {vclock, binary()} | t().
 
 cache_get({_, _} = PrefixedKey, Opts) ->

@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="ExDoc v0.29.1">
+    <meta name="project" content="babel v0.3.11">
+
+    <title>babel_set — babel v0.3.11</title>
+    <link rel="stylesheet" href="dist/html-erlang-6FXMBT73.css" />
+
+
+    <script src="dist/handlebars.runtime-NWIB6V2M.js"></script>
+    <script src="dist/handlebars.templates-IV5W3OL2.js"></script>
+    <script src="dist/sidebar_items-87E3B8FB.js"></script>
+
+      <script src="docs_config.js"></script>
+
+    <script async src="dist/html-XN2TSG4M.js"></script>
+
+
+  </head>
+  <body data-type="modules" class="page-module">
+    <script>
+
+      try {
+        var settings = JSON.parse(localStorage.getItem('ex_doc:settings') || '{}');
+
+        if (settings.theme === 'dark' ||
+           ((settings.theme === 'system' || settings.theme == null) &&
+             window.matchMedia('(prefers-color-scheme: dark)').matches)
+           ) {
+          document.body.classList.add('dark')
+        }
+      } catch (error) { }
+    </script>
+
+<div class="main">
+
+<button class="sidebar-button sidebar-toggle" aria-label="toggle sidebar">
+  <i class="ri-menu-line ri-lg" title="Collapse/expand sidebar"></i>
+</button>
+
+<section class="sidebar">
+  <form class="sidebar-search" action="search.html">
+    <button type="submit" class="search-button" aria-label="Submit Search">
+      <i class="ri-search-2-line" aria-hidden="true" title="Submit search"></i>
+    </button>
+    <button type="button" tabindex="-1" class="search-close-button" aria-label="Cancel Search">
+      <i class="ri-close-line ri-lg" aria-hidden="true" title="Cancel search"></i>
+    </button>
+    <label class="search-label">
+      <p class="sr-only">Search</p>
+      <input name="q" type="text" class="search-input" placeholder="Search..." aria-label="Input your search terms" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    </label>
+  </form>
+
+  <div class="autocomplete">
+    <div class="autocomplete-results">
+    </div>
+  </div>
+
+  <div class="sidebar-header">
+
+    <div class="sidebar-projectDetails">
+      <a href="readme.html" class="sidebar-projectName" translate="no">
+babel
+      </a>
+      <strong class="sidebar-projectVersion" translate="no">
+        v0.3.11
+      </strong>
+    </div>
+    <ul class="sidebar-listNav">
+      <li><a id="extras-list-link" href="#full-list">Pages</a></li>
+
+        <li><a id="modules-list-link" href="#full-list">Modules</a></li>
+
+
+    </ul>
+  </div>
+
+  <div class="gradient"></div>
+  <ul id="full-list" class="sidebar-fullList"></ul>
+</section>
+
+<section class="content">
+  <output role="status" id="toast"></output>
+  <div class="content-outer">
+    <div id="content" class="content-inner">
+
+<h1>
+<button class="icon-action display-settings">
+  <i class="ri-settings-3-line"></i>
+  <span class="sr-only">Settings</span>
+</button>
+
+
+    <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L23" title="View Source" class="icon-action" rel="help">
+      <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+      <span class="sr-only">View Source</span>
+    </a>
+
+  <span translate="no">babel_set</span> 
+  <small class="app-vsn" translate="no">(babel v0.3.11)</small>
+
+</h1>
+
+
+
+  <section id="summary" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#summary">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+      Summary
+    </h1>
+<div class="summary-types summary">
+  <h2>
+    <a href="#types">Types</a>
+  </h2>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:babel_context/0" translate="no">babel_context/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:maybe_no_return/1" translate="no">maybe_no_return/1</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:t/0" translate="no">t/0</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#t:type_spec/0" translate="no">type_spec/0</a>
+
+      </div>
+
+    </div>
+
+</div>
+<div class="summary-functions summary">
+  <h2>
+    <a href="#functions">Functions</a>
+  </h2>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#add_element/2" translate="no">add_element(Element, T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Adds an element to the set. You may add an element that already exists in the original set value, but it does not count for the object's size calculation. Adding an element that already exists is non-intuitive, but acts as a safety feature: a client code path that requires an element to be present in the set (or removed) can ensure that intended state by applying an operation.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#add_elements/2" translate="no">add_elements(Elements, T)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#context/1" translate="no">context(T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the Riak KV context</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#del_element/2" translate="no">del_element(Element, T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Removes an element from the set. You may remove an element that does not appear in the original set value. This is non-intuitive, but acts as a safety feature: a client code path that requires an element to be present in the set (or removed) can ensure that intended state by applying an operation.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#del_elements/2" translate="no">del_elements(Elements, T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Removes an element from the set. You may remove an element that does not appear in the original set value. This is non-intuitive, but acts as a safety feature: a client code path that requires an element to be present in the set (or removed) can ensure that intended state by applying an operation.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#fold/3" translate="no">fold(Fun, Acc, T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Folds over the members of the set.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#from_riak_set/2" translate="no">from_riak_set(RiakSet, Type)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#is_element/2" translate="no">is_element(Element, Babel_set)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Test whether an element is a member of the set.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#is_original_element/2" translate="no">is_original_element(Element, Babel_set)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Test whether an element is a member of the original set i,e. the one retrieved from Riak.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#is_type/1" translate="no">is_type(Term)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#is_valid_type_spec/1" translate="no">is_valid_type_spec(Fun)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#new/0" translate="no">new()</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#new/1" translate="no">new(Data)</a>
+
+      </div>
+
+        <div class="summary-synopsis">!&gt; **Important**. Notice that using this function might result in incompatible types when later using a type specification e.g. <a href="#to_riak_op/2"><code>to_riak_op/2</code></a>. We strongly suggest not using this function and using <a href="#new/2"><code>new/2</code></a> instead.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#new/2" translate="no">new(Data, Type)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#original_value/1" translate="no">original_value(Babel_set)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the original value of the set as an ordset. This is equivalent to riakc_set:value/1 but where the elements are binaries but of the type defined by the conversion <code>spec()</code> used to create the set.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#set_context/2" translate="no">set_context(Ctxt, T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Sets the context <code>Ctxt</code>.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#set_elements/2" translate="no">set_elements(Elements, T)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#size/1" translate="no">size(T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the cardinality (size) of the set.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#subtract/2" translate="no">subtract(Set1, Set2)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns a copy of Set1 containing only the elements of Set1 that are not also elements of Set2.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#to_riak_op/2" translate="no">to_riak_op(T, Type)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#type/0" translate="no">type()</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the symbolic name of this container.</div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#type_spec/1" translate="no">type_spec(Term)</a>
+
+      </div>
+
+    </div>
+
+    <div class="summary-row">
+      <div class="summary-signature">
+        <a href="#value/1" translate="no">value(T)</a>
+
+      </div>
+
+        <div class="summary-synopsis">Returns the current value of the set.</div>
+
+    </div>
+
+</div>
+
+  </section>
+
+
+  <section id="types" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#types">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+Types
+    </h1>
+    <div class="types-list">
+<section class="detail" id="t:babel_context/0">
+
+  <div class="detail-header">
+    <a href="#t:babel_context/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">babel_context/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L18" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> babel_context() :: <a href="https://hexdocs.pm/riakc/riakc_datatype.html#t:context/0">riakc_datatype:context</a>() | undefined | inherited.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:maybe_no_return/1">
+
+  <div class="detail-header">
+    <a href="#t:maybe_no_return/1" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">maybe_no_return/1</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L15" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> maybe_no_return(T) :: T | no_return().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:t/0">
+
+  <div class="detail-header">
+    <a href="#t:t/0" class="detail-link" title="Link to this opaque">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this opaque</span>
+    </a>
+    <h1 class="signature" translate="no">t/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L35" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+      <span class="note">(opaque)</span>
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-opaque</span> t()</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="t:type_spec/0">
+
+  <div class="detail-header">
+    <a href="#t:type_spec/0" class="detail-link" title="Link to this type">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this type</span>
+    </a>
+    <h1 class="signature" translate="no">type_spec/0</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L36" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-type</span> type_spec() ::
+    atom | existing_atom | boolean | integer | float | binary | list |
+    fun((encode, any()) -> binary()) |
+    fun((decode, binary()) -> any()).</pre>
+
+      </div>
+
+
+  </section>
+</section>
+
+    </div>
+  </section>
+
+  <section id="functions" class="details-list">
+    <h1 class="section-heading">
+      <a class="hover-link" href="#functions">
+        <i class="ri-link-m" aria-hidden="true"></i>
+        <span class="sr-only">Link to this section</span>
+      </a>
+Functions
+    </h1>
+    <div class="functions-list">
+<section class="detail" id="add_element/2">
+
+  <div class="detail-header">
+    <a href="#add_element/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">add_element(Element, T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L292" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> add_element(Element :: any(), T :: <a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+Adds an element to the set. You may add an element that already exists in the original set value, but it does not count for the object's size calculation. Adding an element that already exists is non-intuitive, but acts as a safety feature: a client code path that requires an element to be present in the set (or removed) can ensure that intended state by applying an operation.
+  </section>
+</section>
+<section class="detail" id="add_elements/2">
+
+  <div class="detail-header">
+    <a href="#add_elements/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">add_elements(Elements, T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L302" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> add_elements(Elements :: [any()], T :: <a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="context/1">
+
+  <div class="detail-header">
+    <a href="#context/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">context(T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L229" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> context(T :: <a href="#t:t/0">t</a>()) -> <a href="#t:babel_context/0">babel_context</a>().</pre>
+
+      </div>
+
+Returns the Riak KV context
+  </section>
+</section>
+<section class="detail" id="del_element/2">
+
+  <div class="detail-header">
+    <a href="#del_element/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">del_element(Element, T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L336" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> del_element(Element :: any(), T :: <a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>() | no_return().</pre>
+
+      </div>
+
+Removes an element from the set. You may remove an element that does not appear in the original set value. This is non-intuitive, but acts as a safety feature: a client code path that requires an element to be present in the set (or removed) can ensure that intended state by applying an operation.
+  </section>
+</section>
+<section class="detail" id="del_elements/2">
+
+  <div class="detail-header">
+    <a href="#del_elements/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">del_elements(Elements, T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L352" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> del_elements(Elements :: [any()], T :: <a href="#t:t/0">t</a>()) -> <a href="#t:t/0">t</a>() | no_return().</pre>
+
+      </div>
+
+Removes an element from the set. You may remove an element that does not appear in the original set value. This is non-intuitive, but acts as a safety feature: a client code path that requires an element to be present in the set (or removed) can ensure that intended state by applying an operation.
+  </section>
+</section>
+<section class="detail" id="fold/3">
+
+  <div class="detail-header">
+    <a href="#fold/3" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">fold(Fun, Acc, T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L393" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> fold(Fun :: fun((term(), term()) -> term()), Acc :: term(), T :: <a href="#t:t/0">t</a>()) -> Acc :: term().</pre>
+
+      </div>
+
+Folds over the members of the set.
+  </section>
+</section>
+<section class="detail" id="from_riak_set/2">
+
+  <div class="detail-header">
+    <a href="#from_riak_set/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">from_riak_set(RiakSet, Type)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L138" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> from_riak_set(RiakSet :: <a href="https://hexdocs.pm/riakc/riakc_set.html#t:riakc_set/0">riakc_set:riakc_set</a>() | ordsets:ordset(), Type :: <a href="#t:type_spec/0">type_spec</a>()) ->
+                 <a href="#t:maybe_no_return/1">maybe_no_return</a>(<a href="#t:t/0">t</a>()).</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="is_element/2">
+
+  <div class="detail-header">
+    <a href="#is_element/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">is_element(Element, Babel_set)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L403" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> is_element(binary(), <a href="#t:t/0">t</a>()) -> boolean().</pre>
+
+      </div>
+
+Test whether an element is a member of the set.
+  </section>
+</section>
+<section class="detail" id="is_original_element/2">
+
+  <div class="detail-header">
+    <a href="#is_original_element/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">is_original_element(Element, Babel_set)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L415" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> is_original_element(binary(), <a href="#t:t/0">t</a>()) -> boolean().</pre>
+
+      </div>
+
+Test whether an element is a member of the original set i,e. the one retrieved from Riak.
+  </section>
+</section>
+<section class="detail" id="is_type/1">
+
+  <div class="detail-header">
+    <a href="#is_type/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">is_type(Term)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L191" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> is_type(Term :: any()) -> boolean().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="is_valid_type_spec/1">
+
+  <div class="detail-header">
+    <a href="#is_valid_type_spec/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">is_valid_type_spec(Fun)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L211" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> is_valid_type_spec(term()) -> boolean().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="new/0">
+
+  <div class="detail-header">
+    <a href="#new/0" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">new()</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L96" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> new() -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="new/1">
+
+  <div class="detail-header">
+    <a href="#new/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">new(Data)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L110" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> new(Data :: <a href="https://www.erlang.org/doc/man/ordsets.html#type-ordset">ordsets:ordset</a>(any())) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+!&gt; **Important**. Notice that using this function might result in incompatible types when later using a type specification e.g. <a href="#to_riak_op/2"><code>to_riak_op/2</code></a>. We strongly suggest not using this function and using <a href="#new/2"><code>new/2</code></a> instead.
+  </section>
+</section>
+<section class="detail" id="new/2">
+
+  <div class="detail-header">
+    <a href="#new/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">new(Data, Type)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L122" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> new(Data :: <a href="https://www.erlang.org/doc/man/ordsets.html#type-ordset">ordsets:ordset</a>(any()), Type :: <a href="#t:type_spec/0">type_spec</a>()) -> <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="original_value/1">
+
+  <div class="detail-header">
+    <a href="#original_value/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">original_value(Babel_set)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L258" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> original_value(<a href="#t:t/0">t</a>()) -> <a href="https://www.erlang.org/doc/man/ordsets.html#type-ordset">ordsets:ordset</a>(any()).</pre>
+
+      </div>
+
+Returns the original value of the set as an ordset. This is equivalent to riakc_set:value/1 but where the elements are binaries but of the type defined by the conversion <code>spec()</code> used to create the set.
+  </section>
+</section>
+<section class="detail" id="set_context/2">
+
+  <div class="detail-header">
+    <a href="#set_context/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">set_context(Ctxt, T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L239" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> set_context(Ctxt :: <a href="#t:babel_context/0">babel_context</a>(), T :: <a href="#t:t/0">t</a>()) -> NewT :: <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+Sets the context <code>Ctxt</code>.
+  </section>
+</section>
+<section class="detail" id="set_elements/2">
+
+  <div class="detail-header">
+    <a href="#set_elements/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">set_elements(Elements, T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L371" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> set_elements(Elements :: [any()], T :: <a href="#t:t/0">t</a>()) -> NewT :: <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="size/1">
+
+  <div class="detail-header">
+    <a href="#size/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">size(T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L277" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> size(T :: <a href="#t:t/0">t</a>()) -> pos_integer().</pre>
+
+      </div>
+
+Returns the cardinality (size) of the set.
+  </section>
+</section>
+<section class="detail" id="subtract/2">
+
+  <div class="detail-header">
+    <a href="#subtract/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">subtract(Set1, Set2)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L426" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> subtract(Set1 :: <a href="#t:t/0">t</a>(), Set2 :: <a href="#t:t/0">t</a>()) -> Set3 :: <a href="#t:t/0">t</a>().</pre>
+
+      </div>
+
+Returns a copy of Set1 containing only the elements of Set1 that are not also elements of Set2.
+  </section>
+</section>
+<section class="detail" id="to_riak_op/2">
+
+  <div class="detail-header">
+    <a href="#to_riak_op/2" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">to_riak_op(T, Type)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L155" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> to_riak_op(T :: <a href="#t:t/0">t</a>(), Type :: <a href="#t:type_spec/0">type_spec</a>()) -> <a href="https://hexdocs.pm/riakc/riakc_datatype.html#t:update/1">riakc_datatype:update</a>(<a href="https://hexdocs.pm/riakc/riakc_set.html#t:set_op/0">riakc_set:set_op</a>()).</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="type/0">
+
+  <div class="detail-header">
+    <a href="#type/0" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">type()</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L181" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> type() -> set.</pre>
+
+      </div>
+
+Returns the symbolic name of this container.
+  </section>
+</section>
+<section class="detail" id="type_spec/1">
+
+  <div class="detail-header">
+    <a href="#type_spec/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">type_spec(Term)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L201" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> type_spec(Term :: any()) -> <a href="#t:type_spec/0">type_spec</a>() | undefined.</pre>
+
+      </div>
+
+
+  </section>
+</section>
+<section class="detail" id="value/1">
+
+  <div class="detail-header">
+    <a href="#value/1" class="detail-link" title="Link to this function">
+      <i class="ri-link-m" aria-hidden="true"></i>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <h1 class="signature" translate="no">value(T)</h1>
+
+      <a href="https://github.com/leapsight/babel/blob/v0.3.11/src/babel_set.erl#L267" class="icon-action" rel="help" title="View Source">
+       <i class="ri-code-s-slash-line" aria-hidden="true"></i>
+       <span class="sr-only">View Source</span>
+     </a>
+
+
+  </div>
+
+  <section class="docstring">
+
+      <div class="specs">
+
+          <pre translate="no"><span class="attribute">-spec</span> value(T :: <a href="#t:t/0">t</a>()) -> <a href="https://www.erlang.org/doc/man/ordsets.html#type-ordset">ordsets:ordset</a>(any()).</pre>
+
+      </div>
+
+Returns the current value of the set.
+  </section>
+</section>
+
+    </div>
+  </section>
+
+      <footer class="footer">
+        <p>
+
+            <span class="line">
+              <a href="https://hex.pm/packages/babel/0.3.11" class="footer-hex-package">Hex Package</a>
+
+              <a href="https://preview.hex.pm/preview/babel/0.3.11">Hex Preview</a>
+
+                (<a href="https://preview.hex.pm/preview/babel/0.3.11/show/src/babel_set.erl">current file</a>)
+
+            </span>
+
+          <span class="line">
+            <button class="a-main footer-button display-quick-switch" title="Search HexDocs packages">
+              Search HexDocs
+            </button>
+
+              <a href="babel.epub" title="ePub version">
+                Download ePub version
+              </a>
+
+          </span>
+        </p>
+
+        <p class="built-using">
+          Built using
+          <a href="https://github.com/elixir-lang/ex_doc" title="ExDoc" target="_blank" rel="help noopener" translate="no">ExDoc</a> (v0.29.1) for the
+
+            <a href="https://erlang.org" title="Erlang" target="_blank" translate="no">Erlang programming language</a>
+
+        </p>
+      </footer>
+    </div>
+  </div>
+</section>
+</div>
+
+
+  </body>
+</html>

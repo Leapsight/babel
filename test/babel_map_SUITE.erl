@@ -1218,10 +1218,41 @@ nested_flags(_) ->
     ?assertEqual(false, babel_map:get_value([<<"f">>], M3)),
     ?assertEqual(false, babel_map:get_value([<<"m">>, <<"f">>], M3)),
 
+    %% Set to true
     M4 = babel_map:put(<<"f">>, true, M3),
     M5 = babel_map:put([<<"m">>, <<"f">>], true, M4),
 
     ?assertEqual(true, babel_map:get_value([<<"f">>], M5)),
-    ?assertEqual(true, babel_map:get_value([<<"m">>, <<"f">>], M5)).
+    ?assertEqual(true, babel_map:get_value([<<"m">>, <<"f">>], M5)),
+
+    {ok, M6} = babel:put(TypedBucket, Key, M5, Spec, #{return_body => true}),
+    {ok, M6} = babel:get(TypedBucket, Key, Spec, #{}),
+    ?assertEqual(true, babel_map:get_value([<<"f">>], M6)),
+    ?assertEqual(true, babel_map:get_value([<<"m">>, <<"f">>], M6)),
+
+    %% Set to false
+    M7 = babel_map:put(<<"f">>, false, M6),
+    M8 = babel_map:put([<<"m">>, <<"f">>], false, M7),
+    ?assertEqual(false, babel_map:get_value([<<"f">>], M8)),
+    ?assertEqual(false, babel_map:get_value([<<"m">>, <<"f">>], M8)),
+
+
+    {ok, M9} = babel:put(TypedBucket, Key, M8, Spec, #{return_body => true}),
+    {ok, M9} = babel:get(TypedBucket, Key, Spec, #{}),
+    ?assertEqual(false, babel_map:get_value([<<"f">>], M9)),
+    ?assertEqual(false, babel_map:get_value([<<"m">>, <<"f">>], M9)),
+
+
+    %% Set to true again
+    M10 = babel_map:put(<<"f">>, true, M9),
+    M11 = babel_map:put([<<"m">>, <<"f">>], true, M10),
+
+    ?assertEqual(true, babel_map:get_value([<<"f">>], M11)),
+    ?assertEqual(true, babel_map:get_value([<<"m">>, <<"f">>], M11)),
+
+    {ok, M12} = babel:put(TypedBucket, Key, M11, Spec, #{return_body => true}),
+    {ok, M12} = babel:get(TypedBucket, Key, Spec, #{}),
+    ?assertEqual(true, babel_map:get_value([<<"f">>], M12)),
+    ?assertEqual(true, babel_map:get_value([<<"m">>, <<"f">>], M12)).
 
 
