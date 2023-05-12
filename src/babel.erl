@@ -978,12 +978,13 @@ do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
 
 
 %% @private
-schedule_put(TypedBucket, Key, Datatype, Spec, _Opts0) ->
-    %% TODO pass down the RiakOpts to the task
+schedule_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
+    Opts = validate_opts(put, Opts0),
     ok = reliable:ensure_in_workflow(),
+
     Id = {TypedBucket, Key},
     Type = type(Datatype),
-    Task = to_update_task(Type, TypedBucket, Key, Datatype, Spec),
+    Task = to_update_task(Type, TypedBucket, Key, Datatype, Spec, Opts),
     WorkflowItem = {Id, {update, Task}},
     ok = reliable:add_workflow_items([WorkflowItem]),
     {scheduled, Id}.
@@ -1008,11 +1009,11 @@ do_delete(TypedBucket, Key, Opts0) ->
 
 
 %% @private
-schedule_delete(TypedBucket, Key, _Opts0) ->
-    %% TODO pass down the RiakOpts to the task
+schedule_delete(TypedBucket, Key, Opts0) ->
+    Opts = validate_opts(put, Opts0),
     ok = reliable:ensure_in_workflow(),
     Id = {TypedBucket, Key},
-    Task = to_delete_task(TypedBucket, Key),
+    Task = to_delete_task(TypedBucket, Key, Opts),
     WorkflowItem = {Id, {delete, Task}},
     ok = reliable:add_workflow_items([WorkflowItem]),
     {scheduled, Id}.
@@ -1020,30 +1021,30 @@ schedule_delete(TypedBucket, Key, _Opts0) ->
 
 
 %% @private
-to_update_task(map, TypedBucket, Key, Datatype, Spec) ->
+to_update_task(map, TypedBucket, Key, Datatype, Spec, Opts) ->
     Op = babel_map:to_riak_op(Datatype, Spec),
-    to_update_task(TypedBucket, Key, Op);
+    to_update_task(TypedBucket, Key, Op, Opts);
 
-to_update_task(set, TypedBucket, Key, Datatype, Spec) ->
+to_update_task(set, TypedBucket, Key, Datatype, Spec, Opts) ->
     Op = babel_set:to_riak_op(Datatype, Spec),
-    to_update_task(TypedBucket, Key, Op);
+    to_update_task(TypedBucket, Key, Op, Opts);
 
-to_update_task(counter, TypedBucket, Key, Datatype, Spec) ->
+to_update_task(counter, TypedBucket, Key, Datatype, Spec, Opts) ->
     Op = babel_set:to_riak_op(Datatype, Spec),
-    to_update_task(TypedBucket, Key, Op).
+    to_update_task(TypedBucket, Key, Op, Opts).
 
 
 %% @private
-to_update_task(TypedBucket, Key, Op) ->
-    Args = [TypedBucket, Key, Op],
+to_update_task(TypedBucket, Key, Op, Opts) ->
+    Args = [TypedBucket, Key, Op, opts_to_riak_opts(Opts)],
     reliable_task:new(
         node(), riakc_pb_socket, update_type, [{symbolic, riakc} | Args]
     ).
 
 
 %% @private
-to_delete_task(TypedBucket, Key) ->
-    Args = [TypedBucket, Key],
+to_delete_task(TypedBucket, Key, Opts) ->
+    Args = [TypedBucket, Key, opts_to_riak_opts(Opts)],
     reliable_task:new(
         node(), riakc_pb_socket, delete, [{symbolic, riakc} | Args]
     ).
