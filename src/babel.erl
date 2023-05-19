@@ -1010,7 +1010,7 @@ do_delete(TypedBucket, Key, Opts0) ->
 
 %% @private
 schedule_delete(TypedBucket, Key, Opts0) ->
-    Opts = validate_opts(put, Opts0),
+    Opts = validate_opts(delete, Opts0),
     ok = reliable:ensure_in_workflow(),
     Id = {TypedBucket, Key},
     Task = to_delete_task(TypedBucket, Key, Opts),
