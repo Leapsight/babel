@@ -43,17 +43,58 @@
     timeout
 ]).
 
--define(GET_OPTS_SPEC, #{
-    connection => #{
-        required => false,
-        datatype => pid
-    },
+-define(EXECUTE_OPTS_SPEC, #{
     connection_pool => #{
         required => true,
         allow_undefined => true,
         datatype => atom,
         default => undefined
     },
+    connection => #{
+        required => false,
+        datatype => pid
+    },
+    deadline => #{
+        required => false,
+        datatype => pos_integer
+    },
+    timeout => #{
+        required => false,
+        datatype => pos_integer
+    },
+    max_retries => #{
+        required => false,
+        datatype => non_neg_integer
+    },
+    retry_backoff_interval_min => #{
+        required => false,
+        datatype => non_neg_integer
+    },
+    retry_backoff_interval_max => #{
+        required => false,
+        datatype => non_neg_integer
+    },
+    retry_backoff_type => #{
+        required => false,
+        datatype => {in, [jitter, normal]}
+    },
+    telemetry => #{
+        required => false,
+        validator => #{
+            event_name => #{
+                required => false,
+                datatype => {list, [atom]}
+            },
+            event_metadata => #{
+                required => false,
+                datatype => map
+            }
+        }
+    }
+
+}).
+
+-define(GET_OPTS_SPEC, (?EXECUTE_OPTS_SPEC)#{
     cache => #{
         required => false,
         allow_undefined => false,
@@ -148,11 +189,7 @@
 ]).
 
 
--define(PUT_OPTS_SPEC, #{
-    connection => #{
-        required => false,
-        datatype => pid
-    },
+-define(PUT_OPTS_SPEC, (?EXECUTE_OPTS_SPEC)#{
     connection_pool => #{
         required => true,
         allow_undefined => true,
@@ -253,11 +290,7 @@
 ]).
 
 
--define(DELETE_OPTS_SPEC, #{
-    connection => #{
-        required => false,
-        datatype => pid
-    },
+-define(DELETE_OPTS_SPEC, (?EXECUTE_OPTS_SPEC)#{
     connection_pool => #{
         required => true,
         allow_undefined => true,

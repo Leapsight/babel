@@ -49,9 +49,37 @@
 
 -type opts()            ::  get_opts() | put_opts() | delete_opts().
 
--type get_opts()        ::  #{
+-type exec_opts()    ::  #{
+    telemetry => #{
+        event_name => telemetry:event_name(),
+        event_metadata => telemetry:event_metadata()
+    },
+    connection_pool => poolname,
+    %% The following are riak_pool:exec_opts()
     connection => pid(),
+    deadline => pos_integer(),
+    timeout => pos_integer(),
+    max_retries => non_neg_integer(),
+    retry_backoff_interval_min => non_neg_integer(),
+    retry_backoff_interval_max => non_neg_integer(),
+    retry_backoff_type => jitter | normal
+}.
+
+-type get_opts()        ::  #{
+    %% The following are the same as exec_opts()
+    telemetry => #{
+        event_name => telemetry:event_name(),
+        event_metadata => telemetry:event_metadata()
+    },
     connection_pool => atom(),
+    connection => pid(),
+    deadline => pos_integer(),
+    timeout => pos_integer(),
+    max_retries => non_neg_integer(),
+    retry_backoff_interval_min => non_neg_integer(),
+    retry_backoff_interval_max => non_neg_integer(),
+    retry_backoff_type => jitter | normal,
+    %% Riak KV Opts
     r => quorum(),
     pr => quorum(),
     cache => boolean(),
@@ -68,8 +96,20 @@
 }.
 
 -type put_opts()       ::  #{
-    connection => pid(),
+    %% The following are the same as exec_opts()
+    telemetry => #{
+        event_name => telemetry:event_name(),
+        event_metadata => telemetry:event_metadata()
+    },
     connection_pool => atom(),
+    connection => pid(),
+    deadline => pos_integer(),
+    timeout => pos_integer(),
+    max_retries => non_neg_integer(),
+    retry_backoff_interval_min => non_neg_integer(),
+    retry_backoff_interval_max => non_neg_integer(),
+    retry_backoff_type => jitter | normal,
+    %% Riak KV Opts
     cache => boolean(),
     w => quorum(),
     dw => quorum(),
@@ -86,8 +126,20 @@
 }.
 
 -type delete_opts()    ::  #{
-    connection => pid(),
+    %% The following are the same as exec_opts()
+    telemetry => #{
+        event_name => telemetry:event_name(),
+        event_metadata => telemetry:event_metadata()
+    },
     connection_pool => atom(),
+    connection => pid(),
+    deadline => pos_integer(),
+    timeout => pos_integer(),
+    max_retries => non_neg_integer(),
+    retry_backoff_interval_min => non_neg_integer(),
+    retry_backoff_interval_max => non_neg_integer(),
+    retry_backoff_type => jitter | normal,
+    %% Riak KV Opts
     r => quorum(),
     pr => quorum(),
     w => quorum(),
@@ -110,6 +162,7 @@
 
 %% API
 -export([delete/3]).
+-export([execute/2]).
 -export([execute/3]).
 -export([get/4]).
 -export([get_connection/0]).
@@ -210,6 +263,13 @@ module(_) ->
 %% riak_pool connection pool if it was enabled through Babel's configuration
 %% options.
 %%
+%% This function emmits the following telemetry events:
+%% <ul>
+%% <li>`[babel, get, start]'</li>
+%% <li>`[babel, get, stop]'</li>
+%% <li>`[babel, get, exception]'</li>
+%% </ul>
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec get(
@@ -220,9 +280,18 @@ module(_) ->
     {ok, Datatype :: datatype()}
     | {error, Reason :: term()}.
 
-get(TypedBucket, Key, Spec, Opts0) ->
-    Opts = validate_opts(get, Opts0),
-    Poolname = maps:get(connection_pool, Opts),
+get({BT, B} = TypedBucket, Key, Spec, Opts0) ->
+    %% We reuse the event_metadata if present but we override the event_name
+    Opts = merge_telemetry(
+        #{
+            event_name => [babel, get],
+            event_metadata => #{
+                bucket_type => BT,
+                bucket => B
+            }
+        },
+        validate_opts(get, Opts0)
+    ),
 
     Fun = fun(Pid) ->
         RiakOpts = opts_to_riak_opts(Opts),
@@ -237,9 +306,14 @@ get(TypedBucket, Key, Spec, Opts0) ->
                 Error
         end
     end,
-    case execute(Poolname, Fun, Opts) of
-        {ok, Result} -> Result;
-        {error, _} = Error -> Error
+
+    Poolname = maps:get(connection_pool, Opts),
+
+    case riak_pool:execute(Poolname, Fun, Opts) of
+        {ok, Result} ->
+            Result;
+        {error, _} = Error ->
+            Error
     end.
 
 
@@ -254,6 +328,13 @@ get(TypedBucket, Key, Spec, Opts0) ->
 %%
 %% ?> This function is workflow aware. See {@link workflow/2} to understand the
 %% result value.
+%%
+%% This function emmits the following telemetry events:
+%% <ul>
+%% <li>`[babel, put, start]'</li>
+%% <li>`[babel, put, stop]'</li>
+%% <li>`[babel, put, exception]'</li>
+%% </ul>
 %% @end
 %% -----------------------------------------------------------------------------
 -spec put(
@@ -280,7 +361,14 @@ put(TypedBucket, Key, Datatype, Spec, Opts) ->
 
 %% -----------------------------------------------------------------------------
 %% @doc
-%% ?> This function is workflow aware
+%% <b>This function is workflow aware</b>.
+%%
+%% This function emmits the following telemetry events:
+%% <ul>
+%% <li>`[babel, drop_index, start]'</li>
+%% <li>`[babel, drop_index, stop]'</li>
+%% <li>`[babel, drop_index, exception]'</li>
+%% </ul>
 %% @end
 %% -----------------------------------------------------------------------------
 -spec delete(
@@ -309,19 +397,80 @@ delete(TypedBucket, Key, Opts) ->
 %% `connection' key.
 %%
 %% Options:
+%% <ul>
+%% <li>`poolname :: atom()` - the name of the riak_pool to be used</li>
+%% <li>The following options accepted by riak_pool:
+%%   <ul>
+%%     <li>`connection => pid()` -  the pid to use instead of getting a new one
+%%     from the pool</li>
+%%     <li>`deadline => pos_integer()` -  </li>
+%%     <li>`timeout => pos_integer()` -  time to get a connection from the
+%%     pool</li>
+%%     <li>`max_retries => non_neg_integer()` -  </li>
+%%     <li>`retry_backoff_interval_min => non_neg_integer()` -  </li>
+%%     <li>`retry_backoff_interval_max => non_neg_integer()` -  </li>
+%%     <li>`retry_backoff_type => jitter | normal` -  </li>
+%%   </ul>
+%% </li>
+%% </ul>
 %%
-%% * timeout - time to get a connection from the pool
-%% * connection - the pid to use instead of getting a new one from the pool
+%% This function emmits the following telemetry events (unless the option
+%% `telemetry' is used to override the `event_name'):
+%% <ul>
+%% <li>`[babel, execute, start]'</li>
+%% <li>`[babel, execute, stop]'</li>
+%% <li>`[babel, execute, exception]'</li>
+%% </ul>
+%% @end
+%% -----------------------------------------------------------------------------
+-spec execute(
+    Fun :: fun((RiakConn :: pid()) -> Result :: any()),
+    Opts :: exec_opts()) ->
+    {ok, Result :: any()} | {error, Reason :: any()} | no_return().
+
+execute(Fun, Opts0) ->
+    #{connection_pool := Poolname} = Opts = validate_opts(execute, Opts0),
+    riak_pool:execute(Poolname, Fun, Opts).
+
+
+%% -----------------------------------------------------------------------------
+%% @deprecated
+%% @doc Executes a number of operations using the same Riak client connection
+%% provided by riak_pool app.
+%% `Poolname' must be an already started pool or the atom `undefined'.
+%% In case of the latter the map `Options' should have an entry for the
+%% `connection' key.
 %%
+%% Options:
+%% <ul>
+%% <li>`connection => pid()` -  the pid to use instead of getting a new one
+%% from the pool</li>
+%% <li>`deadline => pos_integer()` -  </li>
+%% <li>`timeout => pos_integer()` -  time to get a connection from the
+%% pool</li>
+%% <li>`max_retries => non_neg_integer()` -  </li>
+%% <li>`retry_backoff_interval_min => non_neg_integer()` -  </li>
+%% <li>`retry_backoff_interval_max => non_neg_integer()` -  </li>
+%% <li>`retry_backoff_type => jitter | normal` -  </li>
+%% </ul>
+%%
+%% This function emmits the following telemetry events (unless the option
+%% `telemetry' is used to override the `event_name'):
+%% <ul>
+%% <li>`[babel, execute, start]'</li>
+%% <li>`[babel, execute, stop]'</li>
+%% <li>`[babel, execute, exception]'</li>
+%% </ul>
 %% @end
 %% -----------------------------------------------------------------------------
 -spec execute(
     Poolname :: atom(),
     Fun :: fun((RiakConn :: pid()) -> Result :: any()),
-    Opts :: riak_pool:opts()) ->
+    Opts :: riak_pool:exec_opts()) ->
     {ok, Result :: any()} | {error, Reason :: any()} | no_return().
 
-execute(Poolname, Fun, Opts)  ->
+execute(Poolname, Fun, Opts0)  ->
+    Opts = validate_opts(execute, Opts0),
     riak_pool:execute(Poolname, Fun, Opts).
 
 
@@ -355,7 +504,7 @@ validate_opts(Op, Opts) ->
 %% @end
 %% -----------------------------------------------------------------------------
 -spec validate_opts(
-    Operation :: get | put | delete,
+    Operation :: get | put | delete | execute,
     Opts :: map(),
     Mode :: strict | relaxed) -> opts().
 
@@ -366,6 +515,9 @@ validate_opts(put, #{'$put_validated' := true} = Opts, _) ->
     Opts;
 
 validate_opts(delete, #{'$delete_validated' := true} = Opts, _) ->
+    Opts;
+
+validate_opts(execute, #{'$execute_validated' := true} = Opts, _) ->
     Opts;
 
 validate_opts(Op, Opts, Mode) ->
@@ -581,6 +733,7 @@ yield(WorkRef, Timeout) ->
 %% -----------------------------------------------------------------------------
 %% @doc Calls {@link create_index/3} passing the default options as third
 %% argument.
+%%
 %% @end
 %% -----------------------------------------------------------------------------
 -spec create_index(
@@ -862,6 +1015,7 @@ drop_index(IndexName, Collection0, Opts0) when is_binary(IndexName) ->
                 {error, badindex}
         end
     end,
+
     workflow(Fun, Opts).
 
 
@@ -951,9 +1105,18 @@ drop_all_indices(Collection, Opts) ->
 
 
 %% @private
-do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
-    Opts = validate_opts(put, Opts0),
-    Poolname = maps:get(connection_pool, Opts),
+do_put({BT, B} = TypedBucket, Key, Datatype, Spec, Opts0) ->
+    %% We reuse the event_metadata if present but we override the event_name
+    Opts = merge_telemetry(
+        #{
+            event_name => [babel, put],
+            event_metadata => #{
+                bucket_type => BT,
+                bucket => B
+            }
+        },
+        validate_opts(put, Opts0)
+    ),
 
     Fun = fun(Pid) ->
         Type = type(Datatype),
@@ -971,9 +1134,14 @@ do_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
                 tidy_error(Error)
         end
     end,
-    case execute(Poolname, Fun, Opts) of
-        {ok, Result} -> Result;
-        {error, _} = Error -> Error
+
+    Poolname = maps:get(connection_pool, Opts),
+
+    case riak_pool:execute(Poolname, Fun, Opts) of
+        {ok, Result} ->
+            Result;
+        {error, _} = Error ->
+            Error
     end.
 
 
@@ -991,21 +1159,30 @@ schedule_put(TypedBucket, Key, Datatype, Spec, Opts0) ->
 
 
 %% @private
-do_delete(TypedBucket, Key, Opts0) ->
-    Opts = validate_opts(delete, Opts0),
-    Poolname = maps:get(connection_pool, Opts),
+do_delete({BT, B} = TypedBucket, Key, Opts0) ->
+            %% We reuse the event_metadata if present but we override the event_name
+    Opts = merge_telemetry(
+        #{
+            event_name => [babel, delete],
+            event_metadata => #{
+                bucket_type => BT,
+                bucket => B
+            }
+        },
+        validate_opts(delete, Opts0)
+    ),
 
     Fun = fun(Pid) ->
         ROpts = opts_to_riak_opts(Opts),
         riakc_pb_socket:delete(Pid, TypedBucket, Key, ROpts)
     end,
 
-    case execute(Poolname, Fun, Opts) of
+    Poolname = maps:get(connection_pool, Opts),
+
+    case riak_pool:execute(Poolname, Fun, Opts) of
         {ok, Result} -> Result;
         {error, _} = Error -> Error
     end.
-
-
 
 
 %% @private
@@ -1017,7 +1194,6 @@ schedule_delete(TypedBucket, Key, Opts0) ->
     WorkflowItem = {Id, {delete, Task}},
     ok = reliable:add_workflow_items([WorkflowItem]),
     {scheduled, Id}.
-
 
 
 %% @private
@@ -1104,13 +1280,15 @@ riak_type(Term) when is_tuple(Term) ->
 %% @private
 spec(get) -> ?GET_OPTS_SPEC;
 spec(put) -> ?PUT_OPTS_SPEC;
-spec(delete) -> ?DELETE_OPTS_SPEC.
+spec(delete) -> ?DELETE_OPTS_SPEC;
+spec(execute) -> ?EXECUTE_OPTS_SPEC.
 
 
 %% @private
 flag_validated(get, Opts) -> Opts#{'$get_validated' => true};
 flag_validated(put, Opts) -> Opts#{'$put_validated' => true};
-flag_validated(delete, Opts) -> Opts#{'$delete_validated' => true}.
+flag_validated(delete, Opts) -> Opts#{'$delete_validated' => true};
+flag_validated(execute, Opts) -> Opts#{'$execute_validated' => true}.
 
 
 %% @private
@@ -1241,3 +1419,34 @@ tidy_error({error, <<"overload">>}) ->
 
 tidy_error(Error) ->
     Error.
+
+
+%% -----------------------------------------------------------------------------
+%% @private
+%% @doc Override the `event_name' in `T2' with the one supplied in `T1' (if
+%% any) and merges the `event_metadata' contents from both `T1' and `T2'.
+%% @end
+%% -----------------------------------------------------------------------------
+merge_telemetry(T1, #{telemetry := T0} = Opts) ->
+    maps:put(telemetry, do_merge_telemetry(T0, T1), Opts);
+
+merge_telemetry(T1, Opts) ->
+    maps:put(telemetry, do_merge_telemetry(#{}, T1), Opts).
+
+
+%% @private
+do_merge_telemetry(T1, T0) ->
+    Name = merge_event_name(T1, T0),
+    Meta = maps:merge(
+        maps:get(event_metadata, T0, #{}),
+        maps:get(event_metadata, T1, #{})
+    ),
+    maps:merge(Name, Meta).
+
+
+%% @private
+merge_event_name(#{event_name := Name}, T0) ->
+    maps:put(event_name, Name, T0);
+
+merge_event_name(_, T0) ->
+    T0.

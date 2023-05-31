@@ -44,10 +44,45 @@ all() ->
 init_per_suite(Config) ->
     ok = common:setup(),
     meck:unload(),
+    telemetry:attach_many(
+        ?MODULE,
+        [
+            [reliable, work, enqueue, start],
+            [reliable, work, enqueue, stop],
+            [reliable, work, enqueue, exception],
+
+            [reliable, work, execute, start],
+            [reliable, work, execute, stop],
+            [reliable, work, execute, exception],
+
+            [reliable, task, execute, start],
+            [reliable, task, execute, stop],
+            [reliable, task, execute, exception],
+
+            [riak_pool, execute, start],
+            [riak_pool, execute, stop],
+            [riak_pool, execute, exception],
+
+            [babel, get, start],
+            [babel, get, stop],
+            [babel, get, exception],
+
+            [babel, put, start],
+            [babel, put, stop],
+            [babel, put, exception],
+
+            [babel, delete, start],
+            [babel, delete, stop],
+            [babel, delete, exception]
+        ],
+        fun common:handle_telemetry_event/4,
+        []
+    ),
     Config.
 
 end_per_suite(Config) ->
     meck:unload(),
+    telemetry:detach(common),
     {save_config, Config}.
 
 

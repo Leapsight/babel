@@ -1,8 +1,18 @@
 -module(babel_hash_partitioned_index_SUITE).
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/assert.hrl").
+-include_lib("kernel/include/logger.hrl").
+
+
 -compile(export_all).
 -compile([nowarn_export_all, export_all]).
+
+
+
+%% =============================================================================
+%% SETUP
+%% =============================================================================
+
 
 
 groups() ->
@@ -36,11 +46,54 @@ all() ->
 init_per_suite(Config) ->
     ok = common:setup(),
     babel_config:set([index_cache, enabled], false),
+    telemetry:attach_many(
+        ?MODULE,
+        [
+            [reliable, work, enqueue, start],
+            [reliable, work, enqueue, stop],
+            [reliable, work, enqueue, exception],
+
+            [reliable, work, execute, start],
+            [reliable, work, execute, stop],
+            [reliable, work, execute, exception],
+
+            [reliable, task, execute, start],
+            [reliable, task, execute, stop],
+            [reliable, task, execute, exception],
+
+            [riak_pool, execute, start],
+            [riak_pool, execute, stop],
+            [riak_pool, execute, exception],
+
+            [babel, get, start],
+            [babel, get, stop],
+            [babel, get, exception],
+
+            [babel, put, start],
+            [babel, put, stop],
+            [babel, put, exception],
+
+            [babel, delete, start],
+            [babel, delete, stop],
+            [babel, delete, exception]
+        ],
+        fun common:handle_telemetry_event/4,
+        []
+    ),
     Config.
 
 end_per_suite(_) ->
     logger:set_application_level(reliable, info),
+    logger:set_application_level(babel, info),
+    telemetry:detach(common),
     ok.
+
+
+%% =============================================================================
+%% TEST CASES
+%% =============================================================================
+
+
 
 
 bad_index_test(_) ->
