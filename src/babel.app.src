@@ -38,6 +38,7 @@
         leap,
         riak_pool,
         pooler,
+        telemetry,
         riakc
     ]},
     {included_applications, [

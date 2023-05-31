@@ -1,6 +1,10 @@
 -module(common).
 
+-include_lib("kernel/include/logger.hrl").
+
+
 -export([setup/0]).
+-export([handle_telemetry_event/4]).
 
 
 setup() ->
@@ -12,6 +16,25 @@ setup() ->
         true ->
             ok
     end.
+
+
+
+handle_telemetry_event(EventName, Measurements, Metadata, _) ->
+    ?LOG_INFO(#{
+        name => EventName,
+        description => "Got telemetry event",
+        measurements => Measurements,
+        metadata => Metadata
+    }).
+
+
+
+
+
+%% =============================================================================
+%% PRIVATE
+%% =============================================================================
+
 
 
 do_setup() ->
