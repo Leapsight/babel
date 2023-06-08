@@ -23,6 +23,10 @@
   {git,"https://github.com/leapsight/leap.git",
        {ref,"c35f181054a827023d9412b81b770c486b2a1cd1"}},
   0},
+ {<<"maps_utils">>,
+  {git,"https://github.com/Leapsight/maps_utils.git",
+       {ref,"afa2da62e0e691ce33d1008cc424c994fff339bf"}},
+  1},
  {<<"meck">>,
   {git,"https://github.com/eproxus/meck.git",
        {ref,"4ecc1ae9089edc6977e8c8c4cd41081513cc5590"}},
@@ -55,7 +59,7 @@
  {<<"telemetry">>,{pkg,<<"telemetry">>,<<"1.2.1">>},0},
  {<<"utils">>,
   {git,"https://github.com/leapsight/utils.git",
-       {ref,"c0c6a61994e757e85f8037eb85dbf5fd27243842"}},
+       {ref,"2faf542858e1eaadc87ad9aa0de17677e0bb3848"}},
   0}]}.
 [
 {pkg_hash,[
