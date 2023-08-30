@@ -59,7 +59,7 @@
  {<<"telemetry">>,{pkg,<<"telemetry">>,<<"1.2.1">>},0},
  {<<"utils">>,
   {git,"https://github.com/leapsight/utils.git",
-       {ref,"2faf542858e1eaadc87ad9aa0de17677e0bb3848"}},
+       {ref,"641bd36d997970d355a700009bbaa6b84f0bd987"}},
   0}]}.
 [
 {pkg_hash,[
