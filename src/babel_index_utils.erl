@@ -108,7 +108,7 @@ build_output([], undefined, Acc) ->
     Acc;
 
 build_output(Keys, Bin, Acc) when is_binary(Bin) ->
-    build_output(Keys, binary:split(Bin, <<$\31>>), Acc);
+    build_output(Keys, binary:split(Bin, <<$\31>>, [global]), Acc);
 
 build_output([X | Xs], [Y | Ys], Acc) ->
     build_output(Xs, Ys, maps:put(X, Y, Acc));
