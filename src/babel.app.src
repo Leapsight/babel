@@ -24,7 +24,7 @@
 
 {application, babel, [
     {description, "Babel is an open source Erlang/OTP application that allows you to work with Riak KV Data Types and also maintain application-managed secondary indices. Babel uses reliable workflows for Riak writes and delete operations thanks to Reliable."},
-    {vsn, "0.4.6"},
+    {vsn, "0.4.7"},
     {registered, []},
     {mod, {babel_app, []}},
     {applications, [
