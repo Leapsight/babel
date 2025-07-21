@@ -1499,20 +1499,26 @@ when is_map(Spec) ->
     ICtxt = inherited_context(Context),
 
     %% Convert values in RMap
-    Convert = fun({Key, Datatype} = RKey, RValue, Acc) ->
-        case maps:find(Key, Spec) of
-            {ok, {X, SpecOrType}} when X == Datatype ->
-                Value = from_datatype(RKey, RValue, ICtxt, SpecOrType),
-                maps:put(Key, Value, Acc);
-            {ok, {X, _SpecOrType}} ->
-                error({datatype_mismatch, X, Datatype});
-            error when Strategy == ignore ->
-                Acc;
-            error when Strategy == error ->
-                %% TODO we should take a 4th arg with options to deal with this
-                %% situation
-                error({missing_spec, RKey})
-        end
+    Convert = fun
+        ({<<"$dummy">>,register} = _RKey, _RValue, Acc) ->
+            %% Dummy keys are used to indicate that the value is a register
+            %% and we should not convert it, they are ignored in the conversion
+            %% process as they are understood to be left over from cleaning updates.
+            Acc;
+        ({Key, Datatype} = RKey, RValue, Acc) ->
+            case maps:find(Key, Spec) of
+                {ok, {X, SpecOrType}} when X == Datatype ->
+                    Value = from_datatype(RKey, RValue, ICtxt, SpecOrType),
+                    maps:put(Key, Value, Acc);
+                {ok, {X, _SpecOrType}} ->
+                    error({datatype_mismatch, X, Datatype});
+                error when Strategy == ignore ->
+                    Acc;
+                error when Strategy == error ->
+                    %% TODO we should take a 4th arg with options to deal with this
+                    %% situation
+                    error({missing_spec, RKey})
+            end
     end,
     Values = orddict:fold(Convert, maps:new(), RMap),
 
