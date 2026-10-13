@@ -24,28 +24,28 @@
 -include("babel.hrl").
 
 -record(babel_set, {
-    values = []         ::  ordsets:ordset(any()),
-    adds = []           ::  ordsets:ordset(any()),
-    removes = []        ::  ordsets:ordset(any()),
-    size = 0            ::  non_neg_integer(),
-    context             ::  babel_context(),
-    type_spec           ::  type_spec()
+    values = [] :: ordsets:ordset(any()),
+    adds = [] :: ordsets:ordset(any()),
+    removes = [] :: ordsets:ordset(any()),
+    size = 0 :: non_neg_integer(),
+    context :: babel_context(),
+    type_spec :: type_spec()
 }).
 
--opaque t()             ::  #babel_set{}.
--type type_spec()       ::  atom
-                            | existing_atom
-                            | boolean
-                            | integer
-                            | float
-                            | binary
-                            | list
-                            | fun((encode, any()) -> binary())
-                            | fun((decode, binary()) -> any()).
+-opaque t() :: #babel_set{}.
+-type type_spec() ::
+    atom
+    | existing_atom
+    | boolean
+    | integer
+    | float
+    | binary
+    | list
+    | fun((encode, any()) -> binary())
+    | fun((decode, binary()) -> any()).
 
 -export_type([t/0]).
 -export_type([type_spec/0]).
-
 
 %% API
 -export([add_element/2]).
@@ -77,15 +77,9 @@
 % -export([intersection/2]).
 % -export([is_subset/2]).
 
-
-
-
 %% =============================================================================
 %% API
 %% =============================================================================
-
-
-
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -95,7 +89,6 @@
 
 new() ->
     #babel_set{}.
-
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -110,19 +103,18 @@ new() ->
 new(Data) when is_list(Data) ->
     #babel_set{adds = ordsets:from_list(Data), size = ordsets:size(Data)}.
 
-
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
 -spec new(
     Data :: ordsets:ordset(any()),
-    Type :: type_spec())  -> t().
+    Type :: type_spec()
+) -> t().
 
 new(Data, Type) when is_list(Data) ->
     Adds = ordsets:from_list([from_term(E, Type) || E <- Data]),
     #babel_set{adds = Adds, size = ordsets:size(Adds)}.
-
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -131,19 +123,17 @@ new(Data, Type) when is_list(Data) ->
 %% -----------------------------------------------------------------------------
 -spec from_riak_set(
     RiakSet :: riakc_set:riakc_set() | ordsets:ordset(),
-    Type :: type_spec()) ->
+    Type :: type_spec()
+) ->
     maybe_no_return(t()).
-
 
 from_riak_set(Ordset, Type) when is_list(Ordset) ->
     Values = ordsets:from_list([from_binary(E, Type) || E <- Ordset]),
     #babel_set{values = Values, size = ordsets:size(Values)};
-
 from_riak_set(RiakSet, Type) ->
     Set = from_riak_set(riakc_set:value(RiakSet), Type),
     Ctxt = element(5, RiakSet),
     set_context(Ctxt, Set).
-
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -154,13 +144,10 @@ from_riak_set(RiakSet, Type) ->
 
 to_riak_op(#babel_set{adds = [], removes = []}, _) ->
     undefined;
-
 to_riak_op(#babel_set{adds = A, removes = [], context = C}, Type) ->
     {riakc_set:type(), {add_all, [to_binary(E, Type) || E <- A]}, C};
-
 to_riak_op(#babel_set{adds = [], removes = R, context = C}, Type) ->
     {riakc_set:type(), {remove_all, [to_binary(E, Type) || E <- R]}, C};
-
 to_riak_op(#babel_set{adds = A, removes = R, context = C}, Type) ->
     {
         riakc_set:type(),
@@ -171,7 +158,6 @@ to_riak_op(#babel_set{adds = A, removes = R, context = C}, Type) ->
         C
     }.
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Returns the symbolic name of this container.
 %% @end
@@ -179,8 +165,6 @@ to_riak_op(#babel_set{adds = A, removes = R, context = C}, Type) ->
 -spec type() -> set.
 
 type() -> set.
-
-
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -191,7 +175,6 @@ type() -> set.
 is_type(#babel_set{}) -> true;
 is_type(_) -> false.
 
-
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
@@ -200,7 +183,6 @@ is_type(_) -> false.
 
 type_spec(#babel_set{type_spec = Val}) ->
     Val.
-
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -219,7 +201,6 @@ is_valid_type_spec(Fun) when is_function(Fun, 1) -> true;
 is_valid_type_spec(Fun) when is_function(Fun, 2) -> true;
 is_valid_type_spec(_) -> false.
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Returns the Riak KV context
 %% @end
@@ -228,7 +209,6 @@ is_valid_type_spec(_) -> false.
 
 context(#babel_set{context = Value}) -> Value.
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Sets the context `Ctxt'.
 %% @end
@@ -236,16 +216,14 @@ context(#babel_set{context = Value}) -> Value.
 -spec set_context(Ctxt :: babel_context(), T :: t()) ->
     NewT :: t().
 
-set_context(Ctxt, #babel_set{} = T)
-when is_binary(Ctxt) orelse Ctxt == undefined orelse Ctxt == inherited ->
+set_context(Ctxt, #babel_set{} = T) when
+    is_binary(Ctxt) orelse Ctxt == undefined orelse Ctxt == inherited
+->
     T#babel_set{context = Ctxt};
-
 set_context(Ctxt, #babel_set{}) ->
     error({badarg, Ctxt});
-
 set_context(_, Term) ->
     error({badset, Term}).
-
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns the original value of the set as an ordset.
@@ -257,7 +235,6 @@ set_context(_, Term) ->
 
 original_value(#babel_set{values = V}) -> V.
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Returns the current value of the set.
 %% @end
@@ -267,7 +244,6 @@ original_value(#babel_set{values = V}) -> V.
 value(#babel_set{values = V, adds = A, removes = R}) ->
     ordsets:subtract(ordsets:union(V, A), R).
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Returns the cardinality (size) of the set.
 %% @end
@@ -275,7 +251,6 @@ value(#babel_set{values = V, adds = A, removes = R}) ->
 -spec size(T :: t()) -> pos_integer().
 
 size(#babel_set{size = Size}) -> Size.
-
 
 %% -----------------------------------------------------------------------------
 %% @doc Adds an element to the set.
@@ -292,14 +267,13 @@ size(#babel_set{size = Size}) -> Size.
 add_element(Element, T) ->
     add_elements([Element], T).
 
-
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
 -spec add_elements(Elements :: [any()], T :: t()) -> t().
 
-add_elements(Elements, #babel_set{adds = A0, size = S0} = T) ->
+add_elements(Elements, #babel_set{adds = A0, removes = R0, size = _S0} = T) ->
     TypeSpec = T#babel_set.type_spec,
 
     A1 = lists:foldl(
@@ -313,13 +287,13 @@ add_elements(Elements, #babel_set{adds = A0, size = S0} = T) ->
         Elements
     ),
 
-    S1 = S0 + ordsets:size(A1) - ordsets:size(A0),
+    R1 = ordsets:subtract(R0, ordsets:from_list(Elements)),
 
-    T#babel_set{
-        adds = A1,
-        size = S1
-    }.
+    %% Recompute size based on the actual visible set logic
+    T1 = T#babel_set{adds = A1, removes = R1},
+    S1 = ordsets:size(value(T1)),
 
+    T1#babel_set{size = S1}.
 
 %% -----------------------------------------------------------------------------
 %% @doc Removes an element from the set.
@@ -336,7 +310,6 @@ add_elements(Elements, #babel_set{adds = A0, size = S0} = T) ->
 del_element(Element, T) ->
     del_elements([Element], T).
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Removes an element from the set.
 %% You may remove an element that does not appear in the original
@@ -351,16 +324,13 @@ del_element(Element, T) ->
 
 del_elements(_, #babel_set{context = undefined}) ->
     throw(context_required);
-
-del_elements(Elements, #babel_set{removes = R0, size = S0} = T) ->
+del_elements(Elements, #babel_set{removes = R0, size = _S0} = T) ->
     R1 = lists:foldl(fun ordsets:add_element/2, R0, Elements),
-    S1 = S0 + ordsets:size(R1) - ordsets:size(R0),
 
-    T#babel_set{
-        removes = R1,
-        size = S1
-    }.
+    T1 = T#babel_set{removes = R1},
+    S1 = ordsets:size(value(T1)),
 
+    T1#babel_set{removes = R1, size = S1}.
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -382,7 +352,6 @@ set_elements(Elements, #babel_set{values = Value} = T) ->
         size = S1
     }.
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Folds over the members of the set.
 %% @end
@@ -393,7 +362,6 @@ set_elements(Elements, #babel_set{values = Value} = T) ->
 fold(Fun, Acc0, T) ->
     ordsets:fold(Fun, Acc0, value(T)).
 
-
 %% -----------------------------------------------------------------------------
 %% @doc Test whether an element is a member of the set.
 %% @end
@@ -401,9 +369,8 @@ fold(Fun, Acc0, T) ->
 -spec is_element(binary(), t()) -> boolean().
 
 is_element(Element, #babel_set{values = V, adds = A, removes = R}) ->
-    not ordsets:is_element(Element, R) andalso
-    (ordsets:is_element(Element, V) orelse ordsets:is_element(Element, A)).
-
+    ordsets:is_element(Element, A) orelse
+        (ordsets:is_element(Element, V) andalso not ordsets:is_element(Element, R)).
 
 %% -----------------------------------------------------------------------------
 %% @doc Test whether an element is a member of the original set i,e. the one
@@ -414,7 +381,6 @@ is_element(Element, #babel_set{values = V, adds = A, removes = R}) ->
 
 is_original_element(Element, #babel_set{values = V}) ->
     ordsets:is_element(Element, V).
-
 
 %% -----------------------------------------------------------------------------
 %% @doc Returns a copy of Set1 containing only the elements of Set1 that are
@@ -428,9 +394,9 @@ subtract(#babel_set{} = Set1, #babel_set{} = Sets2) ->
     Values = ordsets:subtract(Set1#babel_set.values, U),
     Adds = ordsets:subtract(Set1#babel_set.adds, U),
     Size =
-        ordsets:size(Values)
-        + ordsets:size(Adds)
-        - ordsets:size(Set1#babel_set.removes),
+        ordsets:size(Values) +
+            ordsets:size(Adds) -
+            ordsets:size(Set1#babel_set.removes),
 
     Set1#babel_set{
         values = Values,
@@ -438,61 +404,47 @@ subtract(#babel_set{} = Set1, #babel_set{} = Sets2) ->
         size = Size
     }.
 
-
 %% =============================================================================
 %% PRIVATE
 %% =============================================================================
 
-
-
 %% @private
 from_binary(Value, Fun) when is_function(Fun, 2) ->
     Fun(decode, Value);
-
 from_binary(Value, Type) ->
     babel_utils:from_binary(Value, Type).
-
 
 %% @private
 from_term(Term, atom) ->
     is_atom(Term) orelse error({badarg, Term}),
     Term;
-
 from_term(Term, existing_atom) ->
     is_atom(Term) orelse error({badarg, Term}),
     Term;
-
 from_term(Term, boolean) ->
     is_boolean(Term) orelse error({badarg, Term}),
     Term;
-
 from_term(Term, integer) ->
     is_integer(Term) orelse error({badarg, Term}),
     Term;
-
 from_term(Term, float) ->
     is_float(Term) orelse error({badarg, Term}),
     Term;
-
 from_term(Term, binary) ->
     is_binary(Term) orelse error({badarg, Term}),
     Term;
-
 from_term(Term, list) ->
     is_list(Term) orelse error({badarg, Term}),
     Term;
-
 from_term(Term, Fun) when is_function(Fun) ->
     is_function(Fun, 1) orelse is_function(Fun, 2) orelse error({badarg, Term}),
     Term;
-
 from_term(_, Type) ->
     error({badtype, Type}).
-
 
 %% @private
 to_binary(Value, Fun) when is_function(Fun, 2) ->
     Fun(encode, Value);
-
 to_binary(Value, Type) ->
     babel_utils:to_binary(Value, Type).
+

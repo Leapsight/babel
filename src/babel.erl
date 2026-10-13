@@ -223,7 +223,7 @@ type(Term) ->
 module(Term) when is_tuple(Term) ->
     Mods = [babel_map, babel_set, babel_counter, babel_flag],
     Fun = fun(Mod, Acc) ->
-        case (catch Mod:is_type(Term)) of
+              case (try Mod:is_type(Term) catch _:_ -> ok end) of
             true ->
                 throw({module, Mod});
             _ ->
@@ -1254,7 +1254,7 @@ to_babel_datatype(counter, Datatype, Spec) ->
 riak_type(Term) when is_tuple(Term) ->
     Mods = [riakc_set, riakc_map, riakc_counter, riakc_flag],
     Fun = fun(Mod, Acc) ->
-        case (catch Mod:is_type(Term)) of
+              case (try Mod:is_type(Term) catch _:_ -> ok end) of
             true ->
                 throw({type, Mod:type()});
             _ ->
